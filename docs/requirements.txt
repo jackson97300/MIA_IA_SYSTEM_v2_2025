@@ -74,7 +74,7 @@ flake8>=7.1.0,<8.0.0  # Linting, aligné avec .pre-commit-config.yaml
 pylint>=2.17.0,<3.0.0  # Analyse statique
 mypy>=1.4.0,<2.0.0  # Vérification de types
 coverage>=7.2.0,<8.0.0  # Couverture des tests
-pytest-benchmark>=4.0.0,<5.0.0  # Tests de performance
+pytest-benchmark>=4.0.0,<6.0.0  # Tests de performance
 
 # Dépendances pour les améliorations 1-10 (guides d’implémentation Parties 1-4)
 boto3>=1.24.0,<2.0.0  # Stockage S3 (data_lake.py)
