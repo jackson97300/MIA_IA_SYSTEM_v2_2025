@@ -70,7 +70,7 @@ scikit-learn>=1.5.0,<2.0.0  # t-SNE (latent_vol_regime_vec), clustering (strateg
 # sqlite3  # Inclus dans Python standard, non requis dans requirements.txt
 
 # Tests unitaires et linting (tests/*.py)
-pytest>=7.3.0,<8.0.0  # Tests unitaires (ex. : test_option_metrics.py)
+pytest>=7.3.0,<9.0.0  # Tests unitaires (ex. : test_option_metrics.py)
 flake8>=7.1.0,<8.0.0  # Linting, aligné avec .pre-commit-config.yaml
 pylint>=2.17.0,<3.0.0  # Analyse statique
 mypy>=1.4.0,<2.0.0  # Vérification de types
