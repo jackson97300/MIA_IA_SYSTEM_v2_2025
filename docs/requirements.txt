@@ -23,7 +23,7 @@
 
 # Manipulation des données et features (feature_pipeline.py, run_preprocessing.py)
 pandas>=2.0.0,<3.0.0  # Gestion des DataFrames (ex. : features_latest.csv)
-numpy>=1.26.4,<2.0.0  # Calculs numériques (ex. : feature_pipeline.py)
+numpy>=1.26.4,<3.0.0  # Calculs numériques (ex. : feature_pipeline.py)
 psutil>=5.9.0,<6.0.0  # Monitoring des performances (ex. : adaptive_learning.py)
 
 # Modèles neuronaux (neural_pipeline.py, run_training.py)
