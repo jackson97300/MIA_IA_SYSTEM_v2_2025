@@ -94,6 +94,6 @@ pre-commit>=2.20.0,<3.0.0  # Hooks pre-commit (.pre-commit-config.yaml)
 prometheus-client>=0.14.0,<1.0.0  # Métriques Prometheus (prometheus_metrics.py)
 
 # Dépendances pour les alertes et notifications (alert_manager.py, telegram_alert.py, discord_alert.py)
-python-telegram-bot==13.7  # Envoi d’alertes Telegram via telegram_alert.py
+python-telegram-bot==22.1  # Envoi d’alertes Telegram via telegram_alert.py
 discord.py==2.3.2  # Envoi d’alertes Discord via discord_alert.py
 # smtplib  # Inclus dans Python standard pour alertes email, non requis dans requirements.txt
