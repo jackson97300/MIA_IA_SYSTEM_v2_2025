@@ -1,0 +1,12 @@
+Limite : La version 2.1.3 des wrappers ne valide pas encore les nouvelles fonctionnalités (bid_ask_imbalance, iv_skew), ce qui peut réduire leur impact. La normalisation incrémentale peut être instable si predicted_volatility fluctue fortement.
+
+!
+
+
+
+
+```
+
+  
+  -.
+

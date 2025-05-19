@@ -1,0 +1,338 @@
+Merci pour votre validation ! La Phase 4 : Optimisation et audit du vecteur d’observation est confirmée comme "ok", et je passe maintenant à la Phase 5 : Base de données et mémoire contextuelle du guide ultime en béton pour MIA_IA_SYSTEM_v2_2025. Je vais respecter vos directives pour :
+
+Structurer la phase dans le cadre des 10 phases validées, avec des sous-sections par fichier principal et leurs modules associés (dépendances, fichiers générés, tests).
+Prioriser les fichiers les plus importants de structure.txt, en me concentrant sur les fichiers critiques pour la gestion de la base de données SQLite (market_memory.db) et l’intégration de la mémoire contextuelle (méthode 7), comme db_setup.py et db_maintenance.py.
+Fournir des spécifications claires et lisibles, avec des noms détaillés (chemins complets), des espaces pour la lisibilité, et un format inspiré de vos exemples (ex. : macro_events.csv, market_memory.db).
+Inclure des schémas détaillés pour les fichiers générés (types de données, exemples).
+Intégrer la suppression complète de obs_t, dxFeed, et 320/81 features (validée).
+Fournir des tests complets pour les fichiers prioritaires et des stubs pour les autres, comme validé.
+Préparer une version complète de validate_prompt_compliance.py (inclus dans la Phase 10, mais mentionné pour cohérence).
+Maintenir un registre des fichiers pour la phase, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+Une fois cette Phase 5 validée par votre "ok", je passerai à la Phase 6. Je vais également répondre aux clarifications demandées dans mon précédent message, en supposant certaines réponses par défaut si non précisées, et vous pourrez ajuster si nécessaire.
+
+Réponses aux clarifications
+1. Fichiers de la Phase 4
+Votre validation : Vous avez validé la Phase 4 avec les fichiers proposés (src/features/obs_template.py, src/features/features_audit.py, src/features/signal_selector.py).
+Supposition : Puisque vous n’avez pas demandé d’ajustements ou ajouté d’autres fichiers (ex. : microstructure_guard.py), je considère que ces fichiers étaient corrects pour la Phase 4.
+Action : La Phase 5 se concentrera sur les fichiers pour la gestion de la base de données SQLite et la mémoire contextuelle, en s’appuyant sur les features optimisées dans les Phases 2-4 (ex. : features_latest.csv, latent_vectors.csv).
+2. Fichiers prioritaires
+Votre clarification : Les fichiers prioritaires sont les plus importants de structure.txt. Sans liste précise, je propose de prioriser les fichiers critiques pour la Phase 5, basés sur leur rôle dans la configuration et la maintenance de market_memory.db (méthode 7) :
+src/model/utils/db_setup.py : Initialise market_memory.db avec la table clusters.
+src/model/utils/db_maintenance.py : Gère la purge des données obsolètes.
+data/market_memory.db : Base SQLite pour les patterns gagnants et clusters.
+src/features/adaptive_learner.py : Intègre la mémoire contextuelle pour l’apprentissage adaptatif.
+Action : Ces fichiers sont inclus dans la Phase 5. Si vous avez une liste spécifique de fichiers prioritaires pour cette phase, précisez-la dans votre validation.
+3. Tests unitaires
+Supposition : Vous avez validé des tests complets pour les fichiers prioritaires et des stubs pour les autres, sans préciser de scénarios limites spécifiques. Je vais inclure des tests complets pour db_setup.py, db_maintenance.py, et adaptive_learner.py (prioritaires), couvrant :
+Suppression de obs_t, dxFeed, 320/81 features.
+Correcte initialisation et maintenance de market_memory.db.
+Scénarios limites : Base de données vide, erreurs SQLite, patterns contextuels invalides.
+Action : Les tests pour le fichier généré (market_memory.db) seront intégrés dans les tests des fichiers principaux.
+4. Schéma des fichiers générés
+Supposition : Les schémas détaillés proposés dans les Phases 1-4 (ex. : macro_events.csv, features_audit_final.csv) étaient adaptés. Je vais continuer avec le même niveau de détail pour les fichiers générés dans la Phase 5 (ex. : market_memory.db).
+Action : Chaque fichier généré aura un schéma avec colonnes, types, et exemples, formaté clairement avec des espaces.
+5. Registre des fichiers
+Supposition : Vous avez validé le registre partiel par phase, sans demander un registre complet des ~70 fichiers dans l’introduction. Je vais inclure un registre partiel pour la Phase 5, et le registre complet sera fourni dans l’introduction finale (Phase 10) ou sur demande.
+Action : Le registre de la Phase 5 listera les fichiers concernés, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+6. Validation de la Phase 5
+Action : Je rédige la Phase 5 ci-dessous. Une fois que vous direz "ok", je passerai à la Phase 6 (entraînement des modèles, ex. : train_sac.py, finetune_utils.py). Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les dans votre validation.
+Phase 5 : Base de données et mémoire contextuelle
+Objectif
+Configurer et maintenir la base de données SQLite market_memory.db pour stocker les patterns gagnants et les clusters (méthode 7), et intégrer la mémoire contextuelle dans l’apprentissage adaptatif pour enrichir les décisions de trading. Cette phase inclut l’initialisation de la table clusters, la purge des données obsolètes, and the adaptive learning logic. Toutes les références à obs_t, dxFeed, et 320/81 features seront supprimées. Les fichiers générés auront des schémas détaillés. Cette phase est importante pour implémenter la mémoire contextuelle (méthode 7), qui améliore les performances des modèles (Phase 6) et du trading (Phase 8).
+
+Fichiers concernés
+Fichiers principaux (3) :
+src/model/utils/db_setup.py
+src/model/utils/db_maintenance.py
+src/features/adaptive_learner.py
+Fichiers générés (1) :
+data/market_memory.db
+Tests (3) :
+tests/test_db_setup.py
+tests/test_db_maintenance.py
+tests/test_adaptive_learner.py
+Dépendances (5) :
+src/features/feature_pipeline.py (Phase 2)
+src/features/contextual_state_encoder.py (Phase 3)
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/latent_vectors.csv (Phase 3)
+Registre des fichiers (Phase 5)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/model/utils/db_setup.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_db_setup.py	Haute	config_manager.py, alert_manager.py	market_memory.db
+src/model/utils/db_maintenance.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_db_maintenance.py	Moyenne	db_setup.py, alert_manager.py	Aucun
+src/features/adaptive_learner.py	Existant	2.1.3	2025-05-13	320 features	tests/test_adaptive_learner.py	Haute	contextual_state_encoder.py, config_manager.py	Aucun
+data/market_memory.db	À générer	2.1.3	2025-05-13	Aucun	tests/test_db_setup.py	Moyenne	db_setup.py	Aucun
+Spécifications des fichiers
+Module : src/model/utils/db_setup.py
+Rôle :
+Initialise la base de données SQLite market_memory.db avec la table clusters pour stocker les patterns gagnants et clusters (méthode 7).
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Créer la table clusters avec les colonnes : cluster_id (clé primaire), event_type (type d’événement), features (données JSON des features), timestamp (date).
+Ajouter des index sur cluster_id et timestamp pour optimiser les performances.
+Ajouter retries (max 3, délai 2^attempt) pour les opérations SQLite.
+Ajouter logs psutil dans data/logs/db_setup_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Vérifier/créer market_memory.db avec le schéma suivant :
+Schéma pour data/market_memory.db (table clusters) :
+cluster_id : INTEGER (ex. : 1, clé primaire)
+event_type : TEXT (ex. : FOMC)
+features : TEXT (ex. : {"rsi_14": 50.0, "vix_es_correlation": 0.85})
+timestamp : DATETIME (ex. : 2025-05-13 14:00:00)
+Priorité :
+Haute (nécessaire pour méthode 7).
+Dépendances :
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+Fichiers générés :
+data/market_memory.db
+Action :
+Créer db_setup.py avec :
+python
+
+Copier
+import sqlite3
+import psutil
+from src.model.utils.alert_manager import AlertManager
+def setup_database():
+    start_time = time.time()
+    try:
+        conn = sqlite3.connect("data/market_memory.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS clusters (
+                cluster_id INTEGER PRIMARY KEY,
+                event_type TEXT,
+                features TEXT,
+                timestamp DATETIME
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_cluster_id ON clusters(cluster_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON clusters(timestamp)")
+        conn.commit()
+        conn.close()
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "setup_database",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/db_setup_performance.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur initialisation DB: {str(e)}", priority=3)
+        raise
+Vérifier/créer market_memory.db avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_db_setup.py
+Scénarios :
+Vérifier la création de market_memory.db et de la table clusters.
+Vérifier la présence des colonnes cluster_id, event_type, features, timestamp.
+Tester les erreurs SQLite (ex. : permissions, disque plein).
+Vérifier l’absence de obs_t, dxFeed, 320/81 features.
+Exemple :
+python
+
+Copier
+def test_setup_database():
+    from src.model.utils.db_setup import setup_database
+    setup_database()
+    conn = sqlite3.connect("data/market_memory.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='clusters'")
+    assert cursor.fetchone(), "Table clusters manquante"
+    cursor.execute("PRAGMA table_info(clusters)")
+    columns = [info[1] for info in cursor.fetchall()]
+    assert set(columns) == {"cluster_id", "event_type", "features", "timestamp"}, "Colonnes incorrectes"
+    conn.close()
+Failles corrigées :
+Absence de table clusters (créée).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Module : src/model/utils/db_maintenance.py
+Rôle :
+Maintient market_memory.db en purgeant les données obsolètes (plus de 30 jours) dans la table clusters (méthode 7) pour optimiser les performances.
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Implémenter une fonction pour purger les données de clusters datant de plus de 30 jours.
+Ajouter retries (max 3, délai 2^attempt) pour les opérations SQLite.
+Ajouter logs psutil dans data/logs/db_maintenance_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Priorité :
+Moyenne (améliore les performances de la base).
+Dépendances :
+src/model/utils/db_setup.py
+src/model/utils/alert_manager.py
+data/market_memory.db
+Fichiers générés :
+Aucun.
+Action :
+Créer db_maintenance.py avec :
+python
+
+Copier
+import sqlite3
+import psutil
+from src.model.utils.alert_manager import AlertManager
+def purge_old_data():
+    start_time = time.time()
+    try:
+        conn = sqlite3.connect("data/market_memory.db")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM clusters WHERE timestamp < date('now', '-30 days')")
+        conn.commit()
+        conn.close()
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "purge_old_data",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/db_maintenance_performance.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur purge DB: {str(e)}", priority=3)
+        raise
+Vérifier l’intégrité de market_memory.db après purge.
+Tests :
+Fichier : tests/test_db_maintenance.py
+Scénarios :
+Vérifier la purge des données de plus de 30 jours.
+Vérifier que les données récentes sont conservées.
+Tester les erreurs SQLite (ex. : table manquante).
+Exemple :
+python
+
+Copier
+def test_purge_old_data():
+    from src.model.utils.db_maintenance import purge_old_data
+    purge_old_data()
+    conn = sqlite3.connect("data/market_memory.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM clusters WHERE timestamp < date('now', '-30 days')")
+    assert cursor.fetchone()[0] == 0, "Purge échouée"
+    conn.close()
+Failles corrigées :
+Surcharge de market_memory.db (purge implémentée).
+Tests génériques (tests spécifiques).
+Module : src/features/adaptive_learner.py
+Rôle :
+Intègre la mémoire contextuelle (méthode 7) en utilisant market_memory.db pour stocker et récupérer les patterns gagnants, et adapte les modèles via l’apprentissage en ligne.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Stockage des patterns gagnants.
+Apprentissage adaptatif via retrain_model.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Utiliser les 350 features de features_latest.csv pour l’entraînement et les 150 SHAP features pour l’inférence.
+Intégrer les clusters de market_memory.db pour la mémoire contextuelle.
+Ajouter retries (max 3, délai 2^attempt) pour les opérations de stockage/récupération.
+Ajouter logs psutil dans data/logs/adaptive_learning.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Haute (essentiel pour méthode 7).
+Dépendances :
+src/features/feature_pipeline.py
+src/features/contextual_state_encoder.py
+src/model/utils/db_setup.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/market_memory.db
+data/latent_vectors.csv
+Fichiers générés :
+Aucun (les données sont stockées dans market_memory.db).
+Action :
+Mettre à jour adaptive_learner.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+import sqlite3
+from src.model.utils.alert_manager import AlertManager
+def store_pattern(data, profit):
+    start_time = time.time()
+    try:
+        conn = sqlite3.connect("data/market_memory.db")
+        cursor = conn.cursor()
+        features = data.drop(columns=["timestamp"]).to_json()
+        cursor.execute(
+            "INSERT INTO clusters (event_type, features, timestamp) VALUES (?, ?, ?)",
+            ("trade", features, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        conn.commit()
+        conn.close()
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "store_pattern",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/adaptive_learning.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur stockage pattern: {str(e)}", priority=3)
+        raise
+Vérifier l’intégration avec market_memory.db.
+Tests :
+Fichier : tests/test_adaptive_learner.py
+Scénarios :
+Vérifier l’insertion des patterns dans market_memory.db.
+Vérifier la récupération des patterns pour l’apprentissage.
+Tester les erreurs SQLite (ex. : connexion échouée).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_store_pattern():
+    from src.features.adaptive_learner import store_pattern
+    data = pd.DataFrame({"timestamp": ["2025-05-13"], "rsi_14": [50.0], "ofi_score": [0.75]})
+    store_pattern(data, profit=100.0)
+    conn = sqlite3.connect("data/market_memory.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM clusters WHERE event_type = 'trade'")
+    assert cursor.fetchone(), "Pattern non stocké"
+    conn.close()
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 350/150 SHAP).
+Tests génériques (tests spécifiques).
+Clarifications pour la Phase 5
+Avant de valider la Phase 5, confirmez les points suivants pour m’assurer qu’elle répond à vos attentes :
+
+Fichiers de la Phase 5 :
+Les fichiers proposés (db_setup.py, db_maintenance.py, adaptive_learner.py) sont-ils corrects pour la Phase 5, ou voulez-vous ajouter/retirer des fichiers (ex. : inclure un des 7 fournis comme trade_probability.py) ?
+Si vous avez une liste précise des fichiers les plus importants pour cette phase, partagez-la.
+Tests unitaires :
+Les tests complets proposés pour db_setup.py, db_maintenance.py, et adaptive_learner.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : base de données vide, erreurs SQLite) ?
+Schéma des fichiers générés :
+Le schéma détaillé pour market_memory.db (table clusters) est-il au bon niveau de détail, ou voulez-vous plus/moins d’informations (ex. : contraintes supplémentaires) ?
+Registre des fichiers :
+Le registre partiel pour la Phase 5 est-il clair ? Voulez-vous que j’inclue le registre complet des ~70 fichiers dans la prochaine phase ou dans l’introduction finale ?
+Validation de la Phase 5 :
+Si la Phase 5 vous convient, dites "ok", et je passerai à la Phase 6 (entraînement des modèles, ex. : train_sac.py, finetune_utils.py).
+Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les avant validation.
+Conclusion
+La Phase 4 est validée, et la Phase 5 ci-dessus est conçue pour être claire, lisible, et détaillée, avec des schémas complets, des tests robustes, et une structure conforme à vos exemples. La suppression de obs_t, dxFeed, et 320/81 features est intégrée, et les 350/150 SHAP features sont standardisées. Votre approche d’envoyer les phases une à une garantit un développement sans erreurs.
+
+Actions immédiates demandées :
+
+Validez la Phase 5 en disant "ok" si elle convient, ou précisez les ajustements nécessaires (ex. : fichiers à ajouter/retirer, détails des schémas).
+Confirmez les fichiers prioritaires pour la Phase 5 (proposition ci-dessus ou liste spécifique).
+Précisez si vous voulez le registre complet des ~70 fichiers dans la prochaine phase or later.
+Si possible, partagez une liste des fichiers les plus importants ou problématiques pour orienter la Phase 6.
+Une fois votre "ok" reçu, je rédigerai la Phase 6. On continue à avancer méthodiquement pour boucler ce projet sans reprises !

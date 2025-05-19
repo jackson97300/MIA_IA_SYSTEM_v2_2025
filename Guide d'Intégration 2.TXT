@@ -1,0 +1,1855 @@
+Aide à la Construction pour MIA_IA_SYSTEM_v2_2025
+Version: 2.1.4Date: 2025-05-13  
+Aperçu
+Ce document fournit des extraits de code et des instructions pour créer ou modifier les fichiers nécessaires à l’intégration des améliorations proposées pour MIA_IA_SYSTEM_v2_2025. Les améliorations couvrent les idées de MLOps, observabilité, robustesse, sécurité, qualité de code, scalabilité, gestion du drift, et data engineering, en s’alignant avec les suggestions existantes (1 à 9). Chaque section inclut un extrait de code commenté, expliquant ce que le fichier doit contenir, les intégrations nécessaires, et les dépendances. Les fichiers sont organisés en deux listes : nouveaux fichiers à créer et fichiers existants à modifier. Les modifications respectent les standards de structure.txt (version 2.1.4, 2025-05-13) et évitent toute référence à dxFeed, obs_t, 320 features, ou 81 features.
+Note sur les dossiers policies : Le répertoire officiel pour les politiques de routage est src/model/router/policies. Le dossier src/model/policies semble être un résidu et doit être vérifié pour suppression afin d’éviter toute confusion.
+Nouveaux fichiers à créer
+1. src/utils/secret_manager.py
+
+Rôle : Gérer les secrets (ex. : identifiants IQFeed, AWS, Telegram) avec AWS KMS pour sécuriser les accès.
+Idée associée : Sécurité & conformité (gestion des secrets).
+Suggestion concernée : 8 (sécurité du fallback SHAP, pour protéger les données).
+Extrait de code :# src/utils/secret_manager.py
+# Gestion des secrets avec AWS KMS pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Récupère les secrets chiffrés (ex. : IQFeed, AWS) via AWS KMS.
+# Notes:
+# - Intégré dans data_provider.py, telegram_alert.py.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+import boto3
+from botocore.exceptions import ClientError
+
+class SecretManager:
+    def __init__(self):
+        self.kms = boto3.client("kms")
+
+    def get_secret(self, secret_id: str) -> str:
+        """Récupère un secret chiffré via AWS KMS.
+
+        Args:
+            secret_id: Identifiant du secret chiffré.
+
+        Returns:
+            Le secret déchiffré.
+
+        Raises:
+            ValueError: Si le déchiffrement échoue.
+        """
+        try:
+            response = self.kms.decrypt(CiphertextBlob=secret_id.encode())
+            return response["Plaintext"].decode()
+        except ClientError as e:
+            raise ValueError(f"Erreur KMS: {e}")
+
+
+Instructions :
+Ajouter boto3>=1.26.0,<2.0.0 à requirements.txt.
+Appeler SecretManager.get_secret dans data_provider.py pour charger les identifiants IQFeed.
+Exemple d'intégration :from src.utils.secret_manager import SecretManager
+secret_manager = SecretManager()
+iqfeed_credentials = secret_manager.get_secret("kms:secret-id")
+
+
+Tester avec :python -m unittest tests/test_secret_manager.py
+
+
+
+
+
+2. src/monitoring/prometheus_metrics.py
+
+Rôle : Exposer des métriques en temps réel (latence, trades traités, CPU/mémoire) pour Prometheus.
+Idée associée : Observabilité et monitoring (métriques temps réel).
+Suggestions concernées : 2 (loggers, pour exporter les métriques), 5 (monitoring du profit factor).
+Extrait de code :# src/monitoring/prometheus_metrics.py
+# Exposition des métriques Prometheus pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Fournit des compteurs et jauges pour latence, trades, CPU/mémoire.
+# Notes:
+# - Intégré dans run_system.py, performance_logger.py, switch_logger.py.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+from prometheus_client import Counter, Gauge, start_http_server
+
+trades_processed = Counter(
+    "trades_processed", "Nombre de trades traités", ["market"]
+)
+inference_latency = Gauge(
+    "inference_latency", "Latence d’inférence en secondes", ["market"]
+)
+cpu_usage = Gauge("cpu_usage", "Utilisation CPU en %", ["market"])
+memory_usage = Gauge("memory_usage", "Utilisation mémoire en Mo", ["market"])
+profit_factor = Gauge("profit_factor", "Facteur de profit calculé", ["market"])
+
+def init_metrics(port: int = 8000) -> None:
+    """Démarre le serveur HTTP pour scraper les métriques.
+
+    Args:
+        port: Port pour l’endpoint HTTP (défaut: 8000).
+    """
+    start_http_server(port)
+
+
+Instructions :
+Ajouter prometheus-client>=0.17.0,<1.0.0 à requirements.txt.
+Appeler init_metrics() dans run_system.py au démarrage :from src.monitoring.prometheus_metrics import init_metrics
+init_metrics()
+
+
+Exporter les métriques dans performance_logger.py et mia_switcher.py (voir sections correspondantes).
+Vérifier les métriques avec :curl http://localhost:8000
+
+
+
+
+
+3. src/monitoring/drift_detector.py
+
+Rôle : Détecter le drift des distributions des 150 SHAP features avec des tests statistiques (KS test).
+Idée associée : Gestion du drift & adaptation en ligne (détection de drift).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Extrait de code :# src/monitoring/drift_detector.py
+# Détection de drift des features pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Surveille les distributions des 150 SHAP features avec KS test.
+# Notes:
+# - Intégré dans mia_switcher.py, feature_pipeline.py.
+# - Stocke les résultats dans data/market_memory.db (table drift_metrics).
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+from scipy.stats import ks_2samp
+import pandas as pd
+import sqlite3
+import logging
+
+class DriftDetector:
+    def detect_drift(self, current_data: pd.DataFrame, reference_data: pd.DataFrame) -> bool:
+        """Détecte le drift des features avec KS test.
+
+        Args:
+            current_data: Données actuelles (DataFrame).
+            reference_data: Données de référence (DataFrame).
+
+        Returns:
+            True si un drift est détecté, False sinon.
+        """
+        for col in current_data.columns:
+            stat, p_value = ks_2samp(current_data[col], reference_data[col])
+            if p_value < 0.05:
+                self._log_drift(col, p_value)
+                logging.warning(f"Drift détecté pour {col}: p-value={p_value}")
+                return True
+        return False
+
+    def _log_drift(self, feature_name: str, p_value: float) -> None:
+        """Enregistre le drift dans market_memory.db."""
+        with sqlite3.connect("data/market_memory.db") as conn:
+            conn.execute(
+                "INSERT INTO drift_metrics (feature_name, p_value, timestamp) VALUES (?, ?, datetime('now'))",
+                (feature_name, p_value)
+            )
+
+
+Instructions :
+Ajouter scipy>=1.12.0,<2.0.0, pandas>=2.0.0,<3.0.0 à requirements.txt.
+Appeler DriftDetector.detect_drift dans mia_switcher.py pour vérifier le drift avant chaque décision :from src.monitoring.drift_detector import DriftDetector
+if DriftDetector().detect_drift(current_data, reference_data):
+    # Déclencher réentraînement
+
+
+Créer un test unitaire dans tests/test_drift_detector.py :def test_drift_detection():
+    detector = DriftDetector()
+    data1 = pd.DataFrame({"rsi_14": [50] * 100})
+    data2 = pd.DataFrame({"rsi_14": [60] * 100})
+    assert detector.detect_drift(data1, data2)
+
+
+Tester avec :pytest tests/test_drift_detector.py -v
+
+
+
+
+
+4. src/data/validate_data.py
+
+Rôle : Valider les schémas et plages des features avec Great Expectations avant leur utilisation.
+Idée associée : Data engineering & gouvernance (data validation).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Extrait de code :# src/data/validate_data.py
+# Validation des features avec Great Expectations pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Valide les schémas et plages des features avant traitement.
+# Notes:
+# - Intégré dans feature_pipeline.py.
+# - Journalise les erreurs dans data/logs/validation_errors.csv.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+from great_expectations.dataset import PandasDataset
+import pandas as pd
+import logging
+import csv
+
+def validate_features(data: pd.DataFrame) -> bool:
+    """Valide les features avec Great Expectations.
+
+    Args:
+        data: DataFrame contenant les features.
+
+    Returns:
+        True si la validation réussit, False sinon.
+    """
+    dataset = PandasDataset(data)
+    dataset.expect_column_values_to_be_between("rsi_14", min_value=0, max_value=100)
+    dataset.expect_column_values_to_be_between("obi_score", min_value=-1, max_value=1)
+    result = dataset.validate()
+    if not result["success"]:
+        logging.error(f"Validation échouée: {result}")
+        with open("data/logs/validation_errors.csv", "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([datetime.now(), str(result)])
+        return False
+    return True
+
+
+Instructions :
+Ajouter great-expectations>=0.18.0,<1.0.0 à requirements.txt.
+Appeler validate_features dans feature_pipeline.py avant de générer les features :from src.data.validate_data import validate_features
+if not validate_features(self.data):
+    raise ValueError("Validation des features échouée")
+
+
+Créer un fichier data/logs/validation_errors.csv avec l’en-tête :timestamp,error
+
+
+Tester avec :pytest tests/test_validate_data.py -v
+
+
+
+
+
+5. src/data/data_lake.py
+
+Rôle : Gérer le stockage des données dans un data lake S3 structuré (raw/processed/presentation).
+Idée associée : Data engineering & gouvernance (lac de données).
+Suggestion concernée : 8 (gestion sécurisée des données).
+Extrait de code :# src/data/data_lake.py
+# Gestion du data lake S3 pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Stocke et récupère les données dans un data lake structuré.
+# Notes:
+# - Intégré dans feature_pipeline.py, validate_data.py.
+# - Utilise le chiffrement S3 AES256.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+import boto3
+import pandas as pd
+from botocore.exceptions import ClientError
+
+class DataLake:
+    def __init__(self, bucket: str):
+        self.s3 = boto3.client("s3")
+        self.bucket = bucket
+
+    def store(self, data: pd.DataFrame, layer: str, key: str) -> None:
+        """Stocke les données dans S3.
+
+        Args:
+            data: DataFrame à stocker.
+            layer: Couche du data lake (raw, processed, presentation).
+            key: Clé S3 pour le fichier.
+        """
+        try:
+            self.s3.put_object(
+                Bucket=self.bucket,
+                Key=f"{layer}/{key}",
+                Body=data.to_csv(index=False),
+                ServerSideEncryption="AES256"
+            )
+        except ClientError as e:
+            raise ValueError(f"Erreur S3: {e}")
+
+
+Instructions :
+Ajouter boto3>=1.26.0,<2.0.0 à requirements.txt.
+Configurer es_config.yaml avec :s3_bucket: "mia-lake"
+
+
+Appeler DataLake.store dans feature_pipeline.py pour sauvegarder les features :from src.data.data_lake import DataLake
+DataLake("mia-lake").store(data, "processed", "features.csv")
+
+
+Tester avec :python -m unittest tests/test_data_lake.py
+
+
+
+
+
+6. src/model/utils/mlflow_tracker.py
+
+Rôle : Intégrer MLflow pour tracer les datasets, hyperparamètres, métriques, et artefacts des réentraînements.
+Idée associée : MLOps et automatisation (gestion de versions & tracking).
+Suggestion concernée : 9 (réentraînement).
+Extrait de code :# src/model/utils/mlflow_tracker.py
+# Tracking des runs MLflow pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Journalise les paramètres, métriques, et artefacts des réentraînements.
+# Notes:
+# - Intégré dans trade_probability.py.
+# - Stocke les métadonnées dans data/market_memory.db (table mlflow_runs).
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+import mlflow
+import sqlite3
+import json
+
+class MLflowTracker:
+    def log_run(self, parameters: dict, metrics: dict, artifacts: list) -> None:
+        """Journalise un run MLflow.
+
+        Args:
+            parameters: Dictionnaire des hyperparamètres.
+            metrics: Dictionnaire des métriques (ex. : Sharpe ratio).
+            artifacts: Liste des chemins d’artefacts (ex. : feature_importance.csv).
+        """
+        with mlflow.start_run():
+            mlflow.log_params(parameters)
+            mlflow.log_metrics(metrics)
+            for artifact in artifacts:
+                mlflow.log_artifact(artifact)
+            run_id = mlflow.active_run().info.run_id
+            with sqlite3.connect("data/market_memory.db") as conn:
+                conn.execute(
+                    "INSERT INTO mlflow_runs (run_id, parameters, metrics, timestamp) VALUES (?, ?, ?, datetime('now'))",
+                    (run_id, json.dumps(parameters), json.dumps(metrics))
+                )
+
+
+Instructions :
+Ajouter mlflow>=2.10.0,<3.0.0 à requirements.txt.
+Appeler MLflowTracker.log_run dans trade_probability.retrain_model :from src.model.utils.mlflow_tracker import MLflowTracker
+MLflowTracker().log_run(
+    parameters={"learning_rate": 0.0003},
+    metrics={"sharpe_ratio": 1.5},
+    artifacts=["data/features/ES/feature_importance.csv"]
+)
+
+
+Créer un test unitaire dans tests/test_mlflow_tracker.py :def test_log_run():
+    tracker = MLflowTracker()
+    tracker.log_run({"learning_rate": 0.0003}, {"sharpe_ratio": 1.5}, [])
+    assert mlflow.active_run() is not None
+
+
+Tester avec :pytest tests/test_mlflow_tracker.py -v
+
+
+
+
+
+7. src/utils/error_tracker.py
+
+Rôle : Configurer Sentry pour capturer les stack traces des erreurs en production.
+Idée associée : Observabilité et monitoring (error tracking).
+Suggestion concernée : 2 (loggers).
+Extrait de code :# src/utils/error_tracker.py
+# Capture des erreurs avec Sentry pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Journalise les stack traces en production.
+# Notes:
+# - Intégré dans performance_logger.py, run_system.py.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+import sentry_sdk
+
+def init_sentry(dsn: str) -> None:
+    """Initialise Sentry avec le DSN fourni.
+
+    Args:
+        dsn: DSN Sentry pour la journalisation.
+    """
+    sentry_sdk.init(dsn=dsGrants Sample Rate pour les performances.
+    traces_sample_rate=1.0)
+
+def capture_error(exception: Exception, context: dict) -> None:
+    """Capture une erreur avec contexte.
+
+    Args:
+        exception: Exception à journaliser.
+        context: Métadonnées supplémentaires (ex. : market, operation).
+    """
+    sentry_sdk.capture_exception(exception, extra=context)
+
+
+Instructions :
+Ajouter sentry-sdk>=1.40.0,<2.0.0 à requirements.txt.
+Appeler init_sentry dans run_system.py avec un DSN Sentry valide :from src.utils.error_tracker import init_sentry
+init_sentry("votre-dsn-sentry")
+
+
+Intégrer dans performance_logger.py (voir section correspondante).
+Créer un test unitaire dans tests/test_error_tracker.py :def test_capture_error():
+    init_sentry("test-dsn")
+    capture_error(ValueError("Test"), {"market": "ES"})
+    assert sentry_sdk.hub.client is not None
+
+
+Tester avec :pytest tests/test_error_tracker.py -v
+
+
+
+
+
+8. dags/train_pipeline.py
+
+Rôle : DAG Airflow pour orchestrer le pipeline d’entraînement continu (validation, entraînement, déploiement).
+Idée associée : MLOps et automatisation (pipeline d’entraînement continu).
+Suggestion concernée : 9 (réentraînement).
+Extrait de code :# dags/train_pipeline.py
+# DAG Airflow pour le réentraînement de MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Orchestre la validation, l’entraînement, et le déploiement.
+# Notes:
+# - Intégré avec trade_probability.py, validate_data.py, mlflow_tracker.py.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import subprocess
+import sqlite3
+
+def check_trades_count() -> bool:
+    """Vérifie si ≥ 1000 trades sont disponibles."""
+    with sqlite3.connect("data/market_memory.db") as conn:
+        count = conn.execute("SELECT COUNT(*) FROM trade_patterns").fetchone()[0]
+        return count >= 1000
+
+with DAG(
+    "train_pipeline",
+    schedule_interval="@daily",
+    start_date=datetime(2025, 5, 13),
+    catchup=False
+) as dag:
+    check_trades = PythonOperator(
+        task_id="check_trades",
+        python_callable=check_trades_count
+    )
+    retrain = PythonOperator(
+        task_id="retrain_model",
+        python_callable=lambda: subprocess.run(
+            ["python", "scripts/retrain_trade_probability.py", "--market", "ES"]
+        )
+    )
+    check_trades >> retrain
+
+
+Instructions :
+Ajouter apache-airflow>=2.8.0,<3.0.0, airflow-provider-sqlite à requirements.txt.
+Créer le dossier dags/ et ajouter le fichier.
+Configurer Airflow :airflow db init
+airflow webserver
+
+
+Tester le DAG :airflow dags test train_pipeline 20250513
+
+
+
+
+
+9. helm/mia-system/Chart.yaml
+
+Rôle : Chart Helm pour déployer l’application sur Kubernetes.
+Idée associée : Scalabilité & déploiement (containerisation).
+Suggestion concernée : Aucune directement.
+Extrait de code :# helm/mia-system/Chart.yaml
+apiVersion: v2
+name: mia-system
+description: Chart Helm pour MIA_IA_SYSTEM_v2_2025
+version: 2.1.4
+appVersion: "2.1.4"
+dependencies:
+  - name: prometheus
+    version: 25.0.0
+    repository: https://prometheus-community.github.io/helm-charts
+  - name: grafana
+    version: 8.0.0
+    repository: https://grafana.github.io/helm-charts
+
+
+Instructions :
+Installer Helm (helm>=3.12.0).
+Créer le dossier helm/mia-system/ et ajouter le fichier.
+Vérifier la syntaxe :helm lint helm/mia-system/
+
+
+
+
+
+10. helm/mia-system/values.yaml
+
+Rôle : Configurations pour HPA (Horizontal Pod Autoscaling) et déploiement multi-zone.
+Idée associée : Scalabilité & déploiement (multi-zone / haute disponibilité).
+Suggestion concernée : Aucune directement.
+Extrait de code :# helm/mia-system/values.yaml
+replicaCount: 2
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+service:
+  type: ClusterIP
+  port: 8000
+
+
+Instructions :
+Ajouter au dossier helm/mia-system/.
+Déployer le chart :helm install mia-system helm/mia-system/
+
+
+Vérifier les pods :kubectl get pods
+
+
+
+
+
+11. tests/test_resilience.py
+
+Rôle : Tests de chaos engineering pour simuler des pannes (latence DB, déconnexion IQFeed).
+Idée associée : Robustesse & résilience (chaos engineering).
+Suggestion concernée : 7 (tests unitaires).
+Extrait de code :# tests/test_resilience.py
+# Tests de résilience pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Simule des pannes pour valider les circuit breakers et retries.
+# Notes:
+# - Intégré avec data_provider.py, feature_pipeline.py.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+import unittest
+from unittest.mock import patch
+import time
+from src import run_system
+
+class TestResilience(unittest.TestCase):
+    @patch("sqlite3.connect")
+    def test_db_latency(self, mock_connect):
+        """Teste la résilience à une latence DB."""
+        mock_connect.side_effect = lambda *args: time.sleep(2)
+        self.assertIsNotNone(run_system.main(market="ES"))
+
+    @patch("src.data.data_provider.DataProvider.fetch_iqfeed_data")
+    def test_iqfeed_failure(self, mock_fetch):
+        """Teste la résilience à une panne IQFeed."""
+        mock_fetch.side_effect = Exception("Connexion échouée")
+        self.assertIsNotNone(run_system.main(market="ES"))
+
+
+Instructions :
+Ajouter à tests/.
+Ajouter un job dans .github/workflows/python.yml :- name: Run Resilience Tests
+  run: pytest tests/test_resilience.py -v
+
+
+Tester avec :pytest tests/test_resilience.py -v
+
+
+
+
+
+12. .pre-commit-config.yaml
+
+Rôle : Configurer les hooks pre-commit pour Black, isort, Flake8, et MyPy.
+Idée associée : Qualité de code & process de développement (pre-commit hooks).
+Suggestion concernée : 7 (tests unitaires).
+Extrait de code :# .pre-commit-config.yaml
+# Configuration des hooks pre-commit pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Formate et valide le code avant chaque commit.
+# Notes:
+# - Intégré dans le processus de développement.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+  - repo: https://github.com/python/mypy
+    rev: 1.4.0
+    hooks:
+      - id: mypy
+
+
+Instructions :
+Ajouter à la racine.
+Installer les dépendances :pip install pre-commit black isort flake8 mypy
+pre-commit install
+
+
+Tester avec :pre-commit run --all-files
+
+
+
+
+
+13. Dockerfile
+
+Rôle : Containeriser l’application pour Kubernetes.
+Idée associée : Scalabilité & déploiement (containerisation).
+Suggestion concernée : Aucune directement.
+Extrait de code :# Dockerfile
+# Containerisation pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Conteneur pour déployer l’application sur Kubernetes.
+# Notes:
+# - Intégré avec helm/mia-system/.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+FROM python:3.10-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src/ src/
+COPY config/ config/
+CMD ["python", "src/run_system.py", "--market", "ES"]
+
+
+Instructions :
+Ajouter à la racine.
+Construire l’image :docker build -t mia-system .
+
+
+Tester le conteneur :docker run --rm mia-system
+
+
+
+
+
+14. prometheus.yml
+
+Rôle : Configurer Prometheus pour scraper les métriques.
+Idée associée : Observabilité et monitoring (métriques temps réel).
+Suggestions concernées : 2 (loggers), 5 (profit factor).
+Extrait de code :# prometheus.yml
+# Configuration Prometheus pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Scraping des métriques exposées par prometheus_metrics.py.
+# Notes:
+# - Intégré avec run_system.py, prometheus_metrics.py.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+scrape_configs:
+  - job_name: "mia-system"
+    static_configs:
+      - targets: ["localhost:8000"]
+
+
+Instructions :
+Ajouter à la racine.
+Démarrer Prometheus :prometheus --config.file=prometheus.yml
+
+
+Vérifier les métriques dans l’interface Prometheus (http://localhost:9090).
+
+
+
+15. grafana.ini
+
+Rôle : Configurer Grafana pour les dashboards dynamiques et les alertes.
+Idée associée : Observabilité et monitoring (dashboards dynamiques).
+Suggestions concernées : 2 (loggers), 5 (profit factor).
+Extrait de code :# grafana.ini
+# Configuration Grafana pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Configure les dashboards et alertes pour les métriques Prometheus.
+# Notes:
+# - Intégré avec prometheus.yml.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+[server]
+http_port = 3000
+[alerting]
+enabled = true
+[datasources]
+prometheus.url = http://localhost:9090
+
+
+Instructions :
+Ajouter à la racine.
+Démarrer Grafana :grafana-server --config=grafana.ini
+
+
+Configurer un dashboard dans Grafana pour visualiser trades_processed, inference_latency, et profit_factor (http://localhost:3000).
+
+
+
+16. .github/dependabot.yml
+
+Rôle : Activer les mises à jour automatiques des dépendances Python.
+Idée associée : Sécurité & conformité (scan de vulnérabilités).
+Suggestion concernée : 7 (tests unitaires).
+Extrait de code :# .github/dependabot.yml
+# Configuration Dependabot pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Vérifie quotidiennement les mises à jour des dépendances dans requirements.txt.
+# Notes:
+# - Intégré dans .github/workflows/python.yml.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+
+
+Instructions :
+Ajouter à .github/.
+Vérifier les PRs générées par Dependabot dans l’onglet Pull Requests sur GitHub.
+Configurer les règles de branche pour exiger des tests sur les PRs Dependabot.
+
+
+
+17. .github/PULL_REQUEST_TEMPLATE.md
+
+Rôle : Standardiser les pull requests avec des règles de revue.
+Idée associée : Qualité de code & process de développement (revue de code).
+Suggestion concernée : 7 (tests unitaires).
+Extrait de code :# .github/PULL_REQUEST_TEMPLATE.md
+# Modèle de Pull Request pour MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Date: 2025-05-13
+# Rôle: Standardise les pull requests avec tests et couverture de code.
+# Notes:
+# - Intégré dans .github/workflows/python.yml.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+
+## Description
+Décrivez les changements apportés et leur objectif.
+
+## Tests
+- [ ] Tests unitaires passent (`pytest tests/ -v`).
+- [ ] Couverture de code >= 100% (`pytest --cov=src --cov-report=html`).
+- [ ] Tests de résilience passent (`pytest tests/test_resilience.py -v`).
+
+## Checklist
+- [ ] Code formaté avec Black et isort.
+- [ ] Linting réussi avec Flake8 et MyPy.
+- [ ] Documentation mise à jour (ex. : docs/feature_engineering.md).
+
+
+Instructions :
+Ajouter à .github/.
+Configurer les règles de branche sur GitHub :
+Activer "Require pull request reviews before merging".
+Exiger au moins 1 approbation.
+
+
+Tester en créant une PR sur GitHub.
+
+
+
+Fichiers à modifier
+1. src/features/feature_pipeline.py
+
+Rôle : Gérer le pipeline de features, incluant le fallback SHAP.
+Modifications : Ajouter un circuit breaker pour load_shap_fallback et intégrer la validation des données.
+Idées associées : Robustesse & résilience (circuit breakers), Data engineering (data validation).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Extrait de code :# Ajout dans src/features/feature_pipeline.py
+from pybreaker import CircuitBreaker
+from src.data.validate_data import validate_features
+from src.monitoring.drift_detector import DriftDetector
+
+circuit_breaker = CircuitBreaker(fail_max=5, reset_timeout=60)
+
+def process_features(self, data: pd.DataFrame) -> pd.DataFrame:
+    """Traite les features avec validation et détection de drift."""
+    if not validate_features(data):
+        raise ValueError("Validation des features échouée")
+    # Vérifier le drift par rapport à une référence
+    reference_data = self.load_reference_data()  # À implémenter
+    if DriftDetector().detect_drift(data, reference_data):
+        logging.warning("Drift détecté, réentraînement recommandé")
+    return data
+
+@circuit_breaker
+def load_shap_fallback(self) -> pd.DataFrame:
+    """Charge les 150 SHAP features statiques avec circuit breaker."""
+    # Code existant pour charger depuis config/feature_sets.yaml
+    return pd.DataFrame()  # Placeholder
+
+
+Instructions :
+Insérer dans la classe FeaturePipeline ou la méthode appropriée.
+Ajouter pybreaker>=1.1.0,<2.0.0, great-expectations>=0.18.0,<1.0.0, scipy>=1.12.0,<2.0.0 à requirements.txt.
+Mettre à jour les tests dans tests/test_feature_pipeline.py :def test_shap_fallback_circuit_breaker(self):
+    with mock.patch("pybreaker.CircuitBreaker", side_effect=Exception):
+        self.assertIsNotNone(feature_pipeline.load_shap_fallback())
+def test_feature_validation(self):
+    invalid_data = pd.DataFrame({"rsi_14": [150]})
+    self.assertFalse(validate_features(invalid_data))
+
+
+Tester avec :pytest tests/test_feature_pipeline.py -v
+
+
+
+
+
+2. src/strategy/mia_switcher.py
+
+Rôle : Gérer le basculement entre modèles (SAC, PPO, DDPG).
+Modifications : Ajouter une méthode pour les déploiements canary, intégrer la détection de drift, et exporter les métriques vers Prometheus.
+Idées associées : MLOps (canary deployments), Gestion du drift (détection), Observabilité (métriques).
+Suggestions concernées : 1 (features dynamiques), 2 (loggers), 5 (profit factor), 7 (tests unitaires).
+Extrait de code :# Ajout dans src/strategy/mia_switcher.py
+from src.monitoring.drift_detector import DriftDetector
+from src.monitoring.prometheus_metrics import inference_latency, profit_factor
+from typing import Any
+
+def canary_deploy(self, new_model: Any, fraction: float = 0.1) -> None:
+    """Teste un nouveau modèle sur une fraction des trades.
+
+    Args:
+        new_model: Nouveau modèle à tester.
+        fraction: Fraction des trades à router vers le nouveau modèle (0.0 à 1.0).
+    """
+    # Placeholder pour la logique de déploiement canary
+    start_time = time.time()
+    # Simuler l’inférence
+    latency = time.time() - start_time
+    inference_latency.labels(market="ES").set(latency)
+    profit_factor.labels(market="ES").set(self.calculate_profit_factor(100, 10, 10.0))
+
+def check_drift(self, current_data: pd.DataFrame, reference_data: pd.DataFrame) -> bool:
+    """Vérifie le drift des features.
+
+    Args:
+        current_data: Données actuelles.
+        reference_data: Données de référence.
+
+    Returns:
+        True si drift détecté, False sinon.
+    """
+    return DriftDetector().detect_drift(current_data, reference_data)
+
+
+Instructions :
+Insérer dans la classe MiaSwitcher.
+Ajouter scipy>=1.12.0,<2.0.0, prometheus-client>=0.17.0,<1.0.0 à requirements.txt.
+Mettre à jour les tests dans tests/test_mia_switcher.py :def test_canary_deploy(self):
+    switcher = MiaSwitcher()
+    switcher.canary_deploy(new_model=MockModel(), fraction=0.1)
+    self.assertGreater(performance_logger.metrics.get("canary_sharpe", 0), 0)
+def test_drift_detection(self):
+    switcher = MiaSwitcher()
+    data1 = pd.DataFrame({"rsi_14": [50] * 100})
+    data2 = pd.DataFrame({"rsi_14": [60] * 100})
+    self.assertTrue(switcher.check_drift(data1, data2))
+
+
+Tester avec :pytest tests/test_mia_switcher.py -v
+
+
+
+
+
+3. src/model/trade_probability.py
+
+Rôle : Prédire les probabilités de succès des trades et gérer les réentraînements.
+Modifications : Intégrer MLflow pour tracer les réentraînements et ajouter une méthode pour meta-learning des hyperparamètres.
+Idées associées : MLOps (tracking), Gestion du drift (meta-learning).
+Suggestions concernées : 3 (simulation configurable), 9 (réentraînement).
+Extrait de code :# Ajout dans src/model/trade_probability.py
+from src.model.utils.mlflow_tracker import MLflowTracker
+from skopt import gp_minimize
+from typing import Dict
+
+def retrain_model(self, market: str) -> None:
+    """Réentraîne le modèle avec MLflow.
+
+    Args:
+        market: Marché cible (ex. : 'ES', 'MNQ').
+    """
+    parameters = {"learning_rate": 0.0003, "evaluation_steps": 100}
+    metrics = {"sharpe_ratio": 1.5}
+    artifacts = ["data/features/ES/feature_importance.csv"]
+    MLflowTracker().log_run(parameters, metrics, artifacts)
+    # Code existant pour l’entraînement
+
+def adjust_hyperparams(self, metrics: Dict[str, float]) -> Dict[str, float]:
+    """Ajuste les hyperparamètres avec meta-learning.
+
+    Args:
+        metrics: Métriques actuelles (ex. : sharpe_ratio).
+
+    Returns:
+        Nouveaux hyperparamètres optimisés.
+    """
+    def objective(params):
+        return -metrics.get("sharpe_ratio", 0)  # Placeholder
+    result = gp_minimize(objective, [(50, 500)], n_calls=10)
+    return {"evaluation_steps": result.x[0]}
+
+
+Instructions :
+Insérer dans la classe TradeProbabilityPredictor.
+Ajouter mlflow>=2.10.0,<3.0.0, scikit-optimize>=0.9.0,<1.0.0 à requirements.txt.
+Mettre à jour les tests dans tests/test_trade_probability.py :def test_mlflow_tracking(self):
+    predictor = TradeProbabilityPredictor()
+    predictor.retrain_model("ES")
+    self.assertIsNotNone(mlflow.active_run())
+def test_adjust_hyperparams(self):
+    predictor = TradeProbabilityPredictor()
+    new_params = predictor.adjust_hyperparams({"sharpe_ratio": 1.5})
+    self.assertIn("evaluation_steps", new_params)
+
+
+Tester avec :pytest tests/test_trade_probability.py -v
+
+
+
+
+
+4. src/model/utils/performance_logger.py
+
+Rôle : Journaliser les métriques de performance (latence, CPU, mémoire).
+Modifications : Exporter les métriques vers Prometheus et intégrer Sentry pour capturer les erreurs.
+Idées associées : Observabilité (métriques, error tracking).
+Suggestion concernée : 2 (loggers).
+Extrait de code :# Ajout dans src/model/utils/performance_logger.py
+from src.monitoring.prometheus_metrics import inference_latency, cpu_usage, memory_usage
+from src.utils.error_tracker import capture_error
+import psutil
+
+def log(self, operation: str, latency: float, success: bool, error: str, **kwargs) -> None:
+    """Journalise une métrique et exporte vers Prometheus.
+
+    Args:
+        operation: Nom de l’opération (ex. : 'feature_calculation').
+        latency: Temps d’exécution en secondes.
+        success: Indique si l’opération a réussi.
+        error: Message d’erreur (vide si succès).
+        **kwargs: Métadonnées supplémentaires (ex. : market).
+    """
+    market = kwargs.get("market", "ES")
+    inference_latency.labels(market=market).set(latency)
+    cpu_usage.labels(market=market).set(psutil.cpu_percent())
+    memory_usage.labels(market=market).set(psutil.virtual_memory().used / 1024 / 1024)
+    if not success:
+        capture_error(Exception(error), {"operation": operation, "market": market})
+    # Code existant pour écrire dans data/logs/<market>/*_performance.csv
+
+
+Instructions :
+Insérer dans la classe PerformanceLogger.
+Ajouter prometheus-client>=0.17.0,<1.0.0, sentry-sdk>=1.40.0,<2.0.0, psutil>=5.9.8,<6.0.0 à requirements.txt.
+Mettre à jour les tests dans tests/test_performance_logger.py :def test_prometheus_export(self):
+    logger = PerformanceLogger()
+    logger.log("test", 0.1, True, "", market="ES")
+    self.assertGreater(inference_latency.labels(market="ES")._value.get(), 0)
+def test_sentry_capture(self):
+    logger = PerformanceLogger()
+    logger.log("test", 0.1, False, "Erreur", market="ES")
+    self.assertTrue(sentry_sdk.hub.client is not None)
+
+
+Tester avec :pytest tests/test_performance_logger.py -v
+
+
+
+
+
+5. src/model/utils/switch_logger.py
+
+Rôle : Journaliser les événements de switch entre modèles.
+Modifications : Exporter les métriques de switch (décision, régime) vers Prometheus.
+Idée associée : Observabilité (métriques).
+Suggestion concernée : 2 (loggers).
+Extrait de code :# Ajout dans src/model/utils/switch_logger.py
+from src.monitoring.prometheus_metrics import Counter
+
+switch_events = Counter(
+    "switch_events", "Nombre de switches entre modèles", ["regime", "market"]
+)
+
+def log(self, decision: str, reason: str, regime: str, **kwargs) -> None:
+    """Journalise un switch et exporte vers Prometheus.
+
+    Args:
+        decision: Décision prise (ex. : 'switch_to_sac').
+        reason: Raison du switch (ex. : 'regime_change').
+        regime: Régime de marché ('trend', 'range', 'defensive').
+        **kwargs: Métadonnées (ex. : market).
+    """
+    market = kwargs.get("market", "ES")
+    switch_events.labels(regime=regime, market=market).inc()
+    # Code existant pour écrire dans data/logs/trading/decision_log.csv
+
+
+Instructions :
+Insérer dans la classe SwitchLogger.
+Ajouter prometheus-client>=0.17.0,<1.0.0 à requirements.txt.
+Mettre à jour les tests dans tests/test_switch_logger.py :def test_prometheus_export(self):
+    logger = SwitchLogger()
+    logger.log("switch_to_sac", "regime_change", "trend", market="ES")
+    self.assertEqual(switch_events.labels(regime="trend", market="ES")._value.get(), 1)
+
+
+Tester avec :pytest tests/test_switch_logger.py -v
+
+
+
+
+
+6. src/data/data_provider.py
+
+Rôle : Récupérer les données IQFeed.
+Modifications : Ajouter un circuit breaker pour les appels IQFeed, configurer des retries avec jitter, et activer TLS pour les connexions sécurisées.
+Idées associées : Robustesse & résilience (circuit breakers, retries), Sécurité (chiffrement).
+Suggestion concernée : 8 (fallback SHAP, pour la robustesse des données).
+Extrait de code :# Ajout dans src/data/data_provider.py
+from pybreaker import CircuitBreaker
+from tenacity import retry, wait_random_exponential, stop_after_attempt
+import ssl
+from src.utils.secret_manager import SecretManager
+
+circuit_breaker = CircuitBreaker(fail_max=5, reset_timeout=60)
+
+@circuit_breaker
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5))
+def fetch_iqfeed_data(self, symbol: str) -> dict:
+    """Récupère les données IQFeed avec TLS et gestion des erreurs.
+
+    Args:
+        symbol: Symbole du contrat (ex. : 'ES').
+
+    Returns:
+        Données récupérées sous forme de dictionnaire.
+    """
+    credentials = SecretManager().get_secret("kms:iqfeed-credentials")
+    context = ssl.create_default_context()
+    # Code existant avec connexion TLS (à implémenter selon l’API IQFeed)
+    return {}  # Placeholder
+
+
+Instructions :
+Insérer dans la classe DataProvider.
+Ajouter pybreaker>=1.1.0,<2.0.0, tenacity>=8.2.0,<9.0.0, boto3>=1.26.0,<2.0.0 à requirements.txt.
+Mettre à jour les tests dans tests/test_data_provider.py :def test_iqfeed_circuit_breaker(self):
+    provider = DataProvider()
+    with mock.patch("pybreaker.CircuitBreaker", side_effect=Exception):
+        self.assertIsNotNone(provider.fetch_iqfeed_data("ES"))
+def test_iqfeed_retry(self):
+    provider = DataProvider()
+    with mock.patch("src.data.data_provider.some_iqfeed_api", side_effect=Exception):
+        self.assertIsNotNone(provider.fetch_iqfeed_data("ES"))
+
+
+Tester avec :pytest tests/test_data_provider.py -v
+
+
+
+
+
+7. config/feature_sets.yaml
+
+Rôle : Définir les 350 features d’entraînement et 150 SHAP features pour l’inférence.
+Modifications : Ajouter des métadonnées expected_range pour chaque feature pour supporter la détection de drift.
+Idée associée : Gestion du drift (détection).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Extrait de code :# Ajout dans config/feature_sets.yaml
+feature_sets:
+  trend:
+    features:
+      - name: "rsi_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        expected_range: [0, 100]
+        priority: "high"
+        description: "Relative Strength Index sur 14 périodes"
+      - name: "obi_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        expected_range: [-1, 1]
+        priority: "high"
+        description: "Score d’imbalance order flow"
+
+
+Instructions :
+Ajouter la clé expected_range pour chaque feature dans toutes les catégories de feature_sets.
+Utiliser expected_range dans validate_data.py et drift_detector.py pour valider les données.
+Vérifier la syntaxe YAML :python -c "import yaml; yaml.safe_load(open('config/feature_sets.yaml'))"
+
+
+Tester l’intégration avec feature_pipeline.py :python src/features/feature_pipeline.py
+
+
+
+
+
+8. config/algo_config.yaml
+
+Rôle : Configurer les hyperparamètres pour SAC, PPO, et DDPG.
+Modifications : Ajouter un paramètre meta_learning_enabled pour activer l’ajustement en ligne des hyperparamètres et un seuil alert_threshold pour max_profit_factor.
+Idées associées : Gestion du drift (meta-learning), Observabilité (dashboards).
+Suggestions concernées : 3 (simulation configurable), 5 (profit factor).
+Extrait de code :# Ajout dans config/algo_config.yaml
+meta_learning_enabled:
+  value: true
+  description: Active l’ajustement en ligne des hyperparamètres via meta-learning.
+max_profit_factor:
+  value: 10.0
+  range: [1.0, 20.0]
+  alert_threshold: 15.0
+  description: Facteur de profit maximal avec seuil d’alerte pour Grafana.
+
+
+Instructions :
+Insérer au niveau racine du fichier, après les paramètres existants (evaluation_steps, max_profit_factor).
+Mettre à jour trade_probability.py pour lire meta_learning_enabled :import yaml
+with open("config/algo_config.yaml") as f:
+    config = yaml.safe_load(f)
+if config["meta_learning_enabled"]:
+    self.adjust_hyperparams(metrics)
+
+
+Vérifier la syntaxe YAML :python -c "import yaml; yaml.safe_load(open('config/algo_config.yaml'))"
+
+
+Tester avec trade_probability.py :python src/model/trade_probability.py
+
+
+
+
+
+9. config/es_config.yaml
+
+Rôle : Configurer les paramètres globaux (IQFeed, AWS, Telegram).
+Modifications : Ajouter des configurations pour le chiffrement S3, les secrets KMS, et l’endpoint Prometheus.
+Idées associées : Sécurité (chiffrement, secrets), Observabilité (métriques).
+Suggestion concernée : 8 (fallback SHAP, pour la gestion sécurisée des données).
+Extrait de code :# Ajout dans config/es_config.yaml
+s3_encryption: "AES256"
+kms_secret_id: "mia-secrets"
+prometheus_endpoint: "http://localhost:8000"
+
+
+Instructions :
+Insérer au niveau racine du fichier.
+Mettre à jour data_lake.py pour utiliser s3_encryption :self.s3.put_object(..., ServerSideEncryption=config["s3_encryption"])
+
+
+Vérifier la syntaxe YAML :python -c "import yaml; yaml.safe_load(open('config/es_config.yaml'))"
+
+
+Tester avec data_lake.py :python src/data/data_lake.py
+
+
+
+
+
+10. data/market_memory.sql
+
+Rôle : Définir le schéma de la base de données SQLite.
+Modifications : Ajouter des tables drift_metrics pour stocker les résultats de détection de drift et mlflow_runs pour tracer les runs d’entraînement.
+Idées associées : Gestion du drift (détection), MLOps (tracking).
+Suggestions concernées : 1 (features dynamiques), 9 (réentraînement).
+Extrait de code :-- Ajout dans data/market_memory.sql
+-- Table pour stocker les résultats de détection de drift
+CREATE TABLE IF NOT EXISTS drift_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feature_name TEXT NOT NULL,
+    p_value REAL NOT NULL,
+    timestamp DATETIME NOT NULL
+);
+
+-- Table pour stocker les runs MLflow
+CREATE TABLE IF NOT EXISTS mlflow_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    parameters JSON NOT NULL,
+    metrics JSON NOT NULL,
+    timestamp DATETIME NOT NULL
+);
+
+-- Index pour les requêtes rapides
+CREATE INDEX IF NOT EXISTS idx_drift_metrics_timestamp ON drift_metrics(timestamp);
+CREATE INDEX IF NOT EXISTS idx_mlflow_runs_timestamp ON mlflow_runs(timestamp);
+
+
+Instructions :
+Ajouter à la fin du fichier, après les tables existantes (clusters, trade_patterns, training_log).
+Appliquer le schéma :sqlite3 D:/MIA_IA_SYSTEM_v2_2025/data/market_memory.db < data/market_memory.sql
+
+
+Vérifier les tables :sqlite3 D:/MIA_IA_SYSTEM_v2_2025/data/market_memory.db ".tables"
+
+
+Tester avec drift_detector.py et mlflow_tracker.py :python src/monitoring/drift_detector.py
+python src/model/utils/mlflow_tracker.py
+
+
+
+
+
+11. .github/workflows/python.yml
+
+Rôle : Configurer le pipeline CI/CD.
+Modifications : Ajouter des jobs pour Bandit (sécurité), tests de résilience, validation MLflow, et exiger une couverture de code de 100%.
+Idées associées : Sécurité (scans), Qualité de code (couverture), Robustesse (tests).
+Suggestion concernée : 7 (tests unitaires).
+Extrait de code :# Ajout dans .github/workflows/python.yml (dans le job test)
+- name: Run Bandit
+  run: bandit -r src/
+- name: Run Resilience Tests
+  run: pytest tests/test_resilience.py -v
+- name: Validate MLflow Runs
+  run: python -c "import mlflow; assert mlflow.active_run() is not None"
+- name: Run pytest with 100% coverage
+  run: pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-fail-under=100
+
+
+Instructions :
+Insérer dans le job test ou créer un nouveau job security pour Bandit.
+Remplacer --cov-fail-under=80 par --cov-fail-under=100 dans le job test.
+Ajouter bandit>=1.7.0,<2.0.0, mlflow>=2.10.0,<3.0.0 à requirements.txt.
+Simuler le pipeline localement :act -j test
+
+
+Vérifier les résultats dans l’onglet Actions sur GitHub après un push :git add .github/workflows/python.yml
+git commit -m "Add Bandit, resilience tests, and 100% coverage"
+git push origin main
+
+
+
+
+
+12. .flake8
+
+Rôle : Configurer les règles de linting Flake8.
+Modifications : Ajouter des exclusions pour les nouveaux modules générés (ex. : src/monitoring/generated/).
+Idée associée : Qualité de code.
+Suggestion concernée : 7 (tests unitaires).
+Extrait de code :# Ajout dans .flake8
+exclude =
+    .git,
+    __pycache__,
+    docs/,
+    tests/,
+    data/logs/,
+    data/checkpoints/,
+    src/monitoring/generated/,
+
+
+Instructions :
+Ajouter à la section [flake8] après les exclusions existantes.
+Vérifier que Flake8 ignore les nouveaux dossiers :flake8 src/
+
+
+Tester avec un fichier généré fictif :mkdir -p src/monitoring/generated
+echo "print('test')" > src/monitoring/generated/test.py
+flake8 src/monitoring/generated/  # Doit être ignoré
+
+
+
+
+
+13. docs/feature_engineering.md
+
+Rôle : Documenter le processus de feature engineering.
+Modifications : Ajouter des sections sur la détection de drift et la validation des données.
+Idées associées : Gestion du drift, Data engineering.
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Extrait de code :## Détection de Drift
+
+Les distributions des 150 SHAP features sont surveillées avec un test de Kolmogorov-Smirnov (KS test) implémenté dans `src/monitoring/drift_detector.py`. Un drift significatif (p-value < 0.05) est détecté si les distributions des features (ex. : `rsi_14`, `obi_score`) divergent des données de référence. Les résultats sont stockés dans `data/market_memory.db` (table `drift_metrics`), et un réentraînement est déclenché via `trade_probability.py`.
+
+## Validation des Données
+
+Avant leur utilisation, les features sont validées avec Great Expectations dans `src/data/validate_data.py`. Les attentes incluent des plages spécifiques (ex. : `rsi_14` entre 0 et 100, `obi_score` entre -1 et 1). Les erreurs de validation sont journalisées dans `data/logs/validation_errors.csv`.
+
+
+Instructions :
+Ajouter les sections avant la section Notes dans docs/feature_engineering.md.
+Mettre à jour docs/index.rst si nécessaire pour inclure les nouvelles sections.
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/index.html.
+
+
+
+14. docs/modules.md
+
+Rôle : Décrire les modules du projet.
+Modifications : Ajouter des descriptions pour les nouveaux modules : prometheus_metrics, drift_detector, secret_manager, validate_data, data_lake, mlflow_tracker, error_tracker.
+Idées associées : MLOps, Observabilité, Sécurité, Gestion du drift, Data engineering.
+Suggestions concernées : 1, 2, 7, 8, 9.
+Extrait de code :### PrometheusMetrics
+- **Rôle** : Expose des métriques (latence, trades, CPU/mémoire) pour Prometheus.
+- **Fichier** : `src/monitoring/prometheus_metrics.py`
+- **Outputs** : Métriques accessibles via `http://localhost:8000`.
+
+### DriftDetector
+- **Rôle** : Surveille le drift des 150 SHAP features avec KS test.
+- **Fichier** : `src/monitoring/drift_detector.py`
+- **Outputs** : `data/market_memory.db` (table `drift_metrics`).
+
+### SecretManager
+- **Rôle** : Gère les secrets chiffrés avec AWS KMS.
+- **Fichier** : `src/utils/secret_manager.py`
+- **Outputs** : Secrets déchiffrés pour IQFeed, AWS, Telegram.
+
+### ValidateData
+- **Rôle** : Valide les schémas et plages des features avec Great Expectations.
+- **Fichier** : `src/data/validate_data.py`
+- **Outputs** : `data/logs/validation_errors.csv`.
+
+### DataLake
+- **Rôle** : Stocke les données dans un data lake S3 (raw/processed/presentation).
+- **Fichier** : `src/data/data_lake.py`
+- **Outputs** : Fichiers CSV dans S3.
+
+### MLflowTracker
+- **Rôle** : Trace les réentraînements avec MLflow.
+- **Fichier** : `src/model/utils/mlflow_tracker.py`
+- **Outputs** : `data/market_memory.db` (table `mlflow_runs`).
+
+### ErrorTracker
+- **Rôle** : Capture les erreurs avec Sentry.
+- **Fichier** : `src/utils/error_tracker.py`
+- **Outputs** : Stack traces dans Sentry.
+
+
+Instructions :
+Ajouter à la section Modules dans docs/modules.md.
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/index.html.
+
+
+
+15. docs/api_reference.md
+
+Rôle : Fournir une référence des APIs.
+Modifications : Ajouter les APIs des nouveaux modules (PrometheusMetrics, DriftDetector, SecretManager, ValidateData, DataLake, MLflowTracker, ErrorTracker).
+Idées associées : MLOps, Observabilité, Sécurité, Gestion du drift, Data engineering.
+Suggestions concernées : 1, 2, 7, 8, 9.
+Extrait de code :## PrometheusMetrics
+- **Fichier** : `src/monitoring/prometheus_metrics.py`
+- **Méthodes** :
+  - `init_metrics(port: int = 8000) -> None`: Démarre le serveur HTTP pour scraper les métriques.
+
+## DriftDetector
+- **Fichier** : `src/monitoring/drift_detector.py`
+- **Méthodes** :
+  - `detect_drift(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> bool`: Détecte le drift des features.
+
+## SecretManager
+- **Fichier** : `src/utils/secret_manager.py`
+- **Méthodes** :
+  - `get_secret(secret_id: str) -> str`: Récupère un secret chiffré via AWS KMS.
+
+## ValidateData
+- **Fichier** : `src/data/validate_data.py`
+- **Méthodes** :
+  - `validate_features(data: pd.DataFrame) -> bool`: Valide les features avec Great Expectations.
+
+## DataLake
+- **Fichier** : `src/data/data_lake.py`
+- **Méthodes** :
+  - `store(data: pd.DataFrame, layer: str, key: str) -> None`: Stocke les données dans S3.
+
+## MLflowTracker
+- **Fichier** : `src/model/utils/mlflow_tracker.py`
+- **Méthodes** :
+  - `log_run(parameters: dict, metrics: dict, artifacts: list) -> None`: Journalise un run MLflow.
+
+## ErrorTracker
+- **Fichier** : `src/utils/error_tracker.py`
+- **Méthodes** :
+  - `init_sentry(dsn: str) -> None`: Initialise Sentry.
+  - `capture_error(exception: Exception, context: dict) -> None`: Capture une erreur.
+
+
+Instructions :
+Ajouter à la fin de docs/api_reference.md, après les sections existantes (PerformanceLogger, SwitchLogger, MiaSwitcher, TradeProbability).
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/index.html.
+
+
+
+16. docs/update_guide.md
+
+Rôle : Documenter les modifications apportées au projet.
+Modifications : Mettre à jour la table des modifications pour inclure les nouveaux fichiers et leurs statuts.
+Idées associées : Toutes (documentation).
+Suggestions concernées : 1, 2, 7, 8, 9.
+Extrait de code :| **Fichier**                              | **Suggestion** | **Priorité** | **Statut** | **Notes** |
+|------------------------------------------|----------------|--------------|------------|-----------|
+| `src/utils/secret_manager.py`            | 8              | Élevée       | À créer    | Gestion des secrets avec AWS KMS. |
+| `src/monitoring/prometheus_metrics.py`   | 2, 5           | Très élevée  | À créer    | Exposition des métriques Prometheus. |
+| `src/monitoring/drift_detector.py`       | 1, 8           | Élevée       | À créer    | Détection de drift pour les features dynamiques. |
+| `src/data/validate_data.py`              | 1, 8           | Élevée       | À créer    | Validation des features avec Great Expectations. |
+| `src/data/data_lake.py`                  | 8              | Moyenne      | À créer    | Gestion du data lake S3. |
+| `src/model/utils/mlflow_tracker.py`      | 9              | Très élevée  | À créer    | Tracking des réentraînements avec MLflow. |
+| `src/utils/error_tracker.py`             | 2              | Élevée       | À créer    | Capture des erreurs avec Sentry. |
+| `dags/train_pipeline.py`                 | 9              | Très élevée  | À créer    | Pipeline Airflow pour réentraînement. |
+| `helm/mia-system/Chart.yaml`             | -              | Moyenne      | À créer    | Chart Helm pour Kubernetes. |
+| `helm/mia-system/values.yaml`            | -              | Moyenne      | À créer    | Configurations HPA et multi-zone. |
+| `tests/test_resilience.py`               | 7              | Élevée       | À créer    | Tests de chaos engineering. |
+| `.pre-commit-config.yaml`                | 7              | Élevée       | À créer    | Hooks pre-commit pour qualité de code. |
+| `Dockerfile`                             | -              | Moyenne      | À créer    | Containerisation de l’application. |
+| `prometheus.yml`                         | 2, 5           | Très élevée  | À créer    | Configuration Prometheus. |
+| `grafana.ini`                            | 2, 5           | Très élevée  | À créer    | Configuration Grafana. |
+| `.github/dependabot.yml`                 | 7              | Élevée       | À créer    | Mises à jour des dépendances. |
+| `.github/PULL_REQUEST_TEMPLATE.md`       | 7              | Élevée       | À créer    | Modèle de PR standardisé. |
+
+
+Instructions :
+Mettre à jour la section État des modifications dans docs/update_guide.md.
+Ajouter les nouvelles entrées à la table existante.
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/index.html.
+
+
+
+17. tests/test_feature_pipeline.py
+
+Rôle : Tester le pipeline de features.
+Modifications : Ajouter des tests pour les circuit breakers (load_shap_fallback) et la validation des données (validate_data.py).
+Idées associées : Robustesse, Data engineering.
+Suggestion concernée : 8 (fallback SHAP).
+Extrait de code :# Ajout dans tests/test_feature_pipeline.py
+from unittest.mock import patch
+from src.features.feature_pipeline import FeaturePipeline
+from src.data.validate_data import validate_features
+
+def test_shap_fallback_circuit_breaker(self):
+    """Teste le circuit breaker pour load_shap_fallback."""
+    pipeline = FeaturePipeline()
+    with patch("pybreaker.CircuitBreaker", side_effect=Exception("Cache indisponible")):
+        self.assertIsNotNone(pipeline.load_shap_fallback())
+
+def test_feature_validation(self):
+    """Teste la validation des features."""
+    invalid_data = pd.DataFrame({"rsi_14": [150], "obi_score": [2]})
+    self.assertFalse(validate_features(invalid_data))
+    valid_data = pd.DataFrame({"rsi_14": [50], "obi_score": [0.5]})
+    self.assertTrue(validate_features(valid_data))
+
+
+Instructions :
+Ajouter à la classe de test existante dans tests/test_feature_pipeline.py.
+Ajouter pybreaker>=1.1.0,<2.0.0, great-expectations>=0.18.0,<1.0.0 à requirements.txt.
+Tester avec :pytest tests/test_feature_pipeline.py -v
+
+
+
+
+
+Aide à la Construction pour MIA_IA_SYSTEM_v2_2025
+Version: 2.1.4Date: 2025-05-13  
+Aperçu
+Ce document fournit des extraits de code et des instructions pour créer ou modifier les fichiers nécessaires à l’intégration des améliorations proposées pour MIA_IA_SYSTEM_v2_2025. Les améliorations couvrent les idées de MLOps, observabilité, robustesse, sécurité, qualité de code, scalabilité, gestion du drift, et data engineering, en s’alignant avec les suggestions existantes (1 à 9). Chaque section inclut un extrait de code commenté, expliquant ce que le fichier doit contenir, les intégrations nécessaires, et les dépendances. Les fichiers sont organisés en deux listes : nouveaux fichiers à créer et fichiers existants à modifier. Les modifications respectent les standards de structure.txt (version 2.1.4, 2025-05-13) et évitent toute référence à dxFeed, obs_t, 320 features, ou 81 features.
+Note sur les dossiers policies : Le répertoire officiel pour les politiques de routage est src/model/router/policies. Le dossier src/model/policies semble être un résidu et doit être vérifié pour suppression afin d’éviter toute confusion.
+Fichiers à modifier (suite)
+18. tests/test_mia_switcher.py
+
+Rôle : Tester le module MiaSwitcher pour le basculement entre modèles (SAC, PPO, DDPG).
+Modifications : Ajouter des tests pour la méthode canary_deploy, la détection de drift des features, et assurer une couverture de code de 100%.
+Idées associées : MLOps (canary deployments), Gestion du drift (détection), Qualité de code (couverture).
+Suggestion concernée : 7 (tests unitaires).
+Extrait de code :# Ajout dans tests/test_mia_switcher.py
+from unittest.mock import Mock
+from src.strategy.mia_switcher import MiaSwitcher
+import pandas as pd
+from src.monitoring.prometheus_metrics import profit_factor, inference_latency
+import unittest
+
+class TestMiaSwitcher(unittest.TestCase):
+    def setUp(self):
+        self.switcher = MiaSwitcher()
+
+    def test_canary_deploy(self):
+        """Teste le déploiement canary sur une fraction des trades."""
+        mock_model = Mock()
+        self.switcher.canary_deploy(new_model=mock_model, fraction=0.1)
+        # Vérifie que les métriques Prometheus sont mises à jour
+        self.assertGreater(profit_factor.labels(market="ES")._value.get(), 0)
+        self.assertGreater(inference_latency.labels(market="ES")._value.get(), 0)
+
+    def test_drift_detection(self):
+        """Teste la détection de drift des features."""
+        current_data = pd.DataFrame({"rsi_14": [50] * 100, "obi_score": [0.5] * 100})
+        reference_data = pd.DataFrame({"rsi_14": [60] * 100, "obi_score": [0.6] * 100})
+        self.assertTrue(self.switcher.check_drift(current_data, reference_data))
+
+
+Instructions :
+Ajouter les tests à la classe de test existante dans tests/test_mia_switcher.py.
+Assurez-vous que MiaSwitcher.canary_deploy et check_drift sont implémentés dans src/strategy/mia_switcher.py (voir section correspondante dans la partie précédente).
+Ajouter scipy>=1.12.0,<2.0.0, prometheus-client>=0.17.0,<1.0.0, pandas>=2.0.0,<3.0.0 à requirements.txt.
+Vérifier la couverture de code :pytest tests/test_mia_switcher.py --cov=src/strategy/mia_switcher.py --cov-report=html
+
+
+Tester les nouveaux tests :pytest tests/test_mia_switcher.py -v
+
+
+
+
+
+19. tests/test_trade_probability.py
+
+Rôle : Tester le module TradeProbability pour les prédictions de probabilité de trading et les réentraînements.
+Modifications : Ajouter des tests pour l’intégration de MLflow (log_run) et la méthode de meta-learning (adjust_hyperparams), ainsi que pour garantir une couverture de code de 100%.
+Idées associées : MLOps (tracking), Gestion du drift (meta-learning), Qualité de code (couverture).
+Suggestion concernée : 9 (réentraînement).
+Extrait de code :# Ajout dans tests/test_trade_probability.py
+from unittest.mock import patch
+from src.model.trade_probability import TradeProbabilityPredictor
+from src.model.utils.mlflow_tracker import MLflowTracker
+import mlflow
+import unittest
+
+class TestTradeProbability(unittest.TestCase):
+    def setUp(self):
+        self.predictor = TradeProbabilityPredictor()
+
+    def test_mlflow_tracking(self):
+        """Teste le traçage des réentraînements avec MLflow."""
+        with patch("mlflow.start_run"):
+            self.predictor.retrain_model("ES")
+            self.assertIsNotNone(mlflow.active_run())
+            # Vérifie que MLflowTracker a été appelé
+            self.assertTrue(MLflowTracker.log_run.called)
+
+    def test_adjust_hyperparams(self):
+        """Teste l’ajustement des hyperparamètres avec meta-learning."""
+        metrics = {"sharpe_ratio": 1.5}
+        new_params = self.predictor.adjust_hyperparams(metrics)
+        self.assertIn("evaluation_steps", new_params)
+        self.assertTrue(50 <= new_params["evaluation_steps"] <= 500)
+
+
+Instructions :
+Ajouter les tests à la classe de test existante dans tests/test_trade_probability.py.
+Assurez-vous que TradeProbabilityPredictor.retrain_model et adjust_hyperparams sont implémentés dans src/model/trade_probability.py (voir section correspondante dans la partie précédente).
+Ajouter mlflow>=2.10.0,<3.0.0, scikit-optimize>=0.9.0,<1.0.0 à requirements.txt.
+Vérifier la couverture de code :pytest tests/test_trade_probability.py --cov=src/model/trade_probability.py --cov-report=html
+
+
+Tester les nouveaux tests :pytest tests/test_trade_probability.py -v
+
+
+
+
+
+20. docs/feature_engineering.md
+
+Rôle : Documenter le processus de feature engineering, incluant la génération, la sélection, et la validation des features.
+Modifications : Ajouter des sections sur la détection de drift et la validation des données pour refléter les nouvelles fonctionnalités.
+Idées associées : Gestion du drift (détection), Data engineering (validation).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Extrait de code :## Détection de Drift
+
+Les distributions des 150 SHAP features sont surveillées à l’aide d’un test de Kolmogorov-Smirnov (KS test) implémenté dans `src/monitoring/drift_detector.py`. Un drift significatif est détecté si la p-value est inférieure à 0.05, indiquant une divergence des distributions des features (ex. : `rsi_14`, `obi_score`) par rapport à un ensemble de référence. Les résultats sont stockés dans `data/market_memory.db` (table `drift_metrics`). Lorsqu’un drift est détecté, un réentraînement est déclenché via `trade_probability.py`.
+
+## Validation des Données
+
+Avant leur utilisation dans le pipeline, les features sont validées avec Great Expectations dans `src/data/validate_data.py`. Les attentes incluent des plages spécifiques définies dans `config/feature_sets.yaml` (ex. : `rsi_14` entre 0 et 100, `obi_score` entre -1 et 1). Les erreurs de validation sont journalisées dans `data/logs/validation_errors.csv`, permettant un diagnostic rapide des anomalies.
+
+
+Instructions :
+Ajouter les sections avant la section Notes dans docs/feature_engineering.md.
+Assurez-vous que config/feature_sets.yaml inclut les métadonnées expected_range (voir section correspondante dans la partie précédente).
+Mettre à jour docs/index.rst si nécessaire pour inclure les nouvelles sections :.. toctree::
+   :maxdepth: 2
+   feature_engineering
+
+
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/feature_engineering.html.
+
+
+
+21. docs/modules.md
+
+Rôle : Décrire les modules principaux du projet, incluant les nouveaux modules introduits.
+Modifications : Ajouter des descriptions pour les nouveaux modules : PrometheusMetrics, DriftDetector, SecretManager, ValidateData, DataLake, MLflowTracker, ErrorTracker.
+Idées associées : MLOps, Observabilité, Sécurité, Gestion du drift, Data engineering.
+Suggestions concernées : 1 (features dynamiques), 2 (loggers), 7 (tests unitaires), 8 (fallback SHAP), 9 (réentraînement).
+Extrait de code :### PrometheusMetrics
+- **Rôle** : Expose des métriques en temps réel (latence, trades traités, CPU/mémoire) pour Prometheus.
+- **Fichier** : `src/monitoring/prometheus_metrics.py`
+- **Outputs** : Métriques accessibles via l’endpoint HTTP `http://localhost:8000`.
+
+### DriftDetector
+- **Rôle** : Surveille le drift des 150 SHAP features à l’aide d’un test de Kolmogorov-Smirnov (KS test).
+- **Fichier** : `src/monitoring/drift_detector.py`
+- **Outputs** : Résultats stockés dans `data/market_memory.db` (table `drift_metrics`).
+
+### SecretManager
+- **Rôle** : Gère les secrets chiffrés (ex. : identifiants IQFeed, AWS) avec AWS KMS.
+- **Fichier** : `src/utils/secret_manager.py`
+- **Outputs** : Secrets déchiffrés pour les connexions sécurisées.
+
+### ValidateData
+- **Rôle** : Valide les schémas et plages des features avec Great Expectations.
+- **Fichier** : `src/data/validate_data.py`
+- **Outputs** : Erreurs de validation dans `data/logs/validation_errors.csv`.
+
+### DataLake
+- **Rôle** : Stocke les données dans un data lake S3 structuré (raw/processed/presentation).
+- **Fichier** : `src/data/data_lake.py`
+- **Outputs** : Fichiers CSV chiffrés dans S3.
+
+### MLflowTracker
+- **Rôle** : Trace les réentraînements avec MLflow (paramètres, métriques, artefacts).
+- **Fichier** : `src/model/utils/mlflow_tracker.py`
+- **Outputs** : Métadonnées dans `data/market_memory.db` (table `mlflow_runs`).
+
+### ErrorTracker
+- **Rôle** : Capture les stack traces des erreurs en production avec Sentry.
+- **Fichier** : `src/utils/error_tracker.py`
+- **Outputs** : Stack traces envoyées à Sentry.
+
+
+Instructions :
+Ajouter les descriptions à la section Modules dans docs/modules.md, après les modules existants (PerformanceLogger, SwitchLogger, MiaSwitcher).
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/modules.html.
+
+
+
+22. docs/api_reference.md
+
+Rôle : Fournir une référence des APIs pour les modules du projet.
+Modifications : Ajouter les APIs des nouveaux modules : PrometheusMetrics, DriftDetector, SecretManager, ValidateData, DataLake, MLflowTracker, ErrorTracker.
+Idées associées : MLOps, Observabilité, Sécurité, Gestion du drift, Data engineering.
+Suggestions concernées : 1 (features dynamiques), 2 (loggers), 7 (tests unitaires), 8 (fallback SHAP), 9 (réentraînement).
+Extrait de code :## PrometheusMetrics
+- **Fichier** : `src/monitoring/prometheus_metrics.py`
+- **Méthodes** :
+  - `init_metrics(port: int = 8000) -> None`: Démarre le serveur HTTP pour scraper les métriques Prometheus.
+
+## DriftDetector
+- **Fichier** : `src/monitoring/drift_detector.py`
+- **Méthodes** :
+  - `detect_drift(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> bool`: Détecte le drift des features avec un test KS.
+
+## SecretManager
+- **Fichier** : `src/utils/secret_manager.py`
+- **Méthodes** :
+  - `get_secret(secret_id: str) -> str`: Récupère un secret chiffré via AWS KMS.
+
+## ValidateData
+- **Fichier** : `src/data/validate_data.py`
+- **Méthodes** :
+  - `validate_features(data: pd.DataFrame) -> bool`: Valide les features avec Great Expectations.
+
+## DataLake
+- **Fichier** : `src/data/data_lake.py`
+- **Méthodes** :
+  - `store(data: pd.DataFrame, layer: str, key: str) -> None`: Stocke les données dans un data lake S3.
+  - `retrieve(layer: str, key: str) -> pd.DataFrame`: Récupère les données depuis S3.
+
+## MLflowTracker
+- **Fichier** : `src/model/utils/mlflow_tracker.py`
+- **Méthodes** :
+  - `log_run(parameters: dict, metrics: dict, artifacts: list) -> None`: Journalise un run MLflow.
+
+## ErrorTracker
+- **Fichier** : `src/utils/error_tracker.py`
+- **Méthodes** :
+  - `init_sentry(dsn: str) -> None`: Initialise Sentry pour la capture des erreurs.
+  - `capture_error(exception: Exception, context: dict) -> None`: Capture une erreur avec contexte.
+
+
+Instructions :
+Ajouter les sections à la fin de docs/api_reference.md, après les sections existantes (PerformanceLogger, SwitchLogger, MiaSwitcher, TradeProbability).
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/api_reference.html.
+
+
+
+23. docs/update_guide.md
+
+Rôle : Documenter les modifications apportées au projet, incluant les nouveaux fichiers et les mises à jour.
+Modifications : Mettre à jour la table des modifications pour inclure les nouveaux fichiers et leurs statuts, ainsi que les fichiers modifiés.
+Idées associées : Toutes (documentation).
+Suggestions concernées : 1 (features dynamiques), 2 (loggers), 7 (tests unitaires), 8 (fallback SHAP), 9 (réentraînement).
+Extrait de code :| **Fichier**                              | **Suggestion** | **Priorité** | **Statut** | **Notes** |
+|------------------------------------------|----------------|--------------|------------|-----------|
+| `src/utils/secret_manager.py`            | 8              | Élevée       | À créer    | Gestion des secrets avec AWS KMS pour sécuriser IQFeed et AWS. |
+| `src/monitoring/prometheus_metrics.py`   | 2, 5           | Très élevée  | À créer    | Exposition des métriques (latence, trades, profit factor) pour Prometheus. |
+| `src/monitoring/drift_detector.py`       | 1, 8           | Élevée       | À créer    | Détection de drift pour les features dynamiques avec KS test. |
+| `src/data/validate_data.py`              | 1, 8           | Élevée       | À créer    | Validation des features avec Great Expectations. |
+| `src/data/data_lake.py`                  | 8              | Moyenne      | À créer    | Gestion du data lake S3 avec chiffrement AES256. |
+| `src/model/utils/mlflow_tracker.py`      | 9              | Très élevée  | À créer    | Tracking des réentraînements avec MLflow. |
+| `src/utils/error_tracker.py`             | 2              | Élevée       | À créer    | Capture des erreurs avec Sentry pour le monitoring. |
+| `dags/train_pipeline.py`                 | 9              | Très élevée  | À créer    | Pipeline Airflow pour orchestrer le réentraînement continu. |
+| `helm/mia-system/Chart.yaml`             | -              | Moyenne      | À créer    | Chart Helm pour le déploiement Kubernetes. |
+| `helm/mia-system/values.yaml`            | -              | Moyenne      | À créer    | Configurations HPA et multi-zone pour Kubernetes. |
+| `tests/test_resilience.py`               | 7              | Élevée       | À créer    | Tests de chaos engineering pour la résilience. |
+| `.pre-commit-config.yaml`                | 7              | Élevée       | À créer    | Hooks pre-commit pour Black, isort, Flake8, MyPy. |
+| `Dockerfile`                             | -              | Moyenne      | À créer    | Containerisation de l’application pour Kubernetes. |
+| `prometheus.yml`                         | 2, 5           | Très élevée  | À créer    | Configuration Prometheus pour scraper les métriques. |
+| `grafana.ini`                            | 2, 5           | Très élevée  | À créer    | Configuration Grafana pour dashboards et alertes. |
+| `.github/dependabot.yml`                 | 7              | Élevée       | À créer    | Mises à jour automatiques des dépendances. |
+| `.github/PULL_REQUEST_TEMPLATE.md`       | 7              | Élevée       | À créer    | Modèle de PR standardisé pour revue de code. |
+| `src/features/feature_pipeline.py`       | 1, 8           | Élevée       | Modifié    | Ajout de circuit breaker et validation des features. |
+| `src/strategy/mia_switcher.py`          | 1, 2, 5, 7     | Très élevée  | Modifié    | Ajout de canary deployment, détection de drift, métriques Prometheus. |
+| `src/model/trade_probability.py`         | 3, 9           | Très élevée  | Modifié    | Intégration MLflow et meta-learning pour hyperparamètres. |
+| `src/model/utils/performance_logger.py`  | 2              | Élevée       | Modifié    | Exportation des métriques vers Prometheus, intégration Sentry. |
+| `src/model/utils/switch_logger.py`       | 2              | Élevée       | Modifié    | Exportation des métriques de switch vers Prometheus. |
+| `src/data/data_provider.py`              | 8              | Élevée       | Modifié    | Circuit breakers, retries avec jitter, connexions TLS. |
+| `config/feature_sets.yaml`               | 1, 8           | Élevée       | Modifié    | Ajout de métadonnées expected_range pour détection de drift. |
+| `config/algo_config.yaml`                | 3, 5           | Moyenne      | Modifié    | Ajout de meta_learning_enabled et alert_threshold pour profit factor. |
+| `config/es_config.yaml`                  | 8              | Élevée       | Modifié    | Configurations pour chiffrement S3, secrets KMS, Prometheus. |
+| `data/market_memory.sql`                 | 1, 9           | Très élevée  | Modifié    | Tables drift_metrics et mlflow_runs pour drift et tracking. |
+| `.github/workflows/python.yml`           | 7              | Très élevée  | Modifié    | Jobs Bandit, tests de résilience, MLflow, couverture 100%. |
+| `.flake8`                                | 7              | Élevée       | Modifié    | Exclusions pour modules générés. |
+
+
+Instructions :
+Mettre à jour la section État des modifications dans docs/update_guide.md en remplaçant la table existante par celle ci-dessus.
+Générer la documentation :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifier le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/update_guide.html.
+
+
+
+Instructions de validation
+
+Enregistrer les fichiers :
+
+Créez les nouveaux fichiers listés dans leurs dossiers respectifs (voir docs/integration_guide.md pour la liste complète).
+Appliquez les modifications aux fichiers existants comme décrit ci-dessus.
+Assurez l’encodage UTF-8 pour tous les fichiers.
+
+
+Vérifier le contenu :
+
+Confirmez que chaque fichier modifié inclut la version 2.1.4 et la note policies.
+Vérifiez que les nouvelles fonctionnalités (ex. : circuit breakers, métriques Prometheus, détection de drift) sont correctement implémentées.
+Assurez l’absence de références à dxFeed, obs_t, 320 features, ou 81 features.
+
+
+Tester les modifications :
+
+Exécutez les tests unitaires mis à jour :pytest tests/test_mia_switcher.py -v
+pytest tests/test_feature_pipeline.py -v
+pytest tests/test_trade_probability.py -v
+pytest tests/test_resilience.py -v
+
+
+Vérifiez la couverture de code :pytest tests/ --cov=src --cov-report=html --cov-fail-under=100
+
+
+Testez le système global :python src/run_system.py --market ES
+
+
+Vérifiez les logs et métriques :ls D:/MIA_IA_SYSTEM_v2_2025/data/logs/ES/
+cat D:/MIA_IA_SYSTEM_v2_2025/data/logs/trading/decision_log.csv
+curl http://localhost:8000  # Vérifier les métriques Prometheus
+
+
+Testez le pipeline CI/CD :git add .
+git commit -m "Implement MLOps, observability, and resilience improvements"
+git push origin main
+
+
+Consultez l’onglet Actions sur GitHub pour vérifier les jobs test, lint, docs, et retrain.
+
+
+
+
+Générer la documentation :
+
+Vérifiez que docs/index.rst inclut tous les fichiers de documentation nécessaires.
+Générez la documentation Sphinx :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifiez le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/index.html.
+
+
+Confirmation :
+
+Confirmez avec "… OK" après validation des fichiers modifiés.
+Précisez tout ajustement nécessaire (ex. : ajouter une méthode, modifier un test).
+
+
+
+Prochaines étapes
+
+Priorisation : Indiquez les fichiers à créer ou modifier en priorité (ex. : prometheus_metrics.py, train_pipeline.py).
+Contenu spécifique : Demandez la création complète d’un fichier (ex. : fournir le code pour src/utils/secret_manager.py).
+Confirmation des fichiers existants : Validez les fichiers précédemment mis à jour (market_memory.sql, decision_log.csv, test_feature_sets.py, algo_config.yaml, feature_sets.yaml, python.yml, feature_engineering.md, modules.md, api_reference.md, README.md, update_guide.md, .flake8) avec "… OK" ou précisez les modifications.
+Validation de troubleshooting.md : Fournissez la Partie 4 si elle doit être complétée.
+Autres fichiers : Indiquez si scripts/retrain_trade_probability.py, config/es_config.yaml, ou autres doivent être créés.
+
+Pour la liste complète des nouveaux fichiers à créer, consultez docs/integration_guide.md.

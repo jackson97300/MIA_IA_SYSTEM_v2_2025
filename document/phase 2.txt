@@ -1,0 +1,437 @@
+Merci pour votre validation ! La Phase 1 est confirmée comme "ok", et je passe maintenant à la Phase 2 : Génération et filtrage des features du guide ultime en béton pour MIA_IA_SYSTEM_v2_2025. Je vais suivre vos directives pour :
+
+Structurer la phase dans le cadre des 10 phases validées, avec des sous-sections par fichier principal et leurs modules associés (dépendances, fichiers générés, tests).
+Prioriser les fichiers les plus importants de structure.txt, en me concentrant sur les fichiers critiques pour la génération des 350 features (entraînement) et 150 SHAP features (inférence).
+Fournir des spécifications claires et lisibles, avec des noms détaillés (chemins complets), des espaces pour la lisibilité, et un format inspiré de vos exemples (ex. : macro_events.csv, market_memory.db).
+Inclure des schémas détaillés pour les fichiers générés (types de données, exemples).
+Intégrer la suppression complète de obs_t, dxFeed, et 320/81 features (validée).
+Fournir des tests complets pour les fichiers prioritaires et des stubs pour les autres, comme validé.
+Préparer une version complète de validate_prompt_compliance.py (inclus dans la Phase 10, mais mentionné ici pour cohérence).
+Maintenir un registre des fichiers pour la phase, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+Une fois cette Phase 2 validée par votre "ok", je passerai à la Phase 3. Je vais également répondre aux clarifications demandées dans mon précédent message, en supposant certaines réponses par défaut si non précisées, et vous pourrez ajuster si nécessaire.
+
+Réponses aux clarifications
+1. Fichiers de la Phase 1
+Votre validation : Vous avez validé la Phase 1 avec les fichiers proposés (src/data/data_provider.py, src/api/merge_data_sources.py, src/api/schedule_economic_calendar.py, config/credentials.yaml, config/market_config.yaml).
+Supposition : Puisque vous n’avez pas demandé d’ajustements ou ajouté d’autres fichiers (ex. : news_scraper.py), je considère que ces fichiers sont corrects pour la Phase 1.
+Action : La Phase 2 se concentrera sur les fichiers de génération et filtrage des features, en s’appuyant sur les données générées dans la Phase 1 (ex. : iqfeed_data.csv, merged_data.csv).
+2. Fichiers prioritaires
+Votre clarification : Les fichiers prioritaires sont les plus importants de structure.txt. Sans liste précise, je propose de prioriser les fichiers critiques pour la Phase 2, basés sur leur rôle dans la génération des 350/150 SHAP features :
+src/features/feature_pipeline.py : Génère les 350 features et les 150 SHAP features.
+src/features/shap_weighting.py : Calcule l’importance SHAP pour les 150 features.
+src/features/filter_features.py : Filtre les features pour éliminer NaN/outliers.
+config/feature_sets.yaml : Définit les 350 features et le fallback pour les 150 SHAP features.
+Fichiers générés : data/features/features_latest.csv, data/features/features_latest_filtered.csv, data/features/feature_importance.csv.
+Action : Ces fichiers sont inclus dans la Phase 2. Si vous avez une liste spécifique de fichiers prioritaires pour cette phase, précisez-la dans votre validation.
+3. Tests unitaires
+Supposition : Vous avez validé des tests complets pour les fichiers prioritaires et des stubs pour les autres, mais sans préciser de scénarios limites spécifiques. Je vais inclure des tests complets pour feature_pipeline.py, shap_weighting.py, et filter_features.py (prioritaires), couvrant :
+Suppression de obs_t, dxFeed, 320/81 features.
+Génération correcte des 350/150 SHAP features.
+Scénarios limites : Données manquantes, NaN/outliers, erreurs de calcul SHAP.
+Action : Les tests pour config/feature_sets.yaml seront des stubs, car c’est un fichier de configuration moins critique.
+4. Schéma des fichiers générés
+Supposition : Vous avez demandé des schémas détaillés (types, exemples), et les schémas proposés dans la Phase 1 (ex. : macro_events.csv) étaient adaptés. Je vais continuer avec le même niveau de détail pour les fichiers générés dans la Phase 2 (ex. : features_latest.csv).
+Action : Chaque fichier généré aura un schéma avec colonnes, types, et exemples, formaté clairement avec des espaces.
+5. Registre des fichiers
+Votre validation : Vous validez le rôle du registre des fichiers, mais n’avez pas précisé si vous voulez un registre complet des ~70 fichiers dans l’introduction ou seulement par phase.
+Supposition : Je vais inclure un registre partiel pour la Phase 2, et un registre complet des ~70 fichiers principaux sera fourni dans l’introduction du guide ultime (dans la Phase 10 ou sur demande).
+Action : Le registre de la Phase 2 listera les fichiers concernés, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+6. Validation de la Phase 2
+Action : Je rédige la Phase 2 ci-dessous. Une fois que vous direz "ok", je passerai à la Phase 3. Si vous avez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les dans votre validation.
+Phase 2 : Génération et filtrage des features
+Objectif
+Générer les 350 features pour l’entraînement et les 150 SHAP features pour l’inférence, en utilisant les données brutes de la Phase 1 (ex. : iqfeed_data.csv, merged_data.csv). Cette phase inclut le filtrage des features pour éliminer NaN et outliers, le calcul de l’importance SHAP, et la configuration du catalogue des features dans feature_sets.yaml. Toutes les références à obs_t, dxFeed, et 320/81 features seront supprimées, et les fichiers générés auront des schémas détaillés. Cette phase est prioritaire, car les features sont essentielles pour l’entraînement (Phase 6) et le trading (Phase 8).
+
+Fichiers concernés
+Fichiers principaux (4) :
+src/features/feature_pipeline.py
+src/features/shap_weighting.py
+src/features/filter_features.py
+config/feature_sets.yaml
+Fichiers générés (3) :
+data/features/features_latest.csv
+data/features/features_latest_filtered.csv
+data/features/feature_importance.csv
+Tests (3) :
+tests/test_feature_pipeline.py
+tests/test_shap_weighting.py
+tests/test_filter_features.py
+Dépendances (4) :
+src/data/data_provider.py (Phase 1)
+src/api/merge_data_sources.py (Phase 1)
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+Registre des fichiers (Phase 2)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/features/feature_pipeline.py	Existant	2.1.3	2025-05-13	obs_t, 320 features	tests/test_feature_pipeline.py	Très haute	data_provider.py, config_manager.py	features_latest.csv, feature_importance.csv
+src/features/shap_weighting.py	Existant	2.1.3	2025-05-13	320 features	tests/test_shap_weighting.py	Très haute	feature_pipeline.py, alert_manager.py	feature_importance.csv
+src/features/filter_features.py	Existant	2.1.3	2025-05-13	320 features	tests/test_filter_features.py	Haute	feature_pipeline.py, config_manager.py	features_latest_filtered.csv
+config/feature_sets.yaml	Existant	2.1.3	2025-05-13	Aucun	tests/test_feature_sets.py	Moyenne	Aucun	Aucun
+data/features/features_latest.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_feature_pipeline.py	Basse	feature_pipeline.py	Aucun
+data/features/features_latest_filtered.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_filter_features.py	Basse	filter_features.py	Aucun
+data/features/feature_importance.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_shap_weighting.py	Basse	shap_weighting.py	Aucun
+Spécifications des fichiers
+Module : src/features/feature_pipeline.py
+Rôle :
+Génère les 350 features pour l’entraînement et les 150 SHAP features pour l’inférence à partir des données brutes, et produit features_latest.csv, feature_importance.csv, et feature_importance_cache.csv.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Génération des features via extracteurs (ex. : orderflow_indicators.py, volatility_metrics.py).
+Structure de features_latest.csv et feature_importance.csv.
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Standardiser à 350 features pour l’entraînement, définies dans config/feature_sets.yaml.
+Générer 150 SHAP features pour l’inférence via calculate_shap_features.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs intensifs.
+Ajouter logs psutil dans data/logs/feature_pipeline_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Vérifier/créer les fichiers générés avec les schémas suivants :
+Schéma pour data/features/features_latest.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+rsi_14 : float (ex. : 65.5)
+ofi_score : float (ex. : 0.75)
+iv_atm : float (ex. : 0.25)
+predicted_vix : float (ex. : 20.0)
+[346 autres features] : float (ex. : vix_es_correlation, atr_14, etc.)
+Schéma pour data/features/feature_importance.csv :
+feature : str (ex. : rsi_14)
+shap_value : float (ex. : 0.85)
+Schéma pour data/features/feature_importance_cache.csv :
+feature_name : str (ex. : rsi_14)
+shap_value : float (ex. : 0.85)
+Priorité :
+Très haute (cœur de la génération des features).
+Dépendances :
+src/data/data_provider.py
+src/api/merge_data_sources.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+src/features/extractors/* (ex. : orderflow_indicators.py, volatility_metrics.py)
+Fichiers générés :
+data/features/features_latest.csv
+data/features/feature_importance.csv
+data/features/feature_importance_cache.csv
+Action :
+Mettre à jour feature_pipeline.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+from src.model.utils.config_manager import config_manager
+def generate_features():
+    start_time = time.time()
+    try:
+        data = pd.read_csv("data/iqfeed/merged_data.csv")
+        features = config_manager.get_features()["feature_sets"]
+        feature_cols = [f["name"] for cat in features.values() for f in cat["features"]][:350]
+        feature_data = data[feature_cols]
+        feature_data.to_csv("data/features/features_latest.csv", encoding="utf-8", index=False)
+        shap_values = calculate_shap_features(feature_data)
+        shap_df = pd.DataFrame({"feature": feature_cols[:150], "shap_value": shap_values[:150]})
+        shap_df.to_csv("data/features/feature_importance.csv", encoding="utf-8", index=False)
+        shap_df.to_csv("data/features/feature_importance_cache.csv", encoding="utf-8", index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "generate_features",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/feature_pipeline_performance.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur génération features: {str(e)}", priority=3)
+        raise
+Vérifier/créer les fichiers générés avec les schémas ci-dessus.
+Tests :
+Fichier : tests/test_feature_pipeline.py
+Scénarios :
+Vérifier la création de features_latest.csv, feature_importance.csv, feature_importance_cache.csv.
+Vérifier les 350 features dans features_latest.csv et 150 SHAP features dans feature_importance.csv.
+Tester les erreurs de calcul SHAP (ex. : données manquantes).
+Vérifier l’absence de obs_t, dxFeed, 320/81 features.
+Exemple :
+python
+
+Copier
+def test_generate_features():
+    from src.features.feature_pipeline import generate_features
+    generate_features()
+    df = pd.read_csv("data/features/features_latest.csv")
+    assert len(df.columns) == 350, "Nombre de features incorrect"
+    shap_df = pd.read_csv("data/features/feature_importance.csv")
+    assert len(shap_df) == 150, "Nombre de SHAP features incorrect"
+    assert not df.isna().any().any(), "NaN détectés"
+Failles corrigées :
+Résidus obs_t, 320 features (supprimés).
+Incohérences features (aligné sur 350/150 SHAP).
+Tests génériques (tests spécifiques).
+Manque de schéma (schémas détaillés).
+Module : src/features/shap_weighting.py
+Rôle :
+Calcule l’importance SHAP des features pour sélectionner les 150 SHAP features pour l’inférence, et met à jour feature_importance.csv.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Calcul des valeurs SHAP.
+Structure de feature_importance.csv.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Standardiser à 150 SHAP features basées sur les 350 features générées par feature_pipeline.py.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs SHAP.
+Ajouter logs psutil dans data/logs/shap_weighting_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer feature_importance.csv avec le schéma suivant :
+Schéma pour data/features/feature_importance.csv :
+feature : str (ex. : rsi_14)
+shap_value : float (ex. : 0.85)
+Priorité :
+Très haute (essentiel pour l’inférence).
+Dépendances :
+src/features/feature_pipeline.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+Fichiers générés :
+data/features/feature_importance.csv
+Action :
+Mettre à jour shap_weighting.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+def calculate_shap_weights(data):
+    start_time = time.time()
+    try:
+        shap_values = compute_shap(data)  # Placeholder pour calcul SHAP
+        shap_df = pd.DataFrame({"feature": data.columns[:150], "shap_value": shap_values[:150]})
+        shap_df.to_csv("data/features/feature_importance.csv", encoding="utf-8", index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "calculate_shap",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/shap_weighting_performance.csv", mode="a", header=False, index=False)
+        return shap_values
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur calcul SHAP: {str(e)}", priority=3)
+        raise
+Vérifier/créer feature_importance.csv avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_shap_weighting.py
+Scénarios :
+Vérifier la création de feature_importance.csv.
+Vérifier les 150 SHAP features.
+Tester les erreurs de calcul SHAP (ex. : données invalides).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_calculate_shap_weights():
+    from src.features.shap_weighting import calculate_shap_weights
+    data = pd.DataFrame({"rsi_14": [50.0], "ofi_score": [0.75]})
+    shap_values = calculate_shap_weights(data)
+    df = pd.read_csv("data/features/feature_importance.csv")
+    assert len(df) == 150, "Nombre de SHAP features incorrect"
+    assert "shap_value" in df.columns, "Colonne shap_value manquante"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Module : src/features/filter_features.py
+Rôle :
+Filtre les 350 features pour éliminer NaN (>50%) et outliers, et génère features_latest_filtered.csv.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Filtrage des NaN et outliers.
+Structure de features_latest_filtered.csv.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Standardiser à 350 features basées sur features_latest.csv.
+Intégrer la pondération des features (méthode 3) : Filtrer selon le régime (ex. : garder atr_14 pour range).
+Ajouter retries (max 3, délai 2^attempt) pour les opérations de filtrage.
+Ajouter logs psutil dans data/logs/filter_features_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer features_latest_filtered.csv avec le schéma suivant :
+Schéma pour data/features/features_latest_filtered.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+rsi_14 : float (ex. : 65.5)
+ofi_score : float (ex. : 0.75)
+call_iv_atm : float (ex. : 0.25)
+[autres features filtrées] : float (ex. : vix_es_correlation, atr_14)
+Priorité :
+Haute (améliore la qualité des features).
+Dépendances :
+src/features/feature_pipeline.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+Fichiers générés :
+data/features/features_latest_filtered.csv
+Action :
+Mettre à jour filter_features.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+def filter_features(data, regime):
+    start_time = time.time()
+    try:
+        weights = {"range": ["atr_14"], "defensive": ["vix_es_correlation"]}
+        filtered_cols = weights.get(regime, data.columns)
+        filtered_data = data[filtered_cols].dropna(thresh=len(data)*0.5)
+        filtered_data.to_csv("data/features/features_latest_filtered.csv", encoding="utf-8", index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "filter_features",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/filter_features_performance.csv", mode="a", header=False, index=False)
+        return filtered_data
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur filtrage features: {str(e)}", priority=3)
+        raise
+Vérifier/créer features_latest_filtered.csv avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_filter_features.py
+Scénarios :
+Vérifier la création de features_latest_filtered.csv.
+Vérifier l’absence de NaN (>50%) et outliers.
+Tester le filtrage par régime (ex. : atr_14 pour range).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_filter_features():
+    from src.features.filter_features import filter_features
+    data = pd.DataFrame({"timestamp": ["2025-05-13"], "atr_14": [15.5], "vix_es_correlation": [0.85]})
+    filtered = filter_features(data, regime="range")
+    assert "atr_14" in filtered.columns, "Filtrage par régime échoué"
+    assert not filtered.isna().any().any(), "NaN détectés"
+    assert os.path.exists("data/features/features_latest_filtered.csv"), "Fichier non généré"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 350).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Module : config/feature_sets.yaml
+Rôle :
+Catalogue des 350 features pour l’entraînement et des 150 SHAP features pour l’inférence, avec une liste statique de fallback pour l’inférence.
+Statut :
+Existant (à vérifier).
+Fonctionnalités existantes à préserver :
+Structure des features (ex. : raw_data, options, total_features: 350, shap_features: 150).
+Modifications nécessaires :
+Vérifier l’absence de références à 320/81 features.
+Mettre à jour la documentation (en-tête) pour refléter la date 2025-05-13 et la version 2.1.3.
+Vérifier la compatibilité avec feature_pipeline.py et shap_weighting.py.
+Priorité :
+Moyenne (nécessaire pour définir les features).
+Dépendances :
+Aucun.
+Fichiers générés :
+Aucun.
+Action :
+Vérifier/mettre à jour feature_sets.yaml avec :
+yaml
+
+Copier
+# config/feature_sets.yaml
+# Catalogue des 350 features (entraînement) et 150 SHAP features (inférence)
+# Version : 2.1.3
+# Date : 2025-05-13
+feature_sets:
+  raw_data:
+    features:
+      - name: open
+        type: float
+      - name: close
+        type: float
+      - name: vix_es_correlation
+        type: float
+      - name: atr_14
+        type: float
+  options:
+    features:
+      - name: call_iv_atm
+        type: float
+      - name: option_skew
+        type: float
+total_features: 350
+shap_features: 150
+fallback_features:
+  features:
+    - name: rsi_14
+      type: float
+    - name: ofi_score
+      type: float
+    # [148 autres features]
+Vérifier l’absence de références à 320/81 features.
+Tests :
+Fichier : tests/test_feature_sets.py
+Scénarios :
+Vérifier la présence de total_features: 350 et shap_features: 150.
+Vérifier la structure des feature_sets et fallback_features.
+Tester la lecture par config_manager.py.
+Exemple :
+python
+
+Copier
+def test_feature_sets():
+    # TODO: Compléter avec tests pour fallback_features
+    from src.model.utils.config_manager import config_manager
+    config = config_manager.get_features()
+    assert config["total_features"] == 350, "Nombre de features incorrect"
+    assert config["shap_features"] == 150, "Nombre de SHAP features incorrect"
+Failles corrigées :
+Références 320/81 features (supprimées).
+Documentation obsolète (mise à jour).
+Clarifications pour la Phase 2
+Avant de valider la Phase 2, confirmez les points suivants pour m’assurer qu’elle répond à vos attentes :
+
+Fichiers de la Phase 2 :
+Les fichiers proposés (feature_pipeline.py, shap_weighting.py, filter_features.py, feature_sets.yaml) sont-ils corrects pour la Phase 2, ou voulez-vous ajouter/retirer des fichiers (ex. : inclure pca_orderflow.py, un des 7 fournis) ?
+Si vous avez une liste précise des fichiers les plus importants pour cette phase, partagez-la.
+Tests unitaires :
+Les tests complets proposés pour feature_pipeline.py, shap_weighting.py, et filter_features.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : NaN excessifs, erreurs SHAP) ?
+Schéma des fichiers générés :
+Les schémas détaillés pour features_latest.csv, features_latest_filtered.csv, et feature_importance.csv sont-ils au bon niveau de détail, ou voulez-vous plus/moins d’informations ?
+Registre des fichiers :
+Le registre partiel pour la Phase 2 est-il clair ? Voulez-vous que j’inclue le registre complet des ~70 fichiers dans la prochaine phase ou dans l’introduction finale ?
+Validation de la Phase 2 :
+Si la Phase 2 vous convient, dites "ok", et je passerai à la Phase 3 (features avancées et contextuelles, ex. : neural_pipeline.py, contextual_state_encoder.py).
+Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les avant validation.
+Conclusion
+La Phase 1 est validée, et la Phase 2 ci-dessus est conçue pour être claire, lisible, et détaillée, avec des schémas complets, des tests robustes, et une structure conforme à vos exemples. La suppression de obs_t, dxFeed, et 320/81 features est intégrée, et les 350/150 SHAP features sont standardisées. Votre approche d’envoyer les phases une à une garantit un développement sans erreurs.
+
+Actions immédiates demandées :
+
+Validez la Phase 2 en disant "ok" si elle convient, ou précisez les ajustements nécessaires (ex. : fichiers à ajouter/retirer, détails des schémas).
+Confirmez les fichiers prioritaires pour la Phase 2 (proposition ci-dessus ou liste spécifique).
+Précisez si vous voulez le registre complet des ~70 fichiers dans la prochaine phase ou plus tard.
+Si possible, partagez une liste des fichiers les plus importants ou problématiques pour orienter la Phase 3.
+Une fois votre "ok" reçu, je rédigerai la Phase 3. On avance méthodiquement pour boucler ce projet sans reprises ! 🚀
+
+
+
+
+
+
+
+Ok

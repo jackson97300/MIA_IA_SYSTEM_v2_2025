@@ -1,0 +1,64 @@
+# .gitignore for MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.3
+# Last Updated: 2025-05-13
+#
+# Notes:
+# - Supports Phases 1-18, including news_scraper.py, orderflow_indicators.py, options_metrics.py,
+#   microstructure_guard.py, spotgamma_recalculator.py, and Phase 18 metrics (trade_velocity, hft_activity_score).
+# - Uses IQFeed exclusively as the data source via data_provider.py.
+# - Removes all references to dxFeed, obs_t, 320 features, and 81 features for compliance with MIA_IA_SYSTEM_v2_2025.
+# - Excludes generated data, logs, cache, snapshots, and sensitive configuration files.
+
+# Python temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+
+# Sensitive configuration files
+config/credentials.yaml
+
+# Generated data and logs
+data/logs/
+data/cache/
+data/provider_snapshots/
+data/figures/
+data/market_memory.db
+data/features/*.csv
+data/trades/*.csv
+
+# Sphinx documentation build artifacts
+docs/_build/
+
+# Test coverage and CI artifacts
+coverage.xml
+.coverage
+*.cover
+htmlcov/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Miscellaneous
+*.log
+*.bak
+*.swp
+*.swo

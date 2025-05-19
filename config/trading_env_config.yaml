@@ -1,0 +1,200 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/trading_env_config.yaml
+# Configuration des environnements Gym pour trading_env.py dans MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.3"
+  updated: "2025-05-13"
+  description: |
+    Configuration des environnements Gym utilisés dans trading_env.py pour les simulations de trading.
+    Inclut les paramètres de gestion des positions, des récompenses, des limites de volatilité,
+    et des configurations d'observation et de simulation.
+    Calibré pour 350 features pour l’entraînement et top 150 SHAP features pour l’inférence/fallback,
+    aligné avec feature_sets.yaml. Intègre les seuils adaptatifs pour les récompenses (méthode 5).
+    Utilise exclusivement IQFeed comme source de données via data_provider.py.
+    Validé via config_manager.py et utilisé par trading_env.py pour les simulations et l’entraînement SAC.
+    Conforme à la Phase 8 (auto-conscience pour les décisions de trading),
+    Phase 12 (gestion des risques), et Phase 16 (environnement de simulation SAC).
+    Tests unitaires disponibles dans tests/test_trading_env_config.py.
+
+# Paramètres généraux de l'environnement
+environment:
+  max_position_size:
+    value: 5
+    range: [1, 10]
+    description: |
+      Taille maximale d'une position (en contrats) pour limiter l'exposition.
+  reward_threshold:
+    value: 0.01
+    range: [0.0, 0.1]
+    description: |
+      Seuil minimum de récompense par étape (en fraction de profit).
+      Une récompense inférieure à ce seuil est considérée comme nulle.
+  atr_limit:
+    value: 2.0
+    range: [0.5, 5.0]
+    description: |
+      Limite de volatilité basée sur l'ATR (en multiples de l'ATR).
+      Utilisée pour limiter les trades dans des conditions de volatilité extrême.
+  max_steps:
+    value: 1000
+    range: [100, 10000]
+    description: |
+      Nombre maximum d'étapes par épisode de simulation.
+  initial_cash:
+    value: 100000
+    range: [10000, 1000000]
+    description: |
+      Capital initial pour la simulation (en USD).
+  transaction_cost:
+    value: 2.0
+    range: [0.0, 10.0]
+    description: |
+      Coût de transaction par trade (en USD par contrat).
+
+# Paramètres de l'espace d'observation
+observation:
+  obs_dimensions:
+    value: 350
+    description: |
+      Nombre de dimensions dans le vecteur d’observation pour l’entraînement (350 features).
+      Les top 150 SHAP features sont utilisées pour l’inférence, avec un fallback à 150 features
+      (cache data/features/feature_importance_cache.csv ou liste statique dans feature_sets.yaml).
+  normalize:
+    value: true
+    description: |
+      Si true, normalise les observations (ex. : MinMaxScaler avec fenêtre glissante).
+  include_cash:
+    value: true
+    description: |
+      Si true, inclut le cash disponible dans l'espace d'observation.
+  include_position:
+    value: true
+    description: |
+      Si true, inclut la taille de la position actuelle dans l'espace d'observation.
+
+# Paramètres de l'espace d'action
+action:
+  discrete:
+    value: false
+    description: |
+      Si true, utilise un espace d'action discret (ex. : buy, sell, hold).
+      Si false, utilise un espace d'action continu (ex. : [-1, 1] pour taille de position).
+  max_action:
+    value: 1.0
+    range: [0.5, 2.0]
+    description: |
+      Valeur maximale de l'action dans un espace continu (ex. : 1.0 = position maximale).
+
+# Paramètres de récompense
+reward:
+  reward_scaling:
+    value: 1.0
+    range: [0.1, 10.0]
+    description: |
+      Facteur de mise à l'échelle des récompenses pour ajuster leur magnitude.
+  penalty_volatility:
+    value: -0.005
+    range: [-0.1, 0.0]
+    description: |
+      Pénalité appliquée en cas de volatilité excessive (basée sur atr_limit).
+  reward_drawdown:
+    value: -0.01
+    range: [-0.1, 0.0]
+    description: |
+      Pénalité pour le drawdown (en fraction du capital initial).
+  news_impact_threshold:
+    value: 0.5
+    range: [0.0, 1.0]
+    description: |
+      Seuil d’impact des nouvelles pour ajuster les récompenses adaptatives (méthode 5).
+      Une valeur élevée indique un impact significatif des actualités.
+  vix_threshold:
+    value: 20.0
+    range: [10.0, 50.0]
+    description: |
+      Seuil de volatilité VIX pour ajuster les récompenses adaptatives (méthode 5).
+      Une valeur élevée indique une volatilité extrême.
+
+# Paramètres de gestion des régimes
+regime:
+  trend:
+    enabled: true
+    description: |
+      Active le régime trend dans l'environnement (neural_regime=0).
+  range:
+    enabled: true
+    description: |
+      Active le régime range dans l'environnement (neural_regime=1).
+  defensive:
+    enabled: true
+    description: |
+      Active le régime defensive dans l'environnement (neural_regime=2).
+
+# Paramètres de simulation
+simulation:
+  data_source:
+    value: "data/features/features_latest.csv"
+    description: |
+      Fichier source pour les données de simulation, généré par data_provider.py avec IQFeed.
+  start_date:
+    value: "2024-05-09"
+    description: |
+      Date de début pour la simulation (format YYYY-MM-DD).
+  end_date:
+    value: "2025-05-09"
+    description: |
+      Date de fin pour la simulation (format YYYY-MM-DD).
+  frequency:
+    value: "1min"
+    options: ["1min", "5min", "15min", "1h"]
+    description: |
+      Fréquence des données pour la simulation (ex. : 1 minute).
+
+# Gestion des journaux
+logging:
+  enabled:
+    value: true
+    description: |
+      Si true, active la journalisation des simulations.
+  directory:
+    value: "data/logs/trading_env"
+    description: |
+      Répertoire pour les fichiers de log de l'environnement. Performances (latence, CPU, mémoire)
+      enregistrées via psutil dans les fichiers de log (ex. : trading_env.log).
+  file:
+    value: "trading_env.log"
+    description: |
+      Fichier pour les logs de l'environnement.
+  max_size_mb:
+    value: 10
+    range: [1, 100]
+    description: |
+      Taille maximale du fichier de log avant rotation (en Mo).
+
+# Paramètres pour le tableau de bord
+dashboard:
+  notifications_enabled:
+    value: true
+    description: |
+      Si true, les statistiques de l'environnement (ex. : récompense, drawdown) sont envoyées à mia_dashboard.py.
+  status_file:
+    value: "data/trading_env_config_dashboard.json"
+    description: |
+      Fichier JSON pour partager l'état de l'environnement avec le dashboard.
+
+# Notes pour configuration
+notes:
+  - max_position_size, reward_threshold, et atr_limit sont définis pour limiter les risques pendant la simulation.
+  - Vérifier start_date et end_date avec les données IQFeed disponibles pour garantir la cohérence de la simulation.
+  - obs_dimensions est défini à 350 pour l’entraînement, avec les top 150 SHAP features pour l’inférence/fallback.
+  - news_impact_threshold et vix_threshold (méthode 5) ajustent les récompenses selon les actualités et la volatilité.
+  - Tester reward_scaling pour équilibrer l'entraînement du modèle SAC.
+  - Configuration validée via config_manager.py.
+  - trading_env.py utilise IQFeed via data_provider.py pour les données en temps réel et historiques.
+  - Tests unitaires disponibles dans tests/test_trading_env_config.py pour valider la configuration.
+  - Conforme à la Phase 8 (auto-conscience pour les décisions de trading),
+    Phase 12 (gestion des risques), et Phase 16 (environnement de simulation SAC).
+  - Les opérations critiques (ex. : collecte de données, simulation) implémentent des retries (max 3, délai 2^attempt) via standard.py.
+  - Les échecs de simulation ou anomalies déclenchent des alertes via alert_manager.py (priorité 3=error).
+  - Surveiller les performances de l’environnement dans data/logs/trading_env/*.

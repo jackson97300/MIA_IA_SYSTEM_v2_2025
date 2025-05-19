@@ -1,0 +1,18 @@
+buffer_size: 100
+critical_buffer_size: 10
+max_retries: 3
+retry_delay: 0.5
+n_iterations: 10
+convergence_threshold: 0.001
+covariance_type: "full"
+n_components: 3
+window_size: 50
+window_size_adaptive: true
+random_state: 42
+use_random_state: true
+min_train_rows: 100
+min_state_duration: 5
+cache_ttl_seconds: 300
+cache_ttl_adaptive: true
+prometheus_labels:
+  market: "ES"

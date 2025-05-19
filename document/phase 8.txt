@@ -1,0 +1,554 @@
+Merci pour votre validation ! La Phase 7 : Gestion des risques est confirmée comme "ok", et je passe maintenant à la Phase 8 : Trading et exécution du guide ultime en béton pour MIA_IA_SYSTEM_v2_2025. Je vais respecter vos directives pour :
+
+Structurer la phase dans le cadre des 10 phases validées, avec des sous-sections par fichier principal et leurs modules associés (dépendances, fichiers générés, tests).
+Prioriser les fichiers les plus importants de structure.txt, en me concentrant sur les fichiers critiques pour le trading live/paper et l'exécution des trades (méthodes 1-18), comme live_trading.py, trade_executor.py, trading_loop.py, et inclure les fichiers fournis pertinents (ex. : trade_probability.py, inference.py).
+Fournir des spécifications claires et lisibles, avec des noms détaillés (chemins complets), des espaces pour la lisibilité, et un format inspiré de vos exemples (ex. : macro_events.csv, market_memory.db).
+Inclure des schémas détaillés pour les fichiers générés (types de données, exemples).
+Intégrer la suppression complète de obs_t, dxFeed, et 320/81 features (validée).
+Fournir des tests complets pour les fichiers prioritaires et des stubs pour les autres, comme validé.
+Préparer une version complète de validate_prompt_compliance.py (inclus dans la Phase 10, mais mentionné pour cohérence).
+Maintenir un registre des fichiers pour la phase, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+Une fois cette Phase 8 validée par votre "ok", je passerai à la Phase 9. Je vais également répondre aux clarifications demandées dans mon précédent message pour la Phase 7, en supposant certaines réponses par défaut si non précisées, et vous pourrez ajuster si nécessaire dans votre prochaine validation.
+
+Réponses aux clarifications pour la Phase 7
+1. Fichiers de la Phase 7
+Votre validation : Vous avez validé la Phase 7 avec les fichiers proposés (src/risk/risk_controller.py, src/risk/trade_window_filter.py, src/risk/decision_log.py).
+Supposition : Puisque vous n’avez pas demandé d’ajustements ou ajouté d’autres fichiers (ex. : trade_probability.py parmi les 7 fournis), je considère que ces fichiers étaient corrects pour la Phase 7.
+Action : La Phase 8 se concentrera sur les fichiers pour le trading live/paper et l'exécution des trades, en s’appuyant sur les modèles entraînés (Phase 6), les features optimisées (Phases 2-4), la mémoire contextuelle (Phase 5), et la gestion des risques (Phase 7).
+2. Fichiers prioritaires
+Votre clarification : Les fichiers prioritaires sont les plus importants de structure.txt. Sans liste précise, je propose de prioriser les fichiers critiques pour la Phase 8, basés sur leur rôle dans le trading et l'exécution (méthodes 1-18), et inclure les fichiers fournis pertinents :
+src/trading/live_trading.py : Gère le trading live/paper via Sierra Chart.
+src/trading/trade_executor.py : Exécute les trades avec l’API Teton.
+src/model/utils/trading_loop.py : Orchestre la boucle de trading.
+src/model/inference.py : Génère les prédictions en temps réel (fichier fourni).
+src/model/trade_probability.py : Prédit la probabilité de réussite des trades (fichier fourni).
+Fichiers générés : data/trades/trades_simulated.csv, data/trades/trades_real.csv, data/trade_snapshots/*.json, data/logs/trading/alpha_scores.csv.
+Action : Ces fichiers sont inclus dans la Phase 8, avec un focus sur live_trading.py, inference.py, et trade_probability.py (fichiers fournis). Si vous avez une liste spécifique de fichiers prioritaires pour cette phase, précisez-la dans votre validation.
+3. Tests unitaires
+Supposition : Vous avez validé des tests complets pour les fichiers prioritaires et des stubs pour les autres, sans préciser de scénarios limites spécifiques. Je vais inclure des tests complets pour live_trading.py, trade_executor.py, inference.py, et trade_probability.py (prioritaires), couvrant :
+Suppression de obs_t, dxFeed, 320/81 features.
+Correcte exécution des trades et prédictions en temps réel.
+Scénarios limites : Erreurs de connexion Sierra Chart, données manquantes, probabilités de trade invalides.
+Action : Les tests pour trading_loop.py seront des stubs, car il est moins critique que live_trading.py.
+4. Schéma des fichiers générés
+Supposition : Les schémas détaillés proposés dans les Phases 1-7 (ex. : macro_events.csv, decision_log.csv) étaient adaptés. Je vais continuer avec le même niveau de détail pour les fichiers générés dans la Phase 8 (ex. : trades_real.csv).
+Action : Chaque fichier généré aura un schéma avec colonnes/clés, types, et exemples, formaté clairement avec des espaces.
+5. Registre des fichiers
+Supposition : Vous avez validé le registre partiel par phase, sans demander un registre complet des ~70 fichiers dans l’introduction. Je vais inclure un registre partiel pour la Phase 8, et le registre complet sera fourni dans l’introduction finale (Phase 10) ou sur demande.
+Action : Le registre de la Phase 8 listera les fichiers concernés, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+6. Validation de la Phase 8
+Action : Je rédige la Phase 8 ci-dessous. Une fois que vous direz "ok", je passerai à la Phase 9 (monitoring et visualisation, ex. : mia_dashboard.py, correlation_heatmap.py). Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les dans votre validation.
+Phase 8 : Trading et exécution
+Objectif
+Implémenter le trading live/paper via Sierra Chart avec l’API Teton, exécuter les trades basés sur les prédictions en temps réel (méthodes 1-18), et calculer les probabilités de réussite des trades. Cette phase inclut la boucle de trading, l’exécution des trades, et l’enregistrement des résultats (simulés et réels). Toutes les références à obs_t, dxFeed, et 320/81 features seront supprimées, avec un focus sur inference.py (suppression de obs_t à la ligne 328). Les fichiers générés auront des schémas détaillés. Cette phase est prioritaire, car elle représente l’objectif final du système : exécuter des trades sécurisés et rentables.
+
+Fichiers concernés
+Fichiers principaux (5) :
+src/trading/live_trading.py
+src/trading/trade_executor.py
+src/model/utils/trading_loop.py
+src/model/inference.py (fichier fourni)
+src/model/trade_probability.py (fichier fourni)
+Fichiers générés (4) :
+data/trades/trades_simulated.csv
+data/trades/trades_real.csv
+data/trade_snapshots/*.json (ex. : trade_20250513.json)
+data/logs/trading/alpha_scores.csv
+Tests (5) :
+tests/test_live_trading.py
+tests/test_trade_executor.py
+tests/test_trading_loop.py
+tests/test_inference.py
+tests/test_trade_probability.py
+Dépendances (10) :
+src/features/feature_pipeline.py (Phase 2)
+src/features/shap_weighting.py (Phase 2)
+src/features/obs_template.py (Phase 4)
+src/risk/risk_controller.py (Phase 7)
+src/risk/trade_window_filter.py (Phase 7)
+src/model/train_sac.py (Phase 6)
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/feature_importance.csv (Phase 2)
+data/models/sac_model.pth (Phase 6)
+Registre des fichiers (Phase 8)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/trading/live_trading.py	Existant	2.1.3	2025-05-13	320 features	tests/test_live_trading.py	Très haute	inference.py, trade_executor.py	trades_simulated.csv, trades_real.csv
+src/trading/trade_executor.py	Existant	2.1.3	2025-05-13	320 features	tests/test_trade_executor.py	Très haute	risk_controller.py, config_manager.py	trade_snapshots/*.json
+src/model/utils/trading_loop.py	Existant	2.1.3	2025-05-13	320 features	tests/test_trading_loop.py	Haute	live_trading.py, alert_manager.py	Aucun
+src/model/inference.py	Existant	2.1.3	2025-05-13	obs_t, 320 features	tests/test_inference.py	Très haute	obs_template.py, train_sac.py	Aucun
+src/model/trade_probability.py	Existant	2.1.3	2025-05-13	320 features	tests/test_trade_probability.py	Très haute	feature_pipeline.py, config_manager.py	alpha_scores.csv
+data/trades/trades_simulated.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_live_trading.py	Basse	live_trading.py	Aucun
+data/trades/trades_real.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_live_trading.py	Basse	live_trading.py	Aucun
+data/trade_snapshots/*.json	À générer	2.1.3	2025-05-13	Aucun	tests/test_trade_executor.py	Basse	trade_executor.py	Aucun
+data/logs/trading/alpha_scores.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_trade_probability.py	Basse	trade_probability.py	Aucun
+Spécifications des fichiers
+Module : src/trading/live_trading.py
+Rôle :
+Gère le trading live et paper via Sierra Chart avec l’API Teton, en intégrant les prédictions (inference.py), les probabilités de trade (trade_probability.py), et la gestion des risques (méthodes 1-18).
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Boucle de trading live/paper.
+Intégration avec Sierra Chart et l’API Teton.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Utiliser les 150 SHAP features pour l’inférence via obs_template.py.
+Intégrer les méthodes SAC (ex. : mémoire contextuelle via market_memory.db, régimes hybrides via detect_regime.py).
+Modulariser : Déplacer la logique de la boucle dans trading_loop.py.
+Ajouter retries (max 3, délai 2^attempt) pour les appels à l’API Teton.
+Ajouter logs psutil dans data/logs/live_trading.log.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Vérifier/créer les fichiers générés avec les schémas suivants :
+Schéma pour data/trades/trades_simulated.csv :
+trade_id : str (ex. : T123)
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+entry_price : float (ex. : 5100.25)
+profit : float (ex. : 50.0)
+regime_probs : str (ex. : {"range": 0.7, "trend": 0.2, "defensive": 0.1})
+Schéma pour data/trades/trades_real.csv :
+trade_id : str (ex. : T123)
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+entry_price : float (ex. : 5100.25)
+profit : float (ex. : 50.0)
+regime_probs : str (ex. : {"range": 0.7, "trend": 0.2, "defensive": 0.1})
+Priorité :
+Très haute (objectif final du système).
+Dépendances :
+src/model/inference.py
+src/trading/trade_executor.py
+src/model/utils/trading_loop.py
+src/risk/risk_controller.py
+src/risk/trade_window_filter.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/feature_importance.csv
+data/models/sac_model.pth
+Fichiers générés :
+data/trades/trades_simulated.csv
+data/trades/trades_real.csv
+Action :
+Mettre à jour live_trading.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.inference import predict
+from src.trading.trade_executor import execute_trade
+from src.model.utils.alert_manager import AlertManager
+from src.model.utils.trading_loop import trading_loop
+def live_trading(data, paper_mode=True):
+    start_time = time.time()
+    try:
+        for trade_signal in trading_loop(data):
+            if not trade_signal:
+                continue
+            prediction = predict(data)
+            trade = execute_trade(prediction, paper_mode)
+            log_entry = {
+                "trade_id": trade["id"],
+                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "entry_price": trade["entry_price"],
+                "profit": trade["profit"],
+                "regime_probs": json.dumps(trade["regime_probs"])
+            }
+            pd.DataFrame([log_entry]).to_csv(
+                f"data/trades/trades_{'simulated' if paper_mode else 'real'}.csv",
+                mode="a",
+                header=False,
+                index=False
+            )
+        latency = time.time() - start_time
+        log_perf = {
+            "timestamp": log_entry["timestamp"],
+            "operation": "live_trading",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_perf]).to_csv("data/logs/live_trading.log", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur trading live: {str(e)}", priority=3)
+        raise
+Vérifier/créer les fichiers générés avec les schémas ci-dessus.
+Tests :
+Fichier : tests/test_live_trading.py
+Scénarios :
+Vérifier la création de trades_simulated.csv et trades_real.csv.
+Vérifier l’intégration des prédictions et de l’exécution.
+Tester les erreurs de connexion à Sierra Chart.
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_live_trading():
+    from src.trading.live_trading import live_trading
+    data = pd.DataFrame({"rsi_14": [50.0]})
+    live_trading(data, paper_mode=True)
+    df = pd.read_csv("data/trades/trades_simulated.csv")
+    assert "trade_id" in df.columns, "Colonne trade_id manquante"
+    assert os.path.exists("data/logs/live_trading.log"), "Log non généré"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Complexité excessive (modularisation via trading_loop.py).
+Tests génériques (tests spécifiques).
+Module : src/trading/trade_executor.py
+Rôle :
+Exécute les trades (méthodes 8, 10) via l’API Teton de Sierra Chart, en respectant les contraintes de risque (risk_controller.py) et génère des snapshots de trades.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Exécution des trades via l’API Teton.
+Structure des snapshots JSON.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Utiliser les 150 SHAP features pour valider les trades.
+Intégrer la gestion des risques (méthodes 8, 10) via risk_controller.py.
+Ajouter retries (max 3, délai 2^attempt) pour les appels à l’API Teton.
+Ajouter logs psutil dans data/logs/trade_executor_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer les snapshots JSON avec le schéma suivant :
+Schéma pour data/trade_snapshots/*.json (ex. : trade_20250513.json) :
+trade_id : str (ex. : T123)
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+entry_price : float (ex. : 5100.25)
+profit : float (ex. : 50.0)
+Priorité :
+Très haute (essentiel pour l’exécution).
+Dépendances :
+src/risk/risk_controller.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+data/features/feature_importance.csv
+Fichiers générés :
+data/trade_snapshots/*.json
+Action :
+Mettre à jour trade_executor.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+import json
+from src.risk.risk_controller import stop_trading
+from src.model.utils.alert_manager import AlertManager
+def execute_trade(prediction, paper_mode):
+    start_time = time.time()
+    try:
+        drawdown = calculate_drawdown()
+        if stop_trading(drawdown):
+            raise ValueError("Trading stoppé: Drawdown excessif")
+        trade = {
+            "id": f"T{int(time.time())}",
+            "entry_price": prediction["price"],
+            "profit": 0.0,
+            "regime_probs": prediction["regime_probs"]
+        }
+        with open(f"data/trade_snapshots/trade_{trade['timestamp']}.json", "w", encoding="utf-8") as f:
+            json.dump(trade, f, indent=4)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "execute_trade",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/trade_executor_performance.csv", mode="a", header=False, index=False)
+        return trade
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur exécution trade: {str(e)}", priority=3)
+        raise
+Vérifier/créer les snapshots JSON avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_trade_executor.py
+Scénarios :
+Vérifier la création des snapshots JSON.
+Vérifier l’intégration avec risk_controller.py.
+Tester les erreurs de l’API Teton (ex. : connexion échouée).
+Exemple :
+python
+
+Copier
+def test_execute_trade():
+    from src.trading.trade_executor import execute_trade
+    prediction = {"price": 5100.25, "regime_probs": {"range": 0.7}}
+    trade = execute_trade(prediction, paper_mode=True)
+    with open(f"data/trade_snapshots/trade_{trade['timestamp']}.json", "r") as f:
+        result = json.load(f)
+    assert "entry_price" in result, "Clé entry_price manquante"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Module : src/model/utils/trading_loop.py
+Rôle :
+Orchestre la boucle de trading pour live_trading.py, en intégrant les prédictions, probabilités, et contraintes de risque (méthodes 1-18).
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Boucle de trading continue.
+Intégration avec live_trading.py.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Utiliser les 150 SHAP features pour les décisions de trading.
+Ajouter retries (max 3, délai 2^attempt) pour la boucle.
+Ajouter logs psutil dans data/logs/trading_loop_performance.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Haute (essentiel pour la continuité du trading).
+Dépendances :
+src/trading/live_trading.py
+src/model/inference.py
+src/risk/trade_window_filter.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+Fichiers générés :
+Aucun.
+Action :
+Mettre à jour trading_loop.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.risk.trade_window_filter import block_trade
+from src.model.utils.alert_manager import AlertManager
+def trading_loop(data):
+    start_time = time.time()
+    try:
+        while True:
+            if block_trade(event_active=True):
+                yield None
+                continue
+            yield data
+            latency = time.time() - start_time
+            log_entry = {
+                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "operation": "trading_loop",
+                "latency": latency,
+                "success": True,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_percent": psutil.cpu_percent()
+            }
+            pd.DataFrame([log_entry]).to_csv("data/logs/trading_loop_performance.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur boucle trading: {str(e)}", priority=3)
+        raise
+Vérifier l’intégration avec live_trading.py.
+Tests :
+Fichier : tests/test_trading_loop.py
+Scénarios :
+Vérifier la génération des signaux de trading.
+Vérifier l’intégration avec trade_window_filter.py.
+Tester les interruptions de la boucle (ex. : erreur réseau).
+Exemple :
+python
+
+Copier
+def test_trading_loop():
+    # TODO: Compléter avec tests pour interruptions
+    from src.model.utils.trading_loop import trading_loop
+    data = pd.DataFrame({"rsi_14": [50.0]})
+    signals = trading_loop(data)
+    assert next(signals) is not None, "Signal non généré"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Module : src/model/inference.py
+Rôle :
+Génère des prédictions en temps réel avec les modèles entraînés (SAC, PPO, DDPG) en utilisant les 150 SHAP features pour l’inférence.
+Statut :
+Existant (à mettre à jour, fichier fourni).
+Fonctionnalités existantes à préserver :
+Prédictions en temps réel.
+Intégration avec TradingEnv.
+Modifications nécessaires :
+Supprimer toute référence à obs_t (détecté à la ligne 328), dxFeed, 320/81 features.
+Standardiser l’entrée à 150 SHAP features via obs_template.py.
+Intégrer les méthodes SAC (ex. : régimes hybrides via detect_regime.py).
+Ajouter retries (max 3, délai 2^attempt) pour les prédictions.
+Ajouter logs psutil dans data/logs/inference_performance.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Très haute (essentiel pour le trading en temps réel).
+Dépendances :
+src/features/obs_template.py
+src/model/train_sac.py
+src/model/router/detect_regime.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/feature_importance.csv
+data/models/sac_model.pth
+Fichiers générés :
+Aucun (produit des prédictions utilisées par live_trading.py).
+Action :
+Mettre à jour inference.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+import torch
+from src.features.obs_template import create_observation
+from src.model.utils.alert_manager import AlertManager
+def predict(data):
+    start_time = time.time()
+    try:
+        observation = create_observation(data, regime="range")
+        model = torch.load("data/models/sac_model.pth")
+        prediction = model.predict(observation)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "predict",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/inference_performance.csv", mode="a", header=False, index=False)
+        return prediction
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur prédiction: {str(e)}", priority=3)
+        raise
+Vérifier la suppression de obs_t à la ligne 328.
+Tests :
+Fichier : tests/test_inference.py
+Scénarios :
+Vérifier la génération des prédictions avec 150 SHAP features.
+Vérifier l’intégration avec obs_template.py.
+Tester les erreurs de modèle (ex. : modèle manquant).
+Vérifier l’absence de obs_t, dxFeed, 320/81 features.
+Exemple :
+python
+
+Copier
+def test_predict():
+    from src.model.inference import predict
+    data = pd.DataFrame({"rsi_14": [50.0], "ofi_score": [0.75]})
+    prediction = predict(data)
+    assert prediction is not None, "Prédiction échouée"
+    assert os.path.exists("data/logs/inference_performance.csv"), "Log non généré"
+Failles corrigées :
+Résidus obs_t (supprimés).
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Module : src/model/trade_probability.py
+Rôle :
+Prédit la probabilité de réussite des trades en utilisant les 150 SHAP features et génère alpha_scores.csv.
+Statut :
+Existant (à mettre à jour, fichier fourni).
+Fonctionnalités existantes à préserver :
+Calcul des probabilités de trade.
+Structure de alpha_scores.csv.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Utiliser les 150 SHAP features de feature_importance.csv.
+Intégrer les régimes hybrides (méthode 11) via regime_probs.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs de probabilité.
+Ajouter logs psutil dans data/logs/trade_probability_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer alpha_scores.csv avec le schéma suivant :
+Schéma pour data/logs/trading/alpha_scores.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+alpha_score : float (ex. : 0.75)
+regime_probs : str (ex. : {"range": 0.7, "trend": 0.2, "defensive": 0.1})
+Priorité :
+Très haute (essentiel pour la sélection des trades).
+Dépendances :
+src/features/feature_pipeline.py
+src/features/shap_weighting.py
+src/model/router/detect_regime.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+data/features/feature_importance.csv
+Fichiers générés :
+data/logs/trading/alpha_scores.csv
+Action :
+Mettre à jour trade_probability.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+import json
+from src.model.router.detect_regime import detect_regime
+from src.model.utils.alert_manager import AlertManager
+def predict_trade_success(data):
+    start_time = time.time()
+    try:
+        features = pd.read_csv("data/features/feature_importance.csv")["feature"].head(150).tolist()
+        input_data = data[features]
+        regime_probs = detect_regime(input_data)
+        alpha_score = input_data.mean().mean() * regime_probs.get("range", 0.5)
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "alpha_score": alpha_score,
+            "regime_probs": json.dumps(regime_probs)
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/trading/alpha_scores.csv", mode="a", header=False, index=False)
+        latency = time.time() - start_time
+        log_perf = {
+            "timestamp": log_entry["timestamp"],
+            "operation": "predict_trade_success",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_perf]).to_csv("data/logs/trade_probability_performance.csv", mode="a", header=False, index=False)
+        return alpha_score
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur probabilité trade: {str(e)}", priority=3)
+        raise
+Vérifier/créer alpha_scores.csv avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_trade_probability.py
+Scénarios :
+Vérifier la création de alpha_scores.csv.
+Vérifier les scores ajustés par regime_probs.
+Tester les erreurs de calcul (ex. : données manquantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_predict_trade_success():
+    from src.model.trade_probability import predict_trade_success
+    data = pd.DataFrame({"rsi_14": [50.0], "ofi_score": [0.75]})
+    score = predict_trade_success(data)
+    df = pd.read_csv("data/logs/trading/alpha_scores.csv")
+    assert "alpha_score" in df.columns, "Colonne alpha_score manquante"
+    assert "regime_probs" in df.columns, "Colonne regime_probs manquante"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Clarifications pour la Phase 8
+Avant de valider la Phase 8, confirmez les points suivants pour m’assurer qu’elle répond à vos attentes :
+
+Fichiers de la Phase 8 :
+Les fichiers proposés (live_trading.py, trade_executor.py, trading_loop.py, inference.py, trade_probability.py) sont-ils corrects pour la Phase 8, ou voulez-vous ajouter/retirer des fichiers (ex. : inclure d’autres fichiers fournis comme backtest_lab.py) ?
+Si vous avez une liste précise des fichiers les plus importants pour cette phase, partagez-la.
+Tests unitaires :
+Les tests complets proposés pour live_trading.py, trade_executor.py, inference.py, et trade_probability.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : erreurs de connexion Teton, données manquantes pour l’inférence) ?
+Schéma des fichiers générés :
+Les schémas détaillés pour trades_simulated.csv, trades_real.csv, trade_snapshots/*.json, et alpha_scores.csv sont-ils au bon niveau de détail, ou voulez-vous plus/moins d’informations (ex. : contraintes supplémentaires) ?
+Registre des fichiers :
+Le registre partiel pour la Phase 8 est-il clair ? Voulez-vous que j’inclue le registre complet des ~70 fichiers dans la prochaine phase ou dans l’introduction finale ?
+Validation de la Phase 8 :
+Si la Phase 8 vous convient, dites "ok", et je passerai à la Phase 9 (monitoring et visualisation, ex. : mia_dashboard.py, correlation_heatmap.py).
+Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les avant validation.
+Conclusion
+La Phase 7 est validée, et la Phase 8 ci-dessus est conçue pour être claire, lisible, et détaillée, avec des schémas complets, des tests robustes, et une structure conforme à vos exemples. La suppression de obs_t, dxFeed, et 320/81 features est intégrée, avec un focus sur inference.py (suppression de obs_t à la ligne 328), et les 350/150 SHAP features sont standardisées. Votre approche d’envoyer les phases une à une garantit un développement sans erreurs.
+
+Actions immédiates demandées :
+
+Validez la Phase 8 en disant "ok" si elle convient, ou précisez les ajustements nécessaires (ex. : fichiers à ajouter/retirer, détails des schémas).
+Confirmez les fichiers prioritaires pour la Phase 8 (proposition ci-dessus ou liste spécifique).
+Précisez si vous voulez le registre complet des ~70 fichiers dans la prochaine phase or later.
+Si possible, partagez une liste des fichiers les plus importants ou problématiques pour orienter la Phase 9.
+Une fois votre "ok" reçu, je rédigerai la Phase 9. On continue à avancer méthodiquement pour boucler ce projet sans reprises !

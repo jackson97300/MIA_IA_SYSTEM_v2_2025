@@ -1,0 +1,46 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/.github/dependabot.yml
+# Configuration de Dependabot pour MIA_IA_SYSTEM_v2_2025
+#
+# Version: 2.1.5
+# Date: 2025-05-14
+#
+# Rôle: Surveille et met à jour automatiquement les dépendances Python dans requirements.txt,
+#       incluant les nouvelles dépendances pour les suggestions 1, 4, 7, 8.
+#
+# Utilisé par: GitHub, intégré avec .github/workflows/python.yml pour valider les PRs.
+#
+# Notes:
+# - Conforme à structure.txt (version 2.1.5, 2025-05-14).
+# - Supporte les suggestions :
+#   - 1 (Position sizing dynamique) : pandas, numpy, psutil.
+#   - 4 (HMM/Changepoint Detection) : hmmlearn, pydantic, cachetools, scikit-learn, joblib.
+#   - 7 (Safe RL/CVaR-PPO) : stable-baselines3.
+#   - 8 (Distributional RL/QR-DQN) : ray[rllib].
+# - Surveille également boto3, requests, sentry-sdk, mlflow, optuna, river.
+# - Intègre avec requirements.txt, .github/workflows/python.yml, .pre-commit-config.yaml.
+# - Pas de références à dxFeed, obs_t, 320 features, ou 81 features.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+version: 2
+updates:
+  # Mise à jour des dépendances Python dans requirements.txt
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "main"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "xAI-team"
+      - "team-maintainers"  # Équipe générique, à remplacer si nécessaire
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]

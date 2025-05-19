@@ -1,0 +1,1030 @@
+Guide d’implémentation pour MIA_IA_SYSTEM_v2_2025 : Partie 4
+Objectif : Mettre en place les fonctionnalités d’infrastructure, de gestion des erreurs, d’alerting, de journalisation, d’optimisation des hyperparamètres, de tests de résilience, et de CI/CD, intégrant les améliorations 1-4 et 6-10, en corrigeant les failles (sécurité insuffisante, gestion d’erreurs limitée, absence d’optimisation dynamique, tests de résilience faibles, configuration CI/CD incomplète).
+
+Module : src/utils/secret_manager.py
+
+Rôle : Gère les identifiants sécurisés pour IQFeed, AWS, Sentry, et autres services via AWS KMS.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Récupération des secrets AWS KMS pour IQFeed et Sentry.
+Intégration avec data_lake.py pour les identifiants S3.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Fournir des identifiants pour risk_manager.py (ex. : accès à une API de données).
+HMM / Changepoint Detection (4) : Fournir des identifiants pour regime_detector.py (ex. : accès à des données externes).
+Safe RL / CVaR-PPO (7) : Fournir des identifiants pour trade_probability.py (ex. : accès à un cluster GPU).
+Distributional RL (QR-DQN) (8) : Fournir des identifiants pour trade_probability.py (ex. : accès à Ray/RLlib).
+Ajouter logs psutil dans data/logs/secret_manager_performance.csv.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Moyenne
+Dépendances : data_lake.py, risk_manager.py, regime_detector.py, trade_probability.py, error_tracker.py, alert_manager.py, boto3.
+Action :
+Mettre à jour secret_manager.py pour gérer les nouveaux identifiants :import boto3
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "secret_manager.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class SecretManager:
+    def __init__(self):
+        self.kms_client = boto3.client("kms")
+        self.alert_manager = AlertManager()
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def get_secret(self, secret_name: str) -> Dict:
+        """Récupère un secret depuis AWS KMS."""
+        start_time = datetime.now()
+        try:
+            response = self.kms_client.decrypt(
+                CiphertextBlob=bytes.fromhex(secret_name)
+            )
+            secret = response["Plaintext"].decode("utf-8")
+            secret_dict = {
+                "aws_credentials": {"access_key": "xxx", "secret_key": "yyy"},  # Placeholder
+                "iqfeed_api_key": "zzz",
+                "sentry_dsn": "aaa",
+                "gpu_cluster_key": "bbb",  # Pour Safe RL, QR-DQN
+                "ray_cluster_key": "ccc"   # Pour QR-DQN
+            }.get(secret_name, {})
+            latency = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Secret récupéré: {secret_name}. Latence: {latency}s")
+            self.alert_manager.send_alert(f"Secret récupéré: {secret_name}", priority=2)
+            return secret_dict
+        except Exception as e:
+            logger.error(f"Erreur récupération secret: {str(e)}")
+            capture_error(e, context={"secret_name": secret_name}, operation="get_secret")
+            self.alert_manager.send_alert(f"Erreur récupération secret: {str(e)}", priority=4)
+            return {}
+
+
+Créer tests/test_secret_manager.py :import unittest
+from unittest.mock import patch
+from src.utils.secret_manager import SecretManager
+
+class TestSecretManager(unittest.TestCase):
+    def setUp(self):
+        self.manager = SecretManager()
+
+    @patch("boto3.client")
+    def test_get_secret(self, mock_kms):
+        mock_kms.return_value.decrypt.return_value = {"Plaintext": b"test"}
+        result = self.manager.get_secret("aws_credentials")
+        self.assertIsInstance(result, dict)
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Sécurité insuffisante pour les nouveaux modules (suggestion 1), absence de gestion des identifiants pour RL.
+
+
+Module : src/utils/error_tracker.py
+
+Rôle : Capture les erreurs critiques avec Sentry pour le suivi et le débogage.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Capture des erreurs pour les modules existants (data_provider.py, feature_pipeline.py).
+Intégration avec Sentry via secret_manager.py.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Capturer les erreurs de risk_manager.py (ex. : calculs de taille invalides).
+HMM / Changepoint Detection (4) : Capturer les erreurs de regime_detector.py (ex. : échecs d’entraînement HMM).
+Safe RL / CVaR-PPO (7) : Capturer les erreurs de trade_probability.py (ex. : échecs PPO).
+Distributional RL (QR-DQN) (8) : Capturer les erreurs de trade_probability.py (ex. : échecs QR-DQN).
+Ajouter logs psutil dans data/logs/error_tracker_performance.csv.
+Envoyer des alertes via alert_manager.py.
+
+
+Priorité : Moyenne
+Dépendances : risk_manager.py, regime_detector.py, trade_probability.py, secret_manager.py, alert_manager.py, sentry_sdk.
+Action :
+Mettre à jour error_tracker.py pour capturer les nouvelles erreurs :import sentry_sdk
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.model.utils.alert_manager import AlertManager
+from src.utils.secret_manager import get_secret
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "error_tracker.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class ErrorTracker:
+    def __init__(self):
+        self.alert_manager = AlertManager()
+        sentry_sdk.init(dsn=get_secret("sentry_dsn").get("dsn", ""))
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def capture_error(self, error: Exception, context: Dict, market: str = "ES", operation: str = "unknown"):
+        """Capture une erreur avec Sentry."""
+        start_time = datetime.now()
+        try:
+            sentry_sdk.set_context("operation", context)
+            sentry_sdk.capture_exception(error)
+            latency = (datetime.now() - start_time).total_seconds()
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "operation": operation,
+                "market": market,
+                "error": str(error),
+                "latency": latency,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_usage_percent": psutil.cpu_percent()
+            }
+            log_df = pd.DataFrame([log_entry])
+            log_path = LOG_DIR / "error_tracker_performance.csv"
+            if not log_path.exists():
+                log_df.to_csv(log_path, index=False, encoding="utf-8")
+            else:
+                log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+            logger.error(f"Erreur capturée: {operation} - {str(error)}")
+            self.alert_manager.send_alert(f"Erreur capturée: {operation} - {str(error)}", priority=4)
+        except Exception as e:
+            logger.error(f"Erreur capture erreur: {str(e)}")
+            self.alert_manager.send_alert(f"Erreur capture erreur: {str(e)}", priority=4)
+
+
+Créer tests/test_error_tracker.py :import unittest
+from unittest.mock import patch
+from src.utils.error_tracker import ErrorTracker
+
+class TestErrorTracker(unittest.TestCase):
+    def setUp(self):
+        self.tracker = ErrorTracker()
+
+    @patch("sentry_sdk.capture_exception")
+    def test_capture_error(self, mock_sentry):
+        try:
+            raise ValueError("Test error")
+        except ValueError as e:
+            self.tracker.capture_error(e, context={"market": "ES"}, operation="test_op")
+            mock_sentry.assert_called()
+        log_path = "/path/to/MIA_IA_SYSTEM_v2_2025/data/logs/error_tracker_performance.csv"
+        self.assertTrue(os.path.exists(log_path))
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Gestion d’erreurs limitée pour les nouveaux modules (suggestions 1, 4, 7, 8).
+
+
+Module : src/utils/telegram_alert.py
+
+Rôle : Envoie des alertes critiques via Telegram pour informer les équipes des erreurs ou des événements clés.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Envoi d’alertes Telegram pour les erreurs existantes.
+Intégration avec alert_manager.py pour la configuration.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter alertes pour tailles de position excessives (ex. : position_size > 0.1 * capital).
+HMM / Changepoint Detection (4) : Ajouter alertes pour erreurs ou transitions HMM critiques.
+Drift detection (6) : Ajouter alertes pour sharpe_drift détecté.
+Ajouter logs psutil dans data/logs/telegram_alert_performance.csv.
+
+
+Priorité : Moyenne
+Dépendances : risk_manager.py, regime_detector.py, drift_detector.py, alert_manager.py, requests.
+Action :
+Mettre à jour telegram_alert.py pour inclure les nouvelles alertes :import requests
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "telegram_alert.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class TelegramAlert:
+    def __init__(self):
+        self.alert_manager = AlertManager()
+        self.bot_token = "your_bot_token"  # Placeholder
+        self.chat_id = "your_chat_id"     # Placeholder
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def send_alert(self, message: str, priority: int):
+        """Envoie une alerte via Telegram."""
+        start_time = datetime.now()
+        try:
+            if priority >= 3:  # Seulement pour les alertes critiques
+                url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+                payload = {"chat_id": self.chat_id, "text": message}
+                response = requests.post(url, json=payload)
+                response.raise_for_status()
+            latency = (datetime.now() - start_time).total_seconds()
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "message": message,
+                "priority": priority,
+                "latency": latency,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_usage_percent": psutil.cpu_percent()
+            }
+            log_df = pd.DataFrame([log_entry])
+            log_path = LOG_DIR / "telegram_alert_performance.csv"
+            if not log_path.exists():
+                log_df.to_csv(log_path, index=False, encoding="utf-8")
+            else:
+                log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+            logger.info(f"Alerte envoyée: {message}")
+        except Exception as e:
+            logger.error(f"Erreur envoi alerte: {str(e)}")
+            self.alert_manager.send_alert(f"Erreur envoi alerte: {str(e)}", priority=4)
+
+
+Créer tests/test_telegram_alert.py :import unittest
+from unittest.mock import patch
+from src.utils.telegram_alert import TelegramAlert
+
+class TestTelegramAlert(unittest.TestCase):
+    def setUp(self):
+        self.alert = TelegramAlert()
+
+    @patch("requests.post")
+    def test_send_alert(self, mock_post):
+        self.alert.send_alert("Test alert", priority=4)
+        mock_post.assert_called()
+        log_path = "/path/to/MIA_IA_SYSTEM_v2_2025/data/logs/telegram_alert_performance.csv"
+        self.assertTrue(os.path.exists(log_path))
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Absence d’alertes pour les nouveaux événements critiques (suggestions 1, 4, 6).
+
+
+Module : src/model/utils/mlflow_tracker.py
+
+Rôle : Journalise les runs d’entraînement des modèles (SAC, PPO, DDPG) avec MLflow pour le suivi et la reproductibilité.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Journalisation des runs pour les modèles existants.
+Intégration avec train_pipeline.py pour les tâches Airflow.
+
+
+Modifications nécessaires :
+Walk-forward (5) : Journaliser les résultats de la validation glissante (TimeSeriesSplit).
+Safe RL / CVaR-PPO (7) : Journaliser les runs PPO-Lagrangian (ex. : cvar_loss).
+Distributional RL (QR-DQN) (8) : Journaliser les runs QR-DQN (ex. : quantiles).
+Ensembles de politiques (10) : Journaliser les poids bayésiens pour SAC, PPO, DDPG.
+Ajouter logs psutil dans data/logs/mlflow_tracker_performance.csv.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Moyenne
+Dépendances : trade_probability.py, train_pipeline.py, error_tracker.py, alert_manager.py, mlflow.
+Action :
+Mettre à jour mlflow_tracker.py pour journaliser les nouveaux runs :import mlflow
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "mlflow_tracker.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class MLflowTracker:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.alert_manager = AlertManager()
+        mlflow.set_tracking_uri("http://mlflow:5000")  # Placeholder
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def log_run(self, model_name: str, metrics: Dict, parameters: Dict):
+        """Journalise un run avec MLflow."""
+        start_time = datetime.now()
+        try:
+            with mlflow.start_run():
+                mlflow.log_metrics(metrics)
+                mlflow.log_params(parameters)
+                if model_name in ["sac", "ppo", "ddpg"]:
+                    mlflow.log_param("ensemble_weight", metrics.get("weight", 1.0))
+                elif model_name == "ppo_cvar":
+                    mlflow.log_metric("cvar_loss", metrics.get("cvar_loss", 0.0))
+                elif model_name == "qr_dqn":
+                    mlflow.log_metric("quantiles", metrics.get("quantiles", 51))
+                latency = (datetime.now() - start_time).total_seconds()
+                log_entry = {
+                    "timestamp": datetime.now().isoformat(),
+                    "model_name": model_name,
+                    "latency": latency,
+                    "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                    "cpu_usage_percent": psutil.cpu_percent()
+                }
+                log_df = pd.DataFrame([log_entry])
+                log_path = LOG_DIR / "mlflow_tracker_performance.csv"
+                if not log_path.exists():
+                    log_df.to_csv(log_path, index=False, encoding="utf-8")
+                else:
+                    log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+                logger.info(f"Run journalisé pour {model_name}")
+                self.alert_manager.send_alert(f"Run journalisé pour {model_name}", priority=2)
+        except Exception as e:
+            logger.error(f"Erreur journalisation run: {str(e)}")
+            capture_error(e, context={"model_name": model_name}, market=self.market, operation="log_run")
+            self.alert_manager.send_alert(f"Erreur journalisation run: {str(e)}", priority=4)
+
+    def get_model_weights(self, models: list) -> Dict:
+        """Récupère les poids bayésiens pour l'ensemble."""
+        try:
+            weights = {model: 1.0 / len(models) for model in models}  # Placeholder
+            return weights
+        except Exception as e:
+            logger.error(f"Erreur récupération poids: {str(e)}")
+            capture_error(e, context={"models": models}, market=self.market, operation="get_model_weights")
+            return {model: 1.0 / len(models) for model in models}
+
+
+Créer tests/test_mlflow_tracker.py :import unittest
+from unittest.mock import patch
+from src.model.utils.mlflow_tracker import MLflowTracker
+
+class TestMLflowTracker(unittest.TestCase):
+    def setUp(self):
+        self.tracker = MLflowTracker(market="ES")
+
+    @patch("mlflow.start_run")
+    def test_log_run(self, mock_mlflow):
+        self.tracker.log_run("ppo_cvar", {"cvar_loss": 0.1}, {"cvar_alpha": 0.95})
+        mock_mlflow.assert_called()
+        log_path = "/path/to/MIA_IA_SYSTEM_v2_2025/data/logs/mlflow_tracker_performance.csv"
+        self.assertTrue(os.path.exists(log_path))
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Absence de journalisation pour les nouveaux modèles RL (suggestions 5, 7, 8, 10).
+
+
+Module : src/model/utils/hyperparam_optimizer.py
+
+Rôle : Optimise les hyperparamètres des modèles RL (SAC, PPO, DDPG) avec Optuna pour maximiser les performances.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Optimisation des hyperparamètres pour SAC/PPO/DDPG.
+Intégration avec train_pipeline.py pour les tâches Airflow.
+
+
+Modifications nécessaires :
+Safe RL / CVaR-PPO (7) : Optimiser les hyperparamètres de PPO-Lagrangian (ex. : cvar_alpha).
+Distributional RL (QR-DQN) (8) : Optimiser les hyperparamètres de QR-DQN (ex. : quantiles).
+Ensembles de politiques (10) : Optimiser les poids bayésiens pour SAC, PPO, DDPG.
+Ajouter logs psutil dans data/logs/hyperparam_optimizer_performance.csv.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Moyenne
+Dépendances : trade_probability.py, train_pipeline.py, error_tracker.py, alert_manager.py, optuna.
+Action :
+Mettre à jour hyperparam_optimizer.py pour optimiser les nouveaux hyperparamètres :import optuna
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "hyperparam_optimizer.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class HyperparamOptimizer:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.alert_manager = AlertManager()
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def optimize(self, model_name: str, objective_func, n_trials: int = 100) -> Dict:
+        """Optimise les hyperparamètres avec Optuna."""
+        start_time = datetime.now()
+        try:
+            study = optuna.create_study(direction="maximize")
+            if model_name == "ppo_cvar":
+                def objective(trial):
+                    params = {"cvar_alpha": trial.suggest_float("cvar_alpha", 0.9, 0.99)}
+                    return objective_func(params)
+            elif model_name == "qr_dqn":
+                def objective(trial):
+                    params = {"quantiles": trial.suggest_int("quantiles", 10, 100)}
+                    return objective_func(params)
+            else:
+                def objective(trial):
+                    params = {"learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3)}
+                    return objective_func(params)
+            study.optimize(objective, n_trials=n_trials)
+            best_params = study.best_params
+            latency = (datetime.now() - start_time).total_seconds()
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "model_name": model_name,
+                "latency": latency,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_usage_percent": psutil.cpu_percent()
+            }
+            log_df = pd.DataFrame([log_entry])
+            log_path = LOG_DIR / "hyperparam_optimizer_performance.csv"
+            if not log_path.exists():
+                log_df.to_csv(log_path, index=False, encoding="utf-8")
+            else:
+                log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+            logger.info(f"Hyperparamètres optimisés pour {model_name}")
+            self.alert_manager.send_alert(f"Hyperparamètres optimisés pour {model_name}", priority=2)
+            return best_params
+        except Exception as e:
+            logger.error(f"Erreur optimisation hyperparamètres: {str(e)}")
+            capture_error(e, context={"model_name": model_name}, market=self.market, operation="optimize")
+            self.alert_manager.send_alert(f"Erreur optimisation hyperparamètres: {str(e)}", priority=4)
+            return {}
+
+
+Créer tests/test_hyperparam_optimizer.py :import unittest
+from unittest.mock import patch
+from src.model.utils.hyperparam_optimizer import HyperparamOptimizer
+
+class TestHyperparamOptimizer(unittest.TestCase):
+    def setUp(self):
+        self.optimizer = HyperparamOptimizer(market="ES")
+
+    @patch("optuna.create_study")
+    def test_optimize(self, mock_study):
+        def dummy_objective(params):
+            return 0.5
+        result = self.optimizer.optimize("ppo_cvar", dummy_objective, n_trials=1)
+        self.assertIsInstance(result, dict)
+        log_path = "/path/to/MIA_IA_SYSTEM_v2_2025/data/logs/hyperparam_optimizer_performance.csv"
+        self.assertTrue(os.path.exists(log_path))
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Absence d’optimisation dynamique pour les nouveaux modèles RL (suggestions 7, 8, 10).
+
+
+Module : tests/test_resilience.py
+
+Rôle : Teste la résilience du système via chaos engineering (ex. : pannes réseau, surcharge CPU).
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Tests de résilience pour les modules existants (data_provider.py, live_trading.py).
+Intégration avec pytest pour l’exécution.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter tests pour risk_manager.py sous stress (ex. : volatilité extrême).
+HMM / Changepoint Detection (4) : Ajouter tests pour regime_detector.py face à des transitions rapides.
+Ajouter logs psutil dans data/logs/test_resilience_performance.csv.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Moyenne
+Dépendances : risk_manager.py, regime_detector.py, error_tracker.py, alert_manager.py, pytest, chaosmonkey.
+Action :
+Mettre à jour test_resilience.py avec les nouveaux tests :import unittest
+from datetime import datetime
+from pathlib import Path
+import psutil
+from loguru import logger
+from src.risk_management.risk_manager import RiskManager
+from src.features.regime_detector import RegimeDetector
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "test_resilience.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class TestResilience(unittest.TestCase):
+    def setUp(self):
+        self.risk_manager = RiskManager(market="ES")
+        self.regime_detector = RegimeDetector(market="ES")
+        self.alert_manager = AlertManager()
+        self.data = pd.DataFrame({
+            "atr_dynamic": [1000.0],  # Volatilité extrême
+            "orderflow_imbalance": [0.9],
+            "bid_ask_imbalance": [0.1],
+            "total_volume": [1000]
+        })
+
+    def test_risk_manager_stress(self):
+        start_time = datetime.now()
+        try:
+            size = self.risk_manager.calculate_position_size(
+                atr_dynamic=self.data["atr_dynamic"].iloc[0],
+                orderflow_imbalance=self.data["orderflow_imbalance"].iloc[0],
+                volatility_score=0.2
+            )
+            self.assertTrue(0 <= size <= 0.1)
+            latency = (datetime.now() - start_time).total_seconds()
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "test": "risk_manager_stress",
+                "latency": latency,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_usage_percent": psutil.cpu_percent()
+            }
+            log_df = pd.DataFrame([log_entry])
+            log_path = LOG_DIR / "test_resilience_performance.csv"
+            if not log_path.exists():
+                log_df.to_csv(log_path, index=False, encoding="utf-8")
+            else:
+                log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+        except Exception as e:
+            capture_error(e, context={"market": "ES"}, market="ES", operation="test_risk_manager_stress")
+            self.alert_manager.send_alert(f"Erreur test résilience: {str(e)}", priority=4)
+            raise
+
+    def test_regime_detector_transitions(self):
+        start_time = datetime.now()
+        try:
+            self.regime_detector.hmm_model = DummyHMM()  # Placeholder
+            regime = self.regime_detector.detect_regime(self.data)
+            self.assertIn(regime, [0, 1, 2])
+            latency = (datetime.now() - start_time).total_seconds()
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "test": "regime_detector_transitions",
+                "latency": latency,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_usage_percent": psutil.cpu_percent()
+            }
+            log_df = pd.DataFrame([log_entry])
+            log_path = LOG_DIR / "test_resilience_performance.csv"
+            if not log_path.exists():
+                log_df.to_csv(log_path, index=False, encoding="utf-8")
+            else:
+                log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+        except Exception as e:
+            capture_error(e, context={"market": "ES"}, market="ES", operation="test_regime_detector_transitions")
+            self.alert_manager.send_alert(f"Erreur test résilience: {str(e)}", priority=4)
+            raise
+
+class DummyHMM:
+    def predict(self, X):
+        return [0]
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Tests de résilience faibles pour les nouveaux modules (suggestions 1, 4).
+
+
+Module : .pre-commit-config.yaml
+
+Rôle : Configure les hooks pre-commit (Black, isort, Flake8, MyPy) pour assurer la qualité du code avant chaque commit.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Application de Black, isort, Flake8, MyPy sur les fichiers Python.
+Intégration avec .github/workflows/python.yml pour CI/CD.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Vérifier linting pour risk_manager.py.
+HMM / Changepoint Detection (4) : Vérifier linting pour regime_detector.py.
+Ajouter linting pour les nouveaux fichiers (feature_pipeline.py, trade_probability.py, etc.).
+Ajouter logs psutil dans data/logs/pre_commit_performance.csv (via script wrapper).
+
+
+Priorité : Basse
+Dépendances : risk_manager.py, regime_detector.py, feature_pipeline.py, trade_probability.py, pre-commit.
+Action :
+Mettre à jour .pre-commit-config.yaml pour inclure les nouveaux fichiers :repos:
+- repo: https://github.com/psf/black
+  rev: 22.3.0
+  hooks:
+  - id: black
+    files: ^(src/|tests/).*\.py$
+- repo: https://github.com/PyCQA/isort
+  rev: 5.10.1
+  hooks:
+  - id: isort
+    files: ^(src/|tests/).*\.py$
+- repo: https://github.com/PyCQA/flake8
+  rev: 4.0.1
+  hooks:
+  - id: flake8
+    files: ^(src/|tests/).*\.py$
+- repo: https://github.com/python/mypy
+  rev: v0.910
+  hooks:
+  - id: mypy
+    files: ^(src/|tests/).*\.py$
+
+
+Créer un script wrapper scripts/run_pre_commit.py pour ajouter des logs :import subprocess
+from datetime import datetime
+from pathlib import Path
+import psutil
+import pandas as pd
+from loguru import logger
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(__file__)))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "pre_commit.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+def run_pre_commit():
+    start_time = datetime.now()
+    try:
+        result = subprocess.run(["pre-commit", "run", "--all-files"], capture_output=True, text=True)
+        latency = (datetime.now() - start_time).total_seconds()
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "operation": "pre_commit",
+            "latency": latency,
+            "success": result.returncode == 0,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_usage_percent": psutil.cpu_percent()
+        }
+        log_df = pd.DataFrame([log_entry])
+        log_path = LOG_DIR / "pre_commit_performance.csv"
+        if not log_path.exists():
+            log_df.to_csv(log_path, index=False, encoding="utf-8")
+        else:
+            log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+        logger.info(f"Pre-commit exécuté. Latence: {latency}s")
+    except Exception as e:
+        logger.error(f"Erreur pre-commit: {str(e)}")
+        raise
+
+
+Tester avec pre-commit run --all-files.
+
+
+Failles corrigées : Absence de linting pour les nouveaux fichiers (suggestions 1, 4).
+
+
+Module : Dockerfile
+
+Rôle : Construit l’image Docker pour déployer le système dans un environnement conteneurisé.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Installation des dépendances existantes (pandas, numpy, pyiqfeed).
+Configuration de l’environnement Python 3.10.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter dépendances pour risk_manager.py (pandas, numpy, psutil).
+HMM / Changepoint Detection (4) : Ajouter dépendances pour regime_detector.py (hmmlearn, pydantic, cachetools, scikit-learn, joblib).
+Safe RL / CVaR-PPO (7) : Ajouter dépendance stable-baselines3.
+Distributional RL (QR-DQN) (8) : Ajouter dépendance rllib.
+Ajouter logs psutil dans data/logs/docker_build_performance.csv (via script de build).
+
+
+Priorité : Basse
+Dépendances : requirements.txt, risk_manager.py, regime_detector.py, trade_probability.py.
+Action :
+Mettre à jour Dockerfile pour inclure les nouvelles dépendances :FROM python:3.10-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src/ src/
+COPY data/ data/
+COPY tests/ tests/
+CMD ["python", "src/run_system.py"]
+
+
+Mettre à jour requirements.txt :pandas>=2.0.0,<3.0.0
+numpy>=1.26.4,<2.0.0
+pyiqfeed>=1.0.0,<2.0.0
+pytest>=7.3.0,<8.0.0
+python-dotenv>=0.19.0
+hmmlearn>=0.2.8,<0.3.0
+pydantic>=2.0.0,<3.0.0
+cachetools>=5.3.0,<6.0.0
+scikit-learn>=1.5.0,<2.0.0
+joblib>=1.3.0,<2.0.0
+stable-baselines3>=2.0.0,<3.0.0
+rllib>=2.0.0,<3.0.0
+psutil>=5.9.8,<6.0.0
+pytest-benchmark>=4.0.0,<5.0.0
+boto3>=1.24.0,<2.0.0
+requests>=2.28.0,<3.0.0
+sentry-sdk>=1.9.0,<2.0.0
+mlflow>=2.0.0,<3.0.0
+optuna>=3.0.0,<4.0.0
+river>=0.8.0,<1.0.0
+
+
+Créer un script scripts/build_docker.py pour ajouter des logs :import subprocess
+from datetime import datetime
+from pathlib import Path
+import psutil
+import pandas as pd
+from loguru import logger
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(__file__)))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "docker_build.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+def build_docker():
+    start_time = datetime.now()
+    try:
+        result = subprocess.run(["docker", "build", "-t", "mia-ia-system:latest", "."], capture_output=True, text=True)
+        latency = (datetime.now() - start_time).total_seconds()
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "operation": "docker_build",
+            "latency": latency,
+            "success": result.returncode == 0,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_usage_percent": psutil.cpu_percent()
+        }
+        log_df = pd.DataFrame([log_entry])
+        log_path = LOG_DIR / "docker_build_performance.csv"
+        if not log_path.exists():
+            log_df.to_csv(log_path, index=False, encoding="utf-8")
+        else:
+            log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+        logger.info(f"Docker build exécuté. Latence: {latency}s")
+    except Exception as e:
+        logger.error(f"Erreur build Docker: {str(e)}")
+        raise
+
+
+Tester avec docker build -t mia-ia-system:latest ..
+
+
+Failles corrigées : Absence de dépendances pour les nouveaux modules (suggestions 1, 4, 7, 8).
+
+
+Module : prometheus.yml
+
+Rôle : Configure le scraping des métriques Prometheus pour le monitoring des performances.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Scraping des métriques existantes (trade_latency, profit_factor).
+Intégration avec prometheus_metrics.py et grafana.ini.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter scraping pour atr_dynamic, orderflow_imbalance.
+Coûts de transaction (2) : Ajouter scraping pour slippage_estimate.
+Microstructure (3) : Ajouter scraping pour bid_ask_imbalance, trade_aggressiveness.
+HMM / Changepoint Detection (4) : Ajouter scraping pour hmm_state_distribution.
+Drift detection (6) : Ajouter scraping pour sharpe_drift.
+Safe RL / CVaR-PPO (7) : Ajouter scraping pour cvar_loss.
+Distributional RL (QR-DQN) (8) : Ajouter scraping pour qr_dqn_quantiles.
+Surface de volatilité (9) : Ajouter scraping pour iv_skew, iv_term_structure.
+Ensembles de politiques (10) : Ajouter scraping pour ensemble_weight_sac, ensemble_weight_ppo, ensemble_weight_ddpg.
+
+
+Priorité : Basse
+Dépendances : prometheus_metrics.py, grafana.ini.
+Action :
+Mettre à jour prometheus.yml pour inclure les nouvelles métriques :global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: 'mia-ia-system'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '^(trade_latency|profit_factor|position_size_percent|position_size_variance|regime_hmm_state|regime_transition_rate|atr_dynamic|orderflow_imbalance|slippage_estimate|bid_ask_imbalance|trade_aggressiveness|hmm_state_distribution|sharpe_drift|cvar_loss|qr_dqn_quantiles|iv_skew|iv_term_structure|ensemble_weight_sac|ensemble_weight_ppo|ensemble_weight_ddpg)$'
+        action: keep
+
+
+Tester avec curl http://localhost:9090/metrics.
+
+
+Failles corrigées : Absence de scraping pour les nouvelles métriques (suggestions 1-4, 6-10).
+
+
+Module : .github/dependabot.yml
+
+Rôle : Configure Dependabot pour mettre à jour automatiquement les dépendances du projet.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Surveillance des dépendances dans requirements.txt.
+Création de PRs validées par .github/workflows/python.yml.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Surveiller pandas, numpy, psutil.
+HMM / Changepoint Detection (4) : Surveiller hmmlearn, pydantic, cachetools, scikit-learn, joblib.
+Safe RL / CVaR-PPO (7) : Surveiller stable-baselines3.
+Distributional RL (QR-DQN) (8) : Surveiller rllib.
+Ajouter surveillance pour boto3, requests, sentry-sdk, mlflow, optuna, river.
+
+
+Priorité : Basse
+Dépendances : requirements.txt, .github/workflows/python.yml.
+Action :
+Mettre à jour .github/dependabot.yml pour inclure les nouvelles dépendances :version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "main"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+
+Tester via création d’une PR Dependabot manuelle.
+
+
+Failles corrigées : Configuration CI/CD incomplète pour les nouvelles dépendances (suggestions 1, 4, 7, 8).
+
+
+Module : .github/PULL_REQUEST_TEMPLATE.md
+
+Rôle : Standardise les pull requests pour garantir des modifications bien documentées et testées.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Exigences de tests via .github/workflows/python.yml.
+Structure des PRs pour les changements existants.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Exiger tests pour risk_manager.py.
+HMM / Changepoint Detection (4) : Exiger tests pour regime_detector.py.
+Ajouter exigences pour les nouveaux fichiers (feature_pipeline.py, trade_probability.py, etc.).
+
+
+Priorité : Basse
+Dépendances : risk_manager.py, regime_detector.py, feature_pipeline.py, trade_probability.py, .github/workflows/python.yml.
+Action :
+Mettre à jour .github/PULL_REQUEST_TEMPLATE.md pour inclure les nouvelles exigences :## Description
+Describe the changes introduced by this PR.
+
+## Related Improvements
+- [ ] Position sizing dynamique
+- [ ] HMM / Changepoint Detection
+- [ ] Other (specify)
+
+## Files Modified
+- [ ] src/risk_management/risk_manager.py
+- [ ] src/features/regime_detector.py
+- [ ] src/data/feature_pipeline.py
+- [ ] src/model/trade_probability.py
+- [ ] Other (specify)
+
+## Tests
+- [ ] Tests added/updated in `tests/test_risk_manager.py`
+- [ ] Tests added/updated in `tests/test_regime_detector.py`
+- [ ] Tests added/updated in `tests/test_feature_pipeline.py`
+- [ ] Tests added/updated in `tests/test_trade_probability.py`
+- [ ] Tests passed (`pytest`)
+
+## Checklist
+- [ ] Code formatted with Black
+- [ ] Linting passed (Flake8, MyPy)
+- [ ] CI/CD pipeline passed
+
+
+Tester via création d’une PR manuelle.
+
+
+Failles corrigées : Configuration CI/CD incomplète pour les nouveaux fichiers (suggestions 1, 4).
+
+
+Module : helm/mia-system/Chart.yaml
+
+Rôle : Définit le chart Helm pour déployer le système sur Kubernetes.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Configuration du déploiement pour les modules existants.
+Intégration avec values.yaml pour les paramètres.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter déploiement pour risk_manager.py.
+HMM / Changepoint Detection (4) : Ajouter déploiement pour regime_detector.py.
+Safe RL / CVaR-PPO (7) : Ajouter déploiement pour PPO-Lagrangian.
+Distributional RL (QR-DQN) (8) : Ajouter déploiement pour QR-DQN.
+Ensembles de politiques (10) : Ajouter déploiement pour vote bayésien.
+
+
+Priorité : Basse
+Dépendances : risk_manager.py, regime_detector.py, trade_probability.py, mia_switcher.py, values.yaml.
+Action :
+Mettre à jour Chart.yaml pour inclure les nouveaux modules :apiVersion: v2
+name: mia-system
+description: Pipeline de trading automatisé pour MIA_IA_SYSTEM_v2_2025
+version: 2.1.4
+appVersion: "2.1.4"
+dependencies:
+  - name: risk-manager
+    version: "2.1.4"
+    repository: "file://charts/risk-manager"
+  - name: regime-detector
+    version: "2.1.4"
+    repository: "file://charts/regime-detector"
+  - name: trade-probability
+    version: "2.1.4"
+    repository: "file://charts/trade-probability"
+  - name: mia-switcher
+    version: "2.1.4"
+    repository: "file://charts/mia-switcher"
+
+
+Tester avec helm install --dry-run mia-system ./helm/mia-system.
+
+
+Failles corrigées : Absence de déploiement Kubernetes pour les nouveaux modules (suggestions 1, 4, 7, 8, 10).
+
+
+Module : helm/mia-system/values.yaml
+
+Rôle : Configure les paramètres de déploiement Kubernetes (replicas, autoscaling, ressources CPU/GPU).
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Configuration des replicas et autoscaling pour les modules existants.
+Allocation de ressources CPU/GPU.
+
+
+Modifications nécessaires :
+Safe RL / CVaR-PPO (7) : Allouer ressources GPU pour PPO-Lagrangian.
+Distributional RL (QR-DQN) (8) : Allouer ressources GPU pour QR-DQN.
+Ensembles de politiques (10) : Allouer ressources CPU/GPU pour vote bayésien.
+
+
+Priorité : Basse
+Dépendances : trade_probability.py, mia_switcher.py, Chart.yaml.
+Action :
+Mettre à jour values.yaml pour inclure les nouvelles ressources :replicaCount: 2
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+resources:
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+    nvidia.com/gpu: 1
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+    nvidia.com/gpu: 1
+service:
+  type: ClusterIP
+  port: 80
+
+
+Tester avec helm install --dry-run mia-system ./helm/mia-system.
+
+
+Failles corrigées : Absence de ressources GPU pour les nouveaux modèles RL (suggestions 7, 8, 10).
+
+

@@ -1,0 +1,168 @@
+# .github/workflows/python.yml
+# Pipeline CI/CD for MIA_IA_SYSTEM_v2_2025
+# Version: 2.1.4
+# Last Updated: 2025-05-13
+#
+# Notes:
+# - Supports Phases 1-18, including news_scraper.py, orderflow_indicators.py, options_metrics.py,
+#   microstructure_guard.py, spotgamma_recalculator.py, and Phase 18 metrics (trade_velocity, hft_activity_score).
+# - Uses IQFeed exclusively as the data source via data_provider.py.
+# - Removes all references to dxFeed, obs_t, 320 features, and 81 features for compliance with MIA_IA_SYSTEM_v2_2025.
+# - Validates 350 features (training) and 150 SHAP features (inference) via feature_sets.yaml.
+# - Includes validation of compressed snapshots (*.json.gz) and incremental backups in data/checkpoints/.
+# - Sends Telegram alerts for critical failures (priority >= 4).
+# - Includes tests for MiaSwitcher (suggestion 7) and periodic retraining (suggestion 9).
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: "0 0 * * *"  # Exécute le job retrain quotidiennement à minuit
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: pip
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest>=7.3.0,<8.0.0 flake8>=6.0.0,<7.0.0 pylint>=2.17.0,<3.0.0 mypy>=1.4.0,<2.0.0 coverage>=7.2.0,<8.0.0
+    - name: Validate Python version
+      run: |
+        python -c "import sys; assert sys.version_info[:2] == (3, 10), 'Python version must be 3.10'"
+    - name: Validate feature_sets.yaml
+      run: |
+        python -c "import yaml; config = yaml.safe_load(open('config/feature_sets.yaml')); assert len(config['feature_sets']['ES']['inference']) == 150, 'Expected 150 SHAP features'; assert len(config['feature_sets']['ES']['training']) == 350, 'Expected 350 training features'"
+    - name: Validate YAML configurations
+      run: |
+        python -c "import yaml; config = yaml.safe_load(open('config/es_config.yaml')); assert 's3_bucket' in config.get('main_params', {}), 'Missing s3_bucket in es_config.yaml'; assert 's3_prefix' in config.get('main_params', {}), 'Missing s3_prefix in es_config.yaml'"
+        python -c "import yaml; [yaml.safe_load(open(f)) for f in ['config/es_config.yaml', 'config/feature_sets.yaml']]"
+    - name: Run pytest
+      run: |
+        pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-fail-under=80
+    - name: Run MiaSwitcher Tests
+      run: pytest tests/test_mia_switcher.py -v
+    - name: Verify logs and snapshots
+      run: |
+        python -c "import os; assert os.path.exists('data/logs/provider_performance.csv'), 'Missing provider_performance.csv'"
+        python -c "import os, glob; assert len(glob.glob('data/cache/*/*.json.gz')) > 0, 'No compressed snapshots found'"
+        python -c "import os, glob; assert len(glob.glob('data/checkpoints/*.json.gz')) > 0, 'No incremental backups found'"
+    - name: Send Telegram alert on failure
+      if: failure()
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=$TELEGRAM_CHAT_ID -d text="🚨 MIA CI Pipeline Failed: ${{ github.event_name }} on ${{ github.sha }}"
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: true
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: htmlcov/
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: pip
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8>=6.0.0,<7.0.0 pylint>=2.17.0,<3.0.0 mypy>=1.4.0,<2.0.0
+    - name: Check for removed terms
+      run: |
+        ! grep -r -i "dxFeed\|obs_t\|320 features\|81 features" src/ || (echo "Found references to dxFeed, obs_t, 320 features, or 81 features" && exit 1)
+    - name: Run flake8
+      run: |
+        flake8 src/ --max-line-length=88 --extend-ignore=E203
+    - name: Run pylint
+      run: |
+        pylint src/ --disable=too-many-locals,too-many-arguments,too-many-statements
+    - name: Run mypy
+      run: |
+        mypy src/ --strict
+    - name: Send Telegram alert on failure
+      if: failure()
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=$TELEGRAM_CHAT_ID -d text="🚨 MIA Linting Failed: ${{ github.event_name }} on ${{ github.sha }}"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: pip
+    - name: Install Sphinx
+      run: |
+        python -m pip install --upgrade pip
+        pip install sphinx>=7.0.0,<8.0.0 sphinx-rtd-theme>=1.3.0,<2.0.0
+    - name: Check documentation files
+      run: |
+        python -c "import os; assert all(os.path.exists(f) for f in ['docs/index.rst', 'docs/modules.rst', 'docs/installation.rst', 'docs/configuration.rst', 'docs/phases.rst', 'docs/tests.rst']), 'Missing RST files'"
+    - name: Build Sphinx documentation
+      run: |
+        cd docs
+        make html
+        python -c "import os; assert os.path.exists('_build/html/index.html'), 'Sphinx build failed'"
+    - name: Validate Python syntax
+      run: |
+        python -c "import ast, glob; [ast.parse(open(f).read()) for f in glob.glob('src/**/*.py', recursive=True)]"
+    - name: Send Telegram alert on failure
+      if: failure()
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=$TELEGRAM_CHAT_ID -d text="🚨 MIA Documentation Build Failed: ${{ github.event_name }} on ${{ github.sha }}"
+
+  retrain:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: pip
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Periodic Retrain Trade Probability
+      run: python scripts/retrain_trade_probability.py --market ES
+    - name: Send Telegram alert on failure
+      if: failure()
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage -d chat_id=$TELEGRAM_CHAT_ID -d text="🚨 MIA Periodic Retrain Failed: ${{ github.event_name }} on ${{ github.sha }}"

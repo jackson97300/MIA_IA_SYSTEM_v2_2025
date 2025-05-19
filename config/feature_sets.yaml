@@ -1,0 +1,3776 @@
+```yaml
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/feature_sets.yaml
+# Métadonnées des features utilisées dans le vecteur d'état pour MIA_IA_SYSTEM_v2_2025.
+#
+# Mis à jour : 2025-05-15
+#
+# Notes :
+# - Compatible avec MIA_IA_SYSTEM_v2_2025, utilisant 350 features pour l'entraînement et 150 SHAP features pour l'inférence.
+# - Toutes les données proviennent exclusivement de IQFeed (niveau 2 recommandé).
+# - Suppression de toute référence à 320 features, 81 features, ou obs_t.
+# - Intègre les features des Phases 1-17, incluant news_scraper.py (Phase 1), orderflow_indicators.py (Phase 13),
+#   options_metrics.py (Phase 13), microstructure_guard.py (Phase 15), spotgamma_recalculator.py (Phase 15).
+# - Inclut les features pour les méthodes 1 (volatilité), 2 (options), 5 (récompenses adaptatives).
+# - Utilisé par feature_pipeline.py, features_audit.py, run_preprocessing.py, run_simulate.py, run_training.py,
+#   et affiché dans mia_dashboard.py pour monitoring.
+# - Tests unitaires disponibles dans tests/test_feature_pipeline.py.
+# - Ajout des sections ES.training, ES.inference, MNQ.training, MNQ.inference pour le fallback SHAP (suggestion 8).
+# - Support des features dynamiques via neural_pipeline (suggestion 1).
+# - Ajout de iv_skew dans option_metrics et sections ES/MNQ pour cohérence avec neural_pipeline.py et top 150 SHAP features.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+metadata:
+  version: "2.1.6"
+  updated: "2025-05-15"
+  total_features: 351
+  description: |
+    Catalogue complet des 351 features utilisées pour le trading ES, calibré pour l’entraînement avec 351 features
+    et les top 150 SHAP pour l’inférence/fallback, aligné avec feature_pipeline.py.
+    Organisé par catégories, avec type, source, statut, plage, et priorité pour chaque feature.
+    Toutes les données proviennent exclusivement de IQFeed (niveau 2 recommandé).
+    Inclut les features pour les méthodes 1 (volatilité), 2 (options), 5 (récompenses adaptatives),
+    ainsi que les nouvelles features des Phases 1-17 (ex. : news_impact_score, spoofing_score, iv_skew).
+    Supporte les features dynamiques (suggestion 1) et les sections ES/MNQ pour le fallback SHAP (suggestion 8).
+
+dashboard_display:
+  enabled: true
+  status_file: "data/feature_sets_dashboard.json"
+  categories:
+    - raw_data
+    - order_flow
+    - option_metrics
+    - clustering_pca
+    - trend
+    - volatility
+    - volume_profile
+    - smart_scores
+    - risk_management
+    - contextualization
+    - interactions
+    - correlations
+    - market_structure_signals
+    - advanced
+    - latent_factors
+    - self_awareness
+    - mia_memory
+    - neural_pipeline
+    - context_aware
+    - cross_asset
+    - derived_features
+    - trade_probability
+    - dynamic_features
+    - microstructure_metrics
+  description: |
+    Si enabled=true, les métadonnées des features sont envoyées à mia_dashboard.py via status_file.
+    Categories spécifie les groupes à afficher.
+
+feature_sets:
+  raw_data:
+    description: "Données brutes issues de l'API IQFeed"
+    features:
+      - name: "open"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Prix d'ouverture du contrat ES (futur CME)"
+      - name: "high"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Prix le plus haut du contrat ES"
+      - name: "low"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Prix le plus bas du contrat ES"
+      - name: "close"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Prix de clôture du contrat ES"
+      - name: "volume"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volume total du contrat ES"
+
+  order_flow:
+    description: "Métriques d'ordre flow calculées ou issues de IQFeed"
+    features:
+      - name: "ask_volume_total"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume total côté ask"
+      - name: "bid_volume_total"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume total côté bid"
+      - name: "delta_volume"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Différence ask - bid volume (orderflow_indicators.py, Phase 13)"
+      - name: "ofi_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "high"
+        description: "Score d'imbalance order flow (orderflow_indicators.py, Phase 13)"
+      - name: "vds"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Volume delta spread"
+      - name: "cumulative_delta"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Somme cumulative des différences ask/bid"
+      - name: "bid_volume_percent"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Pourcentage du volume côté bid"
+      - name: "ask_volume_percent"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Pourcentage du volume côté ask"
+      - name: "bid_stack_pull"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Valeur de stack/pull côté bid"
+      - name: "ask_stack_pull"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Valeur de stack/pull côté ask"
+      - name: "absorption_strength"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Force d'absorption dans l'ordre flow"
+      - name: "ask_bid_ticks_diff"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Différence entre ticks ask et bid"
+      - name: "bid_size_level_1"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille du bid au niveau 1"
+      - name: "ask_size_level_1"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille de l'ask au niveau 1"
+      - name: "bid_size_level_2"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille du bid au niveau 2"
+      - name: "ask_size_level_2"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille de l'ask au niveau 2"
+      - name: "bid_size_level_3"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille du bid au niveau 3"
+      - name: "ask_size_level_3"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille de l'ask au niveau 3"
+      - name: "bid_price_level_1"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Prix du bid au niveau 1"
+      - name: "ask_price_level_1"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Prix de l'ask au niveau 1"
+      - name: "bid_price_level_2"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Prix du bid au niveau 2"
+      - name: "ask_price_level_2"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Prix de l'ask au niveau 2"
+      - name: "bid_price_level_3"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Prix du bid au niveau 3"
+      - name: "ask_price_level_3"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Prix de l'ask au niveau 3"
+      - name: "bid_ask_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio des volumes bid/ask"
+      - name: "execution_aggressiveness_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score d'agressivité des exécutions (orderflow_indicators.py, Phase 13)"
+      - name: "order_imbalance"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "high"
+        description: "Imbalance des ordres dans le carnet (orderflow_indicators.py, Phase 13)"
+      - name: "delta_cumulative_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Somme cumulative des différences ask/bid sur 1 minute"
+      - name: "delta_cumulative_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Somme cumulative des différences ask/bid sur 5 minutes"
+      - name: "absorption_seed_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Force d'absorption sur 1 minute"
+      - name: "absorption_seed_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Force d'absorption sur 5 minutes"
+      - name: "ofi_score_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Score d'imbalance order flow sur 1 minute (orderflow_indicators.py, Phase 13)"
+      - name: "ofi_score_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Score d'imbalance order flow sur 5 minutes (orderflow_indicators.py, Phase 13)"
+      - name: "trade_frequency_1s"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Fréquence des trades sur 1 seconde (orderflow_indicators.py, Phase 13)"
+      - name: "tick_imbalance_1s"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Imbalance des ticks sur 1 seconde (orderflow_indicators.py, Phase 13)"
+      - name: "bid_ask_imbalance"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "high"
+        description: "Pression nette du carnet : (∑ bid_size_levels 1–5 - ∑ ask_size_levels 1–5) / (∑ bids + asks) (orderflow_indicators.py, Phase 13)"
+      - name: "level_4_size_bid"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille du bid au niveau 4"
+      - name: "level_4_size_ask"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille de l'ask au niveau 4"
+      - name: "level_5_size_bid"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille du bid au niveau 5"
+      - name: "level_5_size_ask"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taille de l'ask au niveau 5"
+      - name: "effective_spread"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Spread corrigé par le prix d’exécution : (execution_price - mid_price) × 2"
+      - name: "realized_spread"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Impact post-trade moyen"
+      - name: "trade_size_variance"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Variance des tailles de trades"
+      - name: "aggressive_trade_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Pourcentage de trades takers vs makers"
+      - name: "hidden_liquidity_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Ratio iceberg_orders / visible_book"
+      - name: "order_imbalance_decay"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Demi-vie de l’imbalance des ordres"
+      - name: "footprint_delta"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Delta quantité acheteurs/vendeurs par prix"
+      - name: "order_imbalance_persistence_15m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation de l’imbalance actuelle avec celle d’il y a 15 min"
+      - name: "order_imbalance_persistence_60m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation de l’imbalance actuelle avec celle d’il y a 60 min"
+      - name: "order_book_skew_10"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Asymétrie bid/ask sur les 10 premiers niveaux"
+      - name: "trade_flow_acceleration"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Accélération du flux de trades"
+      - name: "order_book_momentum"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Moment des variations de profondeur du carnet"
+      - name: "trade_size_skew_1m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Asymétrie des tailles de trades sur 1 minute"
+
+  option_metrics:
+    description: "Indicateurs dérivés des données d'options (IQFeed)"
+    features:
+      - name: "gex"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Net Gamma Exposure calculé à partir des options ES (options_metrics.py, Phase 13)"
+      - name: "pinning_strike"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Niveau de pinning calculé à partir des options ES (options_metrics.py, Phase 13)"
+      - name: "iv_atm"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité implicite ATM (at-the-money) (options_metrics.py, Phase 13)"
+      - name: "iv_skew"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Asymétrie de volatilité implicite : IV OTM calls - IV OTM puts (options_metrics.py, Phase 13)"
+      - name: "gex_slope"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Pente de l'exposition gamma nette (GEX) (options_metrics.py, Phase 13)"
+      - name: "gamma_peak_distance"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Distance au pic de gamma (points ES) (options_metrics.py, Phase 13)"
+      - name: "vanna_cliff_slope"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Pente du cliff de vanna (options_metrics.py, Phase 13)"
+      - name: "call_put_skew"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Asymétrie call/put (options_metrics.py, Phase 13)"
+      - name: "oi_peak_call_near"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Open interest peak pour calls proches (options_metrics.py, Phase 13)"
+      - name: "oi_peak_put_near"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Open interest peak pour puts proches (options_metrics.py, Phase 13)"
+      - name: "gamma_wall_call"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Mur de gamma pour calls (options_metrics.py, Phase 13)"
+      - name: "gamma_wall_put"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Mur de gamma pour puts (options_metrics.py, Phase 13)"
+      - name: "delta_notional_call"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Delta notionnel pour calls (options_metrics.py, Phase 13)"
+      - name: "delta_notional_put"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Delta notionnel pour puts (options_metrics.py, Phase 13)"
+      - name: "vanna_exposure"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Exposition vanna des options (options_metrics.py, Phase 13)"
+      - name: "charm_exposure"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Exposition charm des options (options_metrics.py, Phase 13)"
+      - name: "call_iv_atm"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité implicite ATM pour calls (options_metrics.py, Phase 13)"
+      - name: "put_iv_atm"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité implicite ATM pour puts (options_metrics.py, Phase 13)"
+      - name: "option_volume"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volume total des options ES (options_metrics.py, Phase 13)"
+      - name: "oi_concentration"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Concentration de l’open interest (options_metrics.py, Phase 13)"
+      - name: "option_skew"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Asymétrie des options ES (options_metrics.py, Phase 13)"
+      - name: "short_dated_iv_slope"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Pente de la courbe IV entre 7j et 30j : (IV30d - IV7d) / (30 - 7) (options_metrics.py, Phase 13)"
+      - name: "term_structure_skew"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Différence IV60d - IV30d : forme de la courbe de volatilité (options_metrics.py, Phase 13)"
+      - name: "risk_reversal_25"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "IV25Δ call - IV25Δ put : sentiment directionnel des options (options_metrics.py, Phase 13)"
+      - name: "butterfly_25"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Convexité locale : 0.5 × (IV25Δ call + IV25Δ put) - IVATM (options_metrics.py, Phase 13)"
+      - name: "oi_concentration_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Pourcentage de l’open interest dans les 3 strikes majeurs : (OI@top3_strikes) / (Total OI) (options_metrics.py, Phase 13)"
+      - name: "gamma_bucket_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Exposition gamma dans ±10% du spot : ∑(γ × OI) ±10% / ∑(γ × OI) total (options_metrics.py, Phase 13)"
+      - name: "delta_exposure_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Pression directionnelle normalisée : |∑(Δ × OI)| / ∑ OI (options_metrics.py, Phase 13)"
+      - name: "open_interest_change_1h"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Variation relative de l’OI sur 1h : (Total OI_now - Total OI_1h_ago) / Total OI_1h_ago (options_metrics.py, Phase 13)"
+      - name: "gamma_trend_30m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Vitesse de variation de l’exposition gamma sur 30 min : (Gamma_exposure_now - Gamma_exposure_30m_ago) / 30 (options_metrics.py, Phase 13)"
+      - name: "vega_bucket_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio demande volatilité OTM vs ATM : (∑ vega × OI OTM) / (∑ vega × OI ATM) (options_metrics.py, Phase 13)"
+      - name: "atm_straddle_cost"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Coût du straddle ATM : (mid_price_call_ATM + mid_price_put_ATM) / spot (options_metrics.py, Phase 13)"
+      - name: "spot_gamma_corridor"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Somme de l’exposition gamma (γ × OI) pour les strikes dans ±1% du spot (options_metrics.py, Phase 13)"
+      - name: "skewed_gamma_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Exposition gamma pondérée par la skew : ∑(γ × OI × |IV - IVATM|) (options_metrics.py, Phase 13)"
+      - name: "oi_sweep_count"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Nombre de strikes avec augmentation OI > X% en 1 min (X configurable) (options_metrics.py, Phase 13)"
+      - name: "vol_term_structure_slope"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Différence de volatilité implicite entre 30j et 7j : IV30j - IV7j (options_metrics.py, Phase 13)"
+      - name: "theta_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Somme de theta pondérée par l’open interest : ∑(θ × OI) (options_metrics.py, Phase 13)"
+      - name: "vega_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Somme de vega pondérée par l’open interest : ∑(vega × OI) (options_metrics.py, Phase 13)"
+      - name: "rho_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Somme de rho pondérée par l’open interest : ∑(ρ × OI) (options_metrics.py, Phase 13)"
+      - name: "vomma_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Somme de vomma pondérée par l’open interest : ∑(vomma × OI) (options_metrics.py, Phase 13)"
+      - name: "speed_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Somme de speed pondérée par l’open interest : ∑(speed × OI) (options_metrics.py, Phase 13)"
+      - name: "ultima_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Somme d’ultima pondérée par l’open interest : ∑(ultima × OI) (options_metrics.py, Phase 13)"
+      - name: "iv_acceleration"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Accélération de l’IV ATM sur 1h (options_metrics.py, Phase 13)"
+      - name: "oi_velocity"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Vélocité de l’OI total sur 30 min (options_metrics.py, Phase 13)"
+      - name: "call_put_volume_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio volume call/put (options_metrics.py, Phase 13)"
+      - name: "option_spread_cost"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Coût moyen des spreads bid/ask des options ATM (options_metrics.py, Phase 13)"
+      - name: "call_wall"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Mur de calls (spotgamma_recalculator.py, Phase 15)"
+      - name: "put_wall"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Mur de puts (spotgamma_recalculator.py, Phase 15)"
+      - name: "zero_gamma"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Niveau de gamma zéro (spotgamma_recalculator.py, Phase 15)"
+      - name: "dealer_position_bias"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Biais de position des dealers (spotgamma_recalculator.py, Phase 15)"
+      - name: "iv_rank_30d"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Rang de volatilité implicite sur 30 jours (options_metrics.py, Phase 13)"
+      - name: "key_strikes_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Premier strike clé (spotgamma_recalculator.py, Phase 15)"
+      - name: "key_strikes_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Deuxième strike clé (spotgamma_recalculator.py, Phase 15)"
+      - name: "key_strikes_3"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Troisième strike clé (spotgamma_recalculator.py, Phase 15)"
+      - name: "key_strikes_4"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Quatrième strike clé (spotgamma_recalculator.py, Phase 15)"
+      - name: "key_strikes_5"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Cinquième strike clé (spotgamma_recalculator.py, Phase 15)"
+      - name: "max_pain_strike"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Strike de douleur maximale (spotgamma_recalculator.py, Phase 15)"
+      - name: "net_gamma"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Gamma net (spotgamma_recalculator.py, Phase 15)"
+      - name: "dealer_zones_count"
+        type: "int"
+        source: "calculated"
+        status: "active"
+        range: [0, 10]
+        priority: "high"
+        description: "Nombre de zones de dealers (spotgamma_recalculator.py, Phase 15)"
+      - name: "vol_trigger"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Déclencheur de volatilité (spotgamma_recalculator.py, Phase 15)"
+      - name: "ref_px"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Prix de référence (spotgamma_recalculator.py, Phase 15)"
+      - name: "data_release"
+        type: "bool"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Indicateur de publication de données (spotgamma_recalculator.py, Phase 15)"
+      - name: "oi_peak_times_call"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Temps depuis le dernier pic OI pour calls (options_metrics.py, Phase 13)"
+      - name: "oi_peak_times_put"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Temps depuis le dernier pic OI pour puts (options_metrics.py, Phase 13)"
+      - name: "call_put_oi_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio OI call/put (options_metrics.py, Phase 13)"
+      - name: "gex_change"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Variation relative du GEX (options_metrics.py, Phase 13)"
+
+  clustering_pca:
+    description: "Indicateurs issus de clustering PCA sur données IQFeed"
+    features:
+      - name: "pca_orderflow_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Première composante principale de l'ordre flow"
+      - name: "pca_orderflow_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Deuxième composante principale de l'ordre flow"
+      - name: "pca_orderflow_3"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Troisième composante principale de l'ordre flow"
+      - name: "pca_price_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Première composante principale des prix"
+      - name: "pca_price_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Deuxième composante principale des prix"
+      - name: "pca_price_3"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Troisième composante principale des prix"
+      - name: "pca_iv_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Première composante principale de la volatilité implicite"
+      - name: "pca_iv_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Deuxième composante principale de la volatilité implicite"
+      - name: "pca_iv_3"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Troisième composante principale de la volatilité implicite"
+
+  trend:
+    description: "Indicateurs techniques de tendance"
+    features:
+      - name: "adx_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "high"
+        description: "ADX sur 14 périodes pour détecter la force de la tendance"
+      - name: "plus_di_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Directional Indicator positif (+DI)"
+      - name: "minus_di_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Directional Indicator négatif (-DI)"
+      - name: "vwap"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volume Weighted Average Price"
+      - name: "trend_strength"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "high"
+        description: "Force de la tendance basée sur ADX et DI"
+      - name: "momentum_10"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Momentum sur 10 périodes"
+      - name: "rsi_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "high"
+        description: "Relative Strength Index sur 14 périodes"
+      - name: "trend_rsi"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Variation du RSI pour détecter les tendances"
+      - name: "adx_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "ADX sur 7 périodes"
+      - name: "adx_21"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "ADX sur 21 périodes"
+      - name: "plus_di_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Directional Indicator positif (+DI) sur 7 périodes"
+      - name: "minus_di_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Directional Indicator négatif (-DI) sur 7 périodes"
+      - name: "plus_di_21"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Directional Indicator positif (+DI) sur 21 périodes"
+      - name: "minus_di_21"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Directional Indicator négatif (-DI) sur 21 périodes"
+      - name: "rsi_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Relative Strength Index sur 7 périodes"
+      - name: "rsi_21"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Relative Strength Index sur 21 périodes"
+      - name: "momentum_5"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Momentum sur 5 périodes"
+      - name: "momentum_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Momentum sur 20 périodes"
+      - name: "bollinger_upper_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Bande supérieure de Bollinger sur 20 périodes"
+      - name: "bollinger_lower_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Bande inférieure de Bollinger sur 20 périodes"
+      - name: "bollinger_width_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Largeur des bandes de Bollinger sur 20 périodes"
+      - name: "keltner_upper_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Bande supérieure de Keltner sur 20 périodes"
+      - name: "keltner_lower_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Bande inférieure de Keltner sur 20 périodes"
+      - name: "macd_line"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Ligne MACD"
+      - name: "macd_signal"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Ligne de signal MACD"
+      - name: "macd_histogram"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Histogramme MACD"
+      - name: "stochastic_k"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Stochastic %K"
+      - name: "stochastic_d"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Stochastic %D"
+      - name: "stochastic_k_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Stochastic %K sur 7 périodes"
+      - name: "stochastic_d_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Stochastic %D sur 7 périodes"
+      - name: "stochastic_k_21"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Stochastic %K sur 21 périodes"
+      - name: "stochastic_d_21"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 100]
+        priority: "medium"
+        description: "Stochastic %D sur 21 périodes"
+      - name: "ichimoku_tenkan"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ligne Tenkan-sen de l'Ichimoku"
+
+  volatility:
+    description: "Indicateurs de volatilité"
+    features:
+      - name: "atr_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Average True Range sur 14 périodes"
+      - name: "range_threshold"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Seuil de range basé sur ATR"
+      - name: "volatility_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance de la volatilité"
+      - name: "atr_normalized"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "ATR normalisé sur moyenne historique"
+      - name: "atr_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Average True Range sur 7 périodes"
+      - name: "atr_21"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Average True Range sur 21 périodes"
+      - name: "volatility_rolling_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité roulante sur 20 périodes"
+      - name: "volatility_trigger_proximity"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Proximité à un déclencheur de volatilité"
+      - name: "dynamic_spread_volatility"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité dynamique du spread"
+      - name: "implied_move_vs_actual_move"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Écart entre mouvement implicite et réel"
+      - name: "volatility_risk_premium"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Prime de risque de volatilité"
+      - name: "volatility_rolling_10"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité roulante sur 10 périodes"
+      - name: "volatility_rolling_30"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité roulante sur 30 périodes"
+      - name: "vol_historical_1d"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité historique sur 1 jour"
+      - name: "vol_historical_5d"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité historique sur 5 jours"
+      - name: "vol_trend_1h"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance de la volatilité sur 1 heure"
+      - name: "volatility_premium"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Prime implicite vs historique : IV30d - realized_vol_1d (méthode 1)"
+      - name: "implied_move_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Ratio IV ATM annualisée sur volatilité historique 30j : (IVATM × √T) / σ_hist_30d (méthode 1)"
+      - name: "vix_term_1m"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité implicite VIX à 1 mois (méthode 1)"
+      - name: "vix_term_3m"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité implicite VIX à 3 mois (méthode 1)"
+      - name: "vix_term_6m"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité implicite VIX à 6 mois (méthode 1)"
+      - name: "vix_term_1y"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité implicite VIX à 12 mois (méthode 1)"
+      - name: "vol_term_slope"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Pente VIX 3m - 1m (méthode 1)"
+      - name: "vol_term_curvature"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Différence entre pentes VIX (3m-1m vs 6m-3m) (méthode 1)"
+      - name: "realized_vol_5m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité historique sur 5 minutes : σ(price_returns) (méthode 1)"
+      - name: "realized_vol_15m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité historique sur 15 minutes (méthode 1)"
+      - name: "realized_vol_30m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité historique sur 30 minutes (méthode 1)"
+      - name: "volatility_breakout_signal"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Signal de breakout de volatilité (méthode 1)"
+
+  volume_profile:
+    description: "Indicateurs de profil de volume"
+    features:
+      - name: "poc"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Point of Control du profil de volume"
+      - name: "vah"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Value Area High du profil de volume"
+      - name: "val"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Value Area Low du profil de volume"
+      - name: "volume_at_poc"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Point of Control"
+      - name: "volume_at_vah"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Value Area High"
+      - name: "volume_at_val"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Value Area Low"
+      - name: "poc_price_1min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Point of Control sur 1 minute"
+      - name: "vah_price_1min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Value Area High sur 1 minute"
+      - name: "val_price_1min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Value Area Low sur 1 minute"
+      - name: "poc_price_5min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Point of Control sur 5 minutes"
+      - name: "vah_price_5min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Value Area High sur 5 minutes"
+      - name: "val_price_5min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Value Area Low sur 5 minutes"
+      - name: "volume_at_poc_1min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Point of Control sur 1 minute"
+      - name: "volume_at_vah_1min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Value Area High sur 1 minute"
+      - name: "volume_at_val_1min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Value Area Low sur 1 minute"
+      - name: "volume_at_poc_5min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Point of Control sur 5 minutes"
+      - name: "volume_at_vah_5min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Value Area High sur 5 minutes"
+      - name: "volume_at_val_5min"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume au Value Area Low sur 5 minutes"
+
+  smart_scores:
+    description: "Scores intelligents pour la prise de décision"
+    features:
+      - name: "breakout_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Score de probabilité de breakout"
+      - name: "mm_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Score d'activité des market makers"
+      - name: "hft_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score d'activité HFT"
+      - name: "trend_exhaustion_signal"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Signal d'épuisement de la tendance"
+      - name: "breakout_score_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de probabilité de breakout sur 1 minute"
+      - name: "breakout_score_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de probabilité de breakout sur 5 minutes"
+      - name: "mm_score_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Score d'activité des market makers sur 1 minute"
+      - name: "mm_score_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Score d'activité des market makers sur 5 minutes"
+      - name: "hft_score_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score d'activité HFT sur 1 minute"
+      - name: "hft_score_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score d'activité HFT sur 5 minutes"
+      - name: "trend_exhaustion_signal_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Signal d'épuisement de la tendance sur 1 minute"
+      - name: "trend_exhaustion_signal_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Signal d'épuisement de la tendance sur 5 minutes"
+      - name: "market_momentum_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de momentum global du marché"
+      - name: "trend_strength_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de force de la tendance"
+      - name: "volatility_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Score de volatilité (méthode 1)"
+      - name: "option_activity_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Score d’activité des options (méthode 2)"
+      - name: "cross_market_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score d’influence cross-market"
+      - name: "market_liquidity_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score global de liquidité du marché"
+      - name: "gamma_pressure_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Score de pression gamma (méthode 2)"
+
+ ```yaml
+  risk_management:
+    description: "Indicateurs pour la gestion des risques"
+    features:
+      - name: "drawdown_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Ratio de drawdown courant"
+      - name: "position_size_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Ratio de taille de position"
+      - name: "mae"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Maximum Adverse Excursion"
+      - name: "mfe"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Maximum Favorable Excursion"
+      - name: "sharpe_ratio_rolling_20"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Sharpe ratio roulant sur 20 périodes"
+      - name: "order_imbalance_persistence_15m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation de l’imbalance actuelle avec celle d’il y a 15 min"
+      - name: "order_imbalance_persistence_60m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation de l’imbalance actuelle avec celle d’il y a 60 min"
+      - name: "volatility_spike_indicator"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Détection de pics de volatilité"
+      - name: "liquidity_crunch_flag"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Détection d’élargissement bid-ask > seuil"
+      - name: "cross_asset_flow_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio flux ES / flux SPY"
+      - name: "trade_volatility_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Exposition du trade à la volatilité intraday"
+      - name: "overtrade_risk_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de risque de surtrading"
+      - name: "margin_risk_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de risque de marge"
+      - name: "position_risk_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de risque de position"
+      - name: "drawdown_risk_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de risque de drawdown"
+      - name: "portfolio_risk_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de risque du portefeuille"
+
+  contextualization:
+    description: "Indicateurs contextuels temporels et événementiels"
+    features:
+      - name: "time_of_day_sin"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante sinusoïdale de l'heure (context_aware_filter.py)"
+      - name: "day_of_week"
+        type: "int"
+        source: "calculated"
+        status: "active"
+        range: [0, 6]
+        priority: "medium"
+        description: "Jour de la semaine (0=lundi, 6=dimanche) (context_aware_filter.py)"
+      - name: "is_news_event"
+        type: "bool"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Indicateur d'événement macroéconomique (1=vrai) (context_aware_filter.py)"
+      - name: "liquidity_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de liquidité du marché (context_aware_filter.py)"
+      - name: "is_expiry_day"
+        type: "bool"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Indicateur de jour d'expiration des options (1=vrai) (context_aware_filter.py)"
+      - name: "event_volatility_impact"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Impact de volatilité des événements macro (context_aware_filter.py)"
+      - name: "event_timing_proximity"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Proximité temporelle à un événement macro (context_aware_filter.py)"
+      - name: "time_of_day_cos"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante cosinusoïdale de l'heure (context_aware_filter.py)"
+      - name: "day_of_week_sin"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante sinusoïdale du jour de la semaine (context_aware_filter.py)"
+      - name: "day_of_week_cos"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante cosinusoïdale du jour de la semaine (context_aware_filter.py)"
+      - name: "time_to_market_open"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Temps jusqu'à l'ouverture du marché (en minutes) (context_aware_filter.py)"
+      - name: "time_to_market_close"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Temps jusqu'à la fermeture du marché (en minutes) (context_aware_filter.py)"
+      - name: "news_frequency_1h"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Fréquence des nouvelles macro sur 1 heure (news_scraper.py, Phase 1)"
+      - name: "news_frequency_1d"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Fréquence des nouvelles macro sur 1 jour (news_scraper.py, Phase 1)"
+      - name: "news_sentiment_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "high"
+        description: "Score de sentiment des nouvelles (news_scraper.py, Phase 1)"
+      - name: "vix_rolling_mean"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Moyenne mobile du VIX (méthode 5)"
+      - name: "vix_rolling_std"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Écart-type mobile du VIX (méthode 5)"
+      - name: "news_impact_magnitude"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Magnitude de l’impact des nouvelles (news_scraper.py, Phase 1)"
+      - name: "news_sentiment_momentum"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Moment du sentiment des nouvelles (news_scraper.py, Phase 1)"
+      - name: "news_event_proximity"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Proximité temporelle aux événements macro (news_scraper.py, Phase 1)"
+      - name: "macro_event_severity"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Gravité des événements macro (context_aware_filter.py, méthode 5)"
+      - name: "time_to_expiry_proximity"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Proximité à l’expiration des options (context_aware_filter.py)"
+      - name: "market_open_volatility"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité à l’ouverture du marché (context_aware_filter.py)"
+      - name: "market_close_volatility"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité à la clôture du marché (context_aware_filter.py)"
+      - name: "economic_calendar_weight"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Poids des événements du calendrier économique (context_aware_filter.py)"
+      - name: "news_volume_1h"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume de nouvelles sur 1 heure (news_scraper.py, Phase 1)"
+      - name: "news_volume_1d"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volume de nouvelles sur 1 jour (news_scraper.py, Phase 1)"
+      - name: "session_volatility_index"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Indice de volatilité de la session (context_aware_filter.py)"
+      - name: "news_sentiment_acceleration"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Accélération du sentiment des nouvelles (news_scraper.py, Phase 1)"
+      - name: "macro_event_momentum"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Moment des événements macro (context_aware_filter.py, méthode 5)"
+      - name: "news_volume_spike"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Pic de volume de nouvelles sur 5 minutes (news_scraper.py, Phase 1)"
+      - name: "month_of_year_sin"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante sinusoïdale du mois de l’année (context_aware_filter.py)"
+      - name: "month_of_year_cos"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante cosinusoïdale du mois de l’année (context_aware_filter.py)"
+      - name: "week_of_month_sin"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante sinusoïdale de la semaine du mois (context_aware_filter.py)"
+      - name: "week_of_month_cos"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Composante cosinusoïdale de la semaine du mois (context_aware_filter.py)"
+      - name: "roll_yield_curve"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Mesure du contango/backwardation : (prix_future_near / spot - prix_future_far / spot) (context_aware_filter.py)"
+      - name: "seasonal_volatility_index"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité historique moyenne par mois (context_aware_filter.py)"
+
+  interactions:
+    description: "Interactions entre features pour capturer des relations complexes"
+    features:
+      - name: "absorption_strength_delta"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction entre absorption_strength et delta_volume"
+      - name: "volume_atr_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio volume / ATR_14"
+      - name: "gex_rsi"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction entre GEX et RSI_14"
+      - name: "gex_volatility_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction entre GEX et volatility_trend"
+      - name: "absorption_strength_delta_cumulative"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction entre absorption_strength et delta_cumulative_5min"
+      - name: "vix_es_correlation_stress"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation VIX/ES sous stress de marché"
+      - name: "oi_peak_times_vol"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Temps depuis le dernier pic OI × volume"
+      - name: "gamma_wall_spread"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Interaction net_gamma × (call_wall - put_wall)"
+      - name: "net_gamma_flow_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Ratio net_gamma / delta_volume"
+      - name: "theta_vega_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "high"
+        description: "Ratio theta_exposure / vega_exposure"
+      - name: "spoofing_news_impact"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction spoofing_score × news_impact_magnitude (microstructure_guard.py, Phase 15)"
+      - name: "volume_anomaly_rsi"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction volume_anomaly × rsi_14 (microstructure_guard.py, Phase 15)"
+
+  correlations:
+    description: "Corrélations avec d'autres actifs ou indices"
+    features:
+      - name: "vix_es_correlation"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation entre VIX et ES"
+      - name: "ndx_es_correlation"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation entre Nasdaq 100 et ES"
+      - name: "rut_es_correlation"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation entre Russell 2000 et ES"
+      - name: "bond_yield_delta"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Variation du rendement des obligations (10 ans)"
+      - name: "dollar_index_move"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Mouvement de l'indice du dollar US"
+      - name: "cross_asset_correlation_index"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Indice de corrélation cross-asset (ES, VIX, bonds)"
+      - name: "gold_correl"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation entre ES et l’or"
+      - name: "oil_correl"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation entre ES et le pétrole"
+      - name: "crypto_btc_correl"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation entre ES et Bitcoin"
+      - name: "treasury_10y_yield"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taux des obligations US à 10 ans"
+      - name: "yield_curve_slope"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Écart entre taux 10 ans et 2 ans"
+
+  market_structure_signals:
+    description: "Signaux de structure de marché"
+    features:
+      - name: "spy_lead_return"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Rendement avancé de SPY par rapport à ES"
+      - name: "bond_equity_risk_spread"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Spread de risque entre obligations et actions"
+      - name: "vol_skew_cross_index"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Asymétrie de volatilité entre indices"
+      - name: "sector_leader_correlation"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Corrélation avec les secteurs leaders"
+      - name: "vix_vvix_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio VIX / VVIX"
+
+  advanced:
+    description: "Indicateurs avancés et complexes"
+    features:
+      - name: "order_book_depth"
+        type: "float"
+        source: "IQFeed"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Profondeur totale du carnet d'ordres"
+      - name: "market_regime"
+        type: "int"
+        source: "calculated"
+        status: "active"
+        range: [0, 2]
+        priority: "high"
+        description: "Régime de marché (0=trend, 1=range, 2=defensive)"
+      - name: "time_to_expiry"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Temps jusqu'à l'expiration des options ES"
+      - name: "vix_term_structure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Structure à terme du VIX"
+      - name: "news_impact_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Score d'impact des nouvelles macro (news_scraper.py, Phase 1)"
+      - name: "quote_stuffing_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "low"
+        description: "Ratio de quote stuffing détecté (microstructure_guard.py, Phase 15)"
+      - name: "order_imbalance_persistence"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Persistance de l'imbalance des ordres"
+      - name: "order_imbalance_persistence_1min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Persistance de l'imbalance sur 1 minute"
+      - name: "order_imbalance_persistence_5min"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Persistance de l'imbalance sur 5 minutes"
+      - name: "price_memory_zone_overlap"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Chevauchement avec zones de prix mémorisées"
+      - name: "intraday_vol_cluster_id"
+        type: "int"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Identifiant du cluster de volatilité intraday"
+      - name: "oi_change_call_vs_put"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Variation OI call vs put"
+      - name: "skewness_open_interest"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Asymétrie de l'open interest"
+      - name: "put_call_parity_deviation"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Déviation de la parité put-call"
+      - name: "gamma_notional_distribution"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Distribution notionnelle du gamma"
+      - name: "delta_positioning_tilt"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Inclinaison du positionnement delta"
+      - name: "oi_buildup_rate"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taux d'accumulation de l'open interest"
+      - name: "zero_gamma_zone_width"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Largeur de la zone de gamma nul"
+      - name: "hiro_flow_strength"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Force du flux HIRO (microstructure_guard.py, Phase 15)"
+      - name: "gex_acceleration_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Score d'accélération du GEX"
+      - name: "gamma_flip_persistence_days"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Persistance des flips de gamma en jours"
+
+  latent_factors:
+    description: "Facteurs latents issus de t-SNE ou autres méthodes"
+    features:
+      - name: "latent_vol_regime_vec_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Première composante latente du régime de volatilité (t-SNE)"
+      - name: "latent_vol_regime_vec_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Deuxième composante latente du régime de volatilité (t-SNE)"
+      - name: "topic_vector_news_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Première composante latente des topics de news (NLP, news_scraper.py, Phase 1)"
+      - name: "topic_vector_news_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Deuxième composante latente des topics de news (NLP, news_scraper.py, Phase 1)"
+      - name: "latent_market_stress_vec"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Composante latente du stress de marché (t-SNE)"
+      - name: "latent_vol_regime_vec_3"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Troisième composante latente du régime de volatilité (t-SNE)"
+      - name: "latent_vol_regime_vec_4"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Quatrième composante latente du régime de volatilité (t-SNE)"
+      - name: "topic_vector_news_3"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Troisième composante latente des topics de news (NLP, news_scraper.py, Phase 1)"
+      - name: "topic_vector_news_4"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Quatrième composante latente des topics de news (NLP, news_scraper.py, Phase 1)"
+      - name: "latent_market_momentum_vec"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Composante latente du momentum de marché (t-SNE)"
+      - name: "latent_order_flow_vec_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Première composante latente du flux d’ordres (t-SNE)"
+      - name: "latent_order_flow_vec_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Deuxième composante latente du flux d’ordres (t-SNE)"
+      - name: "latent_regime_stability_vec"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Composante latente de la stabilité du régime (t-SNE)"
+      - name: "latent_vol_regime_vec_5"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Cinquième composante latente du régime de volatilité (t-SNE)"
+
+  self_awareness:
+    description: "Indicateurs d'auto-évaluation du modèle"
+    features:
+      - name: "confidence_drop_rate"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Taux de chute de la confiance des prédictions"
+      - name: "sgc_entropy"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Entropie du Self-Governing Classifier"
+      - name: "error_rolling_std"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Écart-type roulant des erreurs de prédiction"
+      - name: "prediction_confidence"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Confiance moyenne des prédictions"
+      - name: "model_drift_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de dérive du modèle"
+
+  mia_memory:
+    description: "Indicateurs de mémoire et apprentissage adaptatif"
+    features:
+      - name: "last_3_trades_success_rate"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Taux de succès des 3 derniers trades"
+      - name: "pattern_replay_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de reconnaissance des patterns répétés"
+      - name: "cluster_score_distance"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Distance au cluster de scores le plus proche"
+      - name: "memory_recall_accuracy"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Précision du rappel des patterns mémorisés"
+      - name: "pattern_confidence"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Confiance dans les patterns détectés"
+
+  neural_pipeline:
+    description: "Features extraites par neural_pipeline (LSTM, CNN, MLP)"
+    features:
+      - name: "neural_feature_0"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Première feature extraite par LSTM"
+      - name: "neural_feature_1"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Deuxième feature extraite par LSTM"
+      - name: "neural_feature_2"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Troisième feature extraite par LSTM"
+      - name: "neural_feature_3"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Quatrième feature extraite par LSTM"
+      - name: "neural_feature_4"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Cinquième feature extraite par LSTM"
+      - name: "neural_feature_5"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Sixième feature extraite par LSTM"
+      - name: "neural_feature_6"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Septième feature extraite par LSTM"
+      - name: "neural_feature_7"
+        type: "float"
+        source: "neural_pipeline (LSTM)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Huitième feature extraite par LSTM"
+      - name: "cnn_pressure"
+        type: "float"
+        source: "neural_pipeline (CNN)"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Pression extraite par CNN à partir de l'ordre flow"
+      - name: "predicted_volatility"
+        type: "float"
+        source: "neural_pipeline (MLP)"
+        status: "active"
+        range: [0, inf]
+        priority: "high"
+        description: "Volatilité prédite par MLP"
+      - name: "neural_regime"
+        type: "int"
+        source: "neural_pipeline (MLP)"
+        status: "active"
+        range: [0, 2]
+        priority: "high"
+        description: "Régime de marché prédit par MLP (0=trend, 1=range, 2=defensive)"
+
+  context_aware:
+    description: "Features contextuelles issues de context_aware_filter.py"
+    features:
+      - name: "news_volume_spike_1m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Pic de volume de nouvelles sur 1 minute (context_aware_filter.py)"
+      - name: "news_sentiment_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance du sentiment des nouvelles (context_aware_filter.py)"
+      - name: "macro_event_proximity_1h"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Proximité à un événement macro sur 1 heure (context_aware_filter.py)"
+      - name: "market_regime_shift"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Probabilité de changement de régime de marché (context_aware_filter.py)"
+      - name: "liquidity_trend_5m"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance de la liquidité sur 5 minutes (context_aware_filter.py)"
+      - name: "volatility_context_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score contextuel de volatilité (context_aware_filter.py)"
+      - name: "event_impact_duration"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Durée estimée de l’impact d’un événement (context_aware_filter.py)"
+      - name: "news_relevance_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Score de pertinence des nouvelles (context_aware_filter.py)"
+      - name: "macro_event_frequency"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Fréquence des événements macro (context_aware_filter.py)"
+      - name: "market_sentiment_shift"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Changement de sentiment de marché (context_aware_filter.py)"
+      - name: "news_volume_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance du volume de nouvelles (context_aware_filter.py)"
+      - name: "event_volatility_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance de l’impact de volatilité des événements (context_aware_filter.py)"
+      - name: "context_aware_feature_13"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature contextuelle générique 13 (context_aware_filter.py)"
+      - name: "context_aware_feature_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature contextuelle générique 14 (context_aware_filter.py)"
+      - name: "context_aware_feature_15"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature contextuelle générique 15 (context_aware_filter.py)"
+      - name: "context_aware_feature_16"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature contextuelle générique 16 (context_aware_filter.py)"
+
+  cross_asset:
+    description: "Features cross-asset issues de cross_asset_processor.py"
+    features:
+      - name: "es_spy_volume_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Ratio du volume ES/SPY (cross_asset_processor.py)"
+      - name: "gold_price_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance du prix de l’or (cross_asset_processor.py)"
+      - name: "oil_price_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance du prix du pétrole (cross_asset_processor.py)"
+      - name: "btc_price_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance du prix du Bitcoin (cross_asset_processor.py)"
+      - name: "yield_spread_10y_2y"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Écart entre rendements 10 ans et 2 ans (cross_asset_processor.py)"
+      - name: "cross_asset_momentum"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Moment cross-asset (cross_asset_processor.py)"
+
+  derived_features:
+    description: "Features dérivées calculées dans feature_pipeline.py"
+    features:
+      - name: "iv_atm_oi_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction iv_atm × call_put_oi_ratio"
+      - name: "gex_slope_vanna_skew"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction gex_slope × vanna_skew"
+      - name: "option_skew_volume"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction option_skew × volume"
+      - name: "iv_atm_rsi_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction iv_atm × rsi_14"
+      - name: "gex_slope_net_gamma"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction gex_slope × net_gamma"
+      - name: "option_skew_atr_14"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction option_skew × atr_14"
+      - name: "iv_atm_vwap"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction iv_atm × vwap"
+      - name: "gex_slope_oi_sweep"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction gex_slope × oi_sweep_count"
+      - name: "option_skew_theta_exposure"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction option_skew × theta_exposure"
+      - name: "iv_atm_news_spike"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction iv_atm × news_volume_spike"
+      - name: "iv_atm_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance de iv_atm sur 5 périodes"
+      - name: "option_skew_momentum"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Moment de option_skew sur 5 périodes"
+      - name: "gex_slope_acceleration"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Accélération de gex_slope sur 5 périodes"
+      - name: "vanna_skew_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Ratio vanna_skew / vanna_exposure"
+      - name: "micro_vol_acceleration"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Accélération de microstructure_volatility (microstructure_guard.py, Phase 15)"
+      - name: "liquidity_absorption_trend"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Tendance de liquidity_absorption_rate"
+      - name: "depth_imbalance_momentum"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Moment de depth_imbalance"
+      - name: "iv_atm_spread"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction iv_atm × bid_ask_spread"
+      - name: "gex_slope_volume_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Ratio gex_slope / volume"
+      - name: "option_skew_vix_correlation"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Interaction option_skew × vix_es_correlation"
+
+  trade_probability:
+    description: "Feature de probabilité de succès des trades"
+    features:
+      - name: "trade_success_prob"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Probabilité de succès du trade (TradeProbabilityPredictor)"
+
+  dynamic_features:
+    description: "Features dynamiques générées par le pipeline (placeholders temporaires)"
+    features:
+      - name: "neural_dynamic_feature_1"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 1 (neural_pipeline)"
+      - name: "neural_dynamic_feature_2"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 2 (neural_pipeline)"
+      - name: "neural_dynamic_feature_3"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 3 (neural_pipeline)"
+      - name: "neural_dynamic_feature_4"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 4 (neural_pipeline)"
+      - name: "neural_dynamic_feature_5"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 5 (neural_pipeline)"
+      - name: "neural_dynamic_feature_6"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 6 (neural_pipeline)"
+      - name: "neural_dynamic_feature_7"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 7 (neural_pipeline)"
+      - name: "neural_dynamic_feature_8"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 8 (neural_pipeline)"
+      - name: "neural_dynamic_feature_9"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 9 (neural_pipeline)"
+      - name: "neural_dynamic_feature_10"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 10 (neural_pipeline)"
+      - name: "neural_dynamic_feature_11"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-inf, inf]
+        priority: "medium"
+        description: "Feature dynamique générique 11 (neural_pipeline)"
+
+  microstructure_metrics:
+    description: "Métriques de microstructure de marché issues de microstructure_guard.py"
+    features:
+      - name: "spoofing_score"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Score de détection de spoofing dans le carnet d'ordres (microstructure_guard.py, Phase 15)"
+      - name: "volume_anomaly"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "high"
+        description: "Score d'anomalie de volume dans le flux de trades (microstructure_guard.py, Phase 15)"
+      - name: "quote_stuffing_intensity"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Intensité du quote stuffing détectée (microstructure_guard.py, Phase 15)"
+      - name: "order_cancellation_ratio"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, 1]
+        priority: "medium"
+        description: "Ratio d'annulation des ordres dans le carnet (microstructure_guard.py, Phase 15)"
+      - name: "microstructure_volatility"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Volatilité à haute fréquence du carnet d'ordres (microstructure_guard.py, Phase 15)"
+      - name: "liquidity_absorption_rate"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [0, inf]
+        priority: "medium"
+        description: "Taux d'absorption de la liquidité par les ordres agressifs (microstructure_guard.py, Phase 15)"
+      - name: "depth_imbalance"
+        type: "float"
+        source: "calculated"
+        status: "active"
+        range: [-1, 1]
+        priority: "medium"
+        description: "Imbalance de profondeur entre bid et ask (microstructure_guard.py, Phase 15)"
+
+  ES:
+    training:
+      - open
+      - high
+      - low
+      - close
+      - volume
+      - ask_volume_total
+      - bid_volume_total
+      - delta_volume
+      - ofi_score
+      - vds
+      - cumulative_delta
+      - bid_volume_percent
+      - ask_volume_percent
+      - bid_stack_pull
+      - ask_stack_pull
+      - absorption_strength
+      - ask_bid_ticks_diff
+      - bid_size_level_1
+      - ask_size_level_1
+      - bid_size_level_2
+      - ask_size_level_2
+      - bid_size_level_3
+      - ask_size_level_3
+      - bid_price_level_1
+      - ask_price_level_1
+      - bid_price_level_2
+      - ask_price_level_2
+      - bid_price_level_3
+      - ask_price_level_3
+      - bid_ask_ratio
+      - execution_aggressiveness_score
+      - order_imbalance
+      - delta_cumulative_1min
+      - delta_cumulative_5min
+      - absorption_seed_1min
+      - absorption_seed_5min
+      - ofi_score_1min
+      - ofi_score_5min
+      - trade_frequency_1s
+      - tick_imbalance_1s
+      - bid_ask_imbalance
+      - level_4_size_bid
+      - level_4_size_ask
+      - level_5_size_bid
+      - level_5_size_ask
+      - effective_spread
+      - realized_spread
+      - trade_size_variance
+      - aggressive_trade_ratio
+      - hidden_liquidity_ratio
+      - order_imbalance_decay
+      - footprint_delta
+      - order_imbalance_persistence_15m
+      - order_imbalance_persistence_60m
+      - order_book_skew_10
+      - trade_flow_acceleration
+      - order_book_momentum
+      - trade_size_skew_1m
+      - gex
+      - pinning_strike
+      - iv_atm
+      - iv_skew
+      - gex_slope
+      - gamma_peak_distance
+      - vanna_cliff_slope
+      - call_put_skew
+      - oi_peak_call_near
+      - oi_peak_put_near
+      - gamma_wall_call
+      - gamma_wall_put
+      - delta_notional_call
+      - delta_notional_put
+      - vanna_exposure
+      - charm_exposure
+      - call_iv_atm
+      - put_iv_atm
+      - option_volume
+      - oi_concentration
+      - option_skew
+      - short_dated_iv_slope
+      - term_structure_skew
+      - risk_reversal_25
+      - butterfly_25
+      - oi_concentration_ratio
+      - gamma_bucket_exposure
+      - delta_exposure_ratio
+      - open_interest_change_1h
+      - gamma_trend_30m
+      - vega_bucket_ratio
+      - atm_straddle_cost
+      - spot_gamma_corridor
+      - skewed_gamma_exposure
+      - oi_sweep_count
+      - vol_term_structure_slope
+      - theta_exposure
+      - vega_exposure
+      - rho_exposure
+      - vomma_exposure
+      - speed_exposure
+      - ultima_exposure
+      - iv_acceleration
+      - oi_velocity
+      - call_put_volume_ratio
+      - option_spread_cost
+      - call_wall
+      - put_wall
+      - zero_gamma
+      - dealer_position_bias
+      - iv_rank_30d
+      - key_strikes_1
+      - key_strikes_2
+      - key_strikes_3
+      - key_strikes_4
+      - key_strikes_5
+      - max_pain_strike
+      - net_gamma
+      - dealer_zones_count
+      - vol_trigger
+      - ref_px
+      - data_release
+      - oi_peak_times_call
+      - oi_peak_times_put
+      - call_put_oi_ratio
+      - gex_change
+      - pca_orderflow_1
+      - pca_orderflow_2
+      - pca_orderflow_3
+      - pca_price_1
+      - pca_price_2
+      - pca_price_3
+      - pca_iv_1
+      - pca_iv_2
+      - pca_iv_3
+      - adx_14
+      - plus_di_14
+      - minus_di_14
+      - vwap
+      - trend_strength
+      - momentum_10
+      - rsi_14
+      - trend_rsi
+      - adx_7
+      - adx_21
+      - plus_di_7
+      - minus_di_7
+      - plus_di_21
+      - minus_di_21
+      - rsi_7
+      - rsi_21
+      - momentum_5
+      - momentum_20
+      - bollinger_upper_20
+      - bollinger_lower_20
+      - bollinger_width_20
+      - keltner_upper_20
+      - keltner_lower_20
+      - macd_line
+      - macd_signal
+      - macd_histogram
+      - stochastic_k
+      - stochastic_d
+      - stochastic_k_7
+      - stochastic_d_7
+      - stochastic_k_21
+      - stochastic_d_21
+      - ichimoku_tenkan
+      - atr_14
+      - range_threshold
+      - volatility_trend
+      - atr_normalized
+      - atr_7
+      - atr_21
+      - volatility_rolling_20
+      - volatility_trigger_proximity
+      - dynamic_spread_volatility
+      - implied_move_vs_actual_move
+      - volatility_risk_premium
+      - volatility_rolling_10
+      - volatility_rolling_30
+      - vol_historical_1d
+      - vol_historical_5d
+      - vol_trend_1h
+      - volatility_premium
+      - implied_move_ratio
+      - vix_term_1m
+      - vix_term_3m
+      - vix_term_6m
+      - vix_term_1y
+      - vol_term_slope
+      - vol_term_curvature
+      - realized_vol_5m
+      - realized_vol_15m
+      - realized_vol_30m
+      - volatility_breakout_signal
+      - poc
+      - vah
+      - val
+      - volume_at_poc
+      - volume_at_vah
+      - volume_at_val
+      - poc_price_1min
+      - vah_price_1min
+      - val_price_1min
+      - poc_price_5min
+      - vah_price_5min
+      - val_price_5min
+      - volume_at_poc_1min
+      - volume_at_vah_1min
+      - volume_at_val_1min
+      - volume_at_poc_5min
+      - volume_at_vah_5min
+      - volume_at_val_5min
+      - breakout_score
+      - mm_score
+      - hft_score
+      - trend_exhaustion_signal
+      - breakout_score_1min
+      - breakout_score_5min
+      - mm_score_1min
+      - mm_score_5min
+      - hft_score_1min
+      - hft_score_5min
+      - trend_exhaustion_signal_1min
+      - trend_exhaustion_signal_5min
+      - market_momentum_score
+      - trend_strength_score
+      - volatility_score
+      - option_activity_score
+      - cross_market_score
+      - market_liquidity_score
+      - gamma_pressure_score
+      - drawdown_ratio
+      - position_size_ratio
+      - mae
+      - mfe
+      - sharpe_ratio_rolling_20
+      - volatility_spike_indicator
+      - liquidity_crunch_flag
+      - cross_asset_flow_ratio
+      - trade_volatility_exposure
+      - overtrade_risk_score
+      - margin_risk_score
+      - position_risk_score
+      - drawdown_risk_score
+      - portfolio_risk_score
+      - time_of_day_sin
+      - day_of_week
+      - is_news_event
+      - liquidity_score
+      - is_expiry_day
+      - event_volatility_impact
+      - event_timing_proximity
+      - time_of_day_cos
+      - day_of_week_sin
+      - day_of_week_cos
+      - time_to_market_open
+      - time_to_market_close
+      - news_frequency_1h
+      - news_frequency_1d
+      - news_sentiment_score
+      - vix_rolling_mean
+      - vix_rolling_std
+      - news_impact_magnitude
+      - news_sentiment_momentum
+      - news_event_proximity
+      - macro_event_severity
+      - time_to_expiry_proximity
+      - market_open_volatility
+      - market_close_volatility
+      - economic_calendar_weight
+      - news_volume_1h
+      - news_volume_1d
+      - session_volatility_index
+      - news_sentiment_acceleration
+      - macro_event_momentum
+      - news_volume_spike
+      - month_of_year_sin
+      - month_of_year_cos
+      - week_of_month_sin
+      - week_of_month_cos
+      - roll_yield_curve
+      - seasonal_volatility_index
+      - absorption_strength_delta
+      - volume_atr_ratio
+      - gex_rsi
+      - gex_volatility_trend
+      - absorption_strength_delta_cumulative
+      - vix_es_correlation_stress
+      - oi_peak_times_vol
+      - gamma_wall_spread
+      - net_gamma_flow_ratio
+      - theta_vega_ratio
+      - spoofing_news_impact
+      - volume_anomaly_rsi
+      - vix_es_correlation
+      - ndx_es_correlation
+      - rut_es_correlation
+      - bond_yield_delta
+      - dollar_index_move
+      - cross_asset_correlation_index
+      - gold_correl
+      - oil_correl
+      - crypto_btc_correl
+      - treasury_10y_yield
+      - yield_curve_slope
+      - spy_lead_return
+      - bond_equity_risk_spread
+      - vol_skew_cross_index
+      - sector_leader_correlation
+      - vix_vvix_ratio
+      - order_book_depth
+      - market_regime
+      - time_to_expiry
+      - vix_term_structure
+      - news_impact_score
+      - quote_stuffing_ratio
+      - order_imbalance_persistence
+      - order_imbalance_persistence_1min
+      - order_imbalance_persistence_5min
+      - price_memory_zone_overlap
+      - intraday_vol_cluster_id
+      - oi_change_call_vs_put
+      - skewness_open_interest
+      - put_call_parity_deviation
+      - gamma_notional_distribution
+      - delta_positioning_tilt
+      - oi_buildup_rate
+      - zero_gamma_zone_width
+      - hiro_flow_strength
+      - gex_acceleration_score
+      - gamma_flip_persistence_days
+      - latent_vol_regime_vec_1
+      - latent_vol_regime_vec_2
+      - topic_vector_news_1
+      - topic_vector_news_2
+      - latent_market_stress_vec
+      - latent_vol_regime_vec_3
+      - latent_vol_regime_vec_4
+      - topic_vector_news_3
+      - topic_vector_news_4
+      - latent_market_momentum_vec
+      - latent_order_flow_vec_1
+      - latent_order_flow_vec_2
+      - latent_regime_stability_vec
+      - latent_vol_regime_vec_5
+      - confidence_drop_rate
+      - sgc_entropy
+      - error_rolling_std
+      - prediction_confidence
+      - model_drift_score
+      - last_3_trades_success_rate
+      - pattern_replay_score
+      - cluster_score_distance
+      - memory_recall_accuracy
+      - pattern_confidence
+      - neural_feature_0
+      - neural_feature_1
+      - neural_feature_2
+      - neural_feature_3
+      - neural_feature_4
+      - neural_feature_5
+      - neural_feature_6
+      - neural_feature_7
+      - cnn_pressure
+      - predicted_volatility
+      - neural_regime
+      - news_volume_spike_1m
+      - news_sentiment_trend
+      - macro_event_proximity_1h
+      - market_regime_shift
+      - liquidity_trend_5m
+      - volatility_context_score
+      - event_impact_duration
+      - news_relevance_score
+      - macro_event_frequency
+      - market_sentiment_shift
+      - news_volume_trend
+      - event_volatility_trend
+      - context_aware_feature_13
+      - context_aware_feature_14
+      - context_aware_feature_15
+      - context_aware_feature_16
+      - es_spy_volume_ratio
+      - gold_price_trend
+      - oil_price_trend
+      - btc_price_trend
+      - yield_spread_10y_2y
+      - cross_asset_momentum
+      - iv_atm_oi_ratio
+      - gex_slope_vanna_skew
+      - option_skew_volume
+      - iv_atm_rsi_14
+      - gex_slope_net_gamma
+      - option_skew_atr_14
+      - iv_atm_vwap
+      - gex_slope_oi_sweep
+      - option_skew_theta_exposure
+      - iv_atm_news_spike
+      - iv_atm_trend
+      - option_skew_momentum
+      - gex_slope_acceleration
+      - vanna_skew_ratio
+      - micro_vol_acceleration
+      - liquidity_absorption_trend
+      - depth_imbalance_momentum
+      - iv_atm_spread
+      - gex_slope_volume_ratio
+      - option_skew_vix_correlation
+      - trade_success_prob
+      - neural_dynamic_feature_1
+      - neural_dynamic_feature_2
+      - neural_dynamic_feature_3
+      - neural_dynamic_feature_4
+      - neural_dynamic_feature_5
+      - neural_dynamic_feature_6
+      - neural_dynamic_feature_7
+      - neural_dynamic_feature_8
+      - neural_dynamic_feature_9
+      - neural_dynamic_feature_10
+      - neural_dynamic_feature_11
+      - spoofing_score
+      - volume_anomaly
+      - quote_stuffing_intensity
+      - order_cancellation_ratio
+      - microstructure_volatility
+      - liquidity_absorption_rate
+      - depth_imbalance```yaml
+    inference:
+      - rsi_14
+      - ofi_score
+      - delta_volume
+      - absorption_strength
+      - order_imbalance
+      - bid_ask_imbalance
+      - effective_spread
+      - gex
+      - iv_atm
+      - iv_skew
+      - gex_slope
+      - option_volume
+      - oi_concentration
+      - option_skew
+      - short_dated_iv_slope
+      - risk_reversal_25
+      - oi_concentration_ratio
+      - gamma_bucket_exposure
+      - delta_exposure_ratio
+      - gamma_trend_30m
+      - spot_gamma_corridor
+      - skewed_gamma_exposure
+      - vol_term_structure_slope
+      - theta_exposure
+      - vega_exposure
+      - call_wall
+      - put_wall
+      - zero_gamma
+      - key_strikes_1
+      - key_strikes_2
+      - key_strikes_3
+      - key_strikes_4
+      - key_strikes_5
+      - max_pain_strike
+      - net_gamma
+      - dealer_zones_count
+      - vol_trigger
+      - ref_px
+      - data_release
+      - adx_14
+      - vwap
+      - trend_strength
+      - atr_14
+      - volatility_premium
+      - implied_move_ratio
+      - vix_term_1m
+      - vix_term_3m
+      - vix_term_6m
+      - vix_term_1y
+      - vol_term_slope
+      - realized_vol_5m
+      - volatility_breakout_signal
+      - poc
+      - breakout_score
+      - volatility_score
+      - option_activity_score
+      - gamma_pressure_score
+      - drawdown_ratio
+      - position_size_ratio
+      - volatility_spike_indicator
+      - liquidity_crunch_flag
+      - is_news_event
+      - is_expiry_day
+      - event_volatility_impact
+      - news_sentiment_score
+      - news_impact_magnitude
+      - news_event_proximity
+      - macro_event_severity
+      - gamma_wall_spread
+      - theta_vega_ratio
+      - trade_success_prob
+      - neural_dynamic_feature_1
+      - neural_dynamic_feature_2
+      - neural_dynamic_feature_3
+      - neural_dynamic_feature_4
+      - neural_dynamic_feature_5
+      - neural_dynamic_feature_6
+      - neural_dynamic_feature_7
+      - neural_dynamic_feature_8
+      - neural_dynamic_feature_9
+      - neural_dynamic_feature_10
+      - neural_dynamic_feature_11
+      - spoofing_score
+      - volume_anomaly
+      - news_volume_spike
+      - month_of_year_sin
+      - predicted_volatility
+      - neural_regime
+      - news_impact_score
+      - vix_rolling_mean
+      - vix_rolling_std
+      - pca_orderflow_1
+      - pca_price_1
+      - pca_iv_1
+      - order_book_depth
+      - market_regime
+      - confidence_drop_rate
+      - last_3_trades_success_rate
+      - pattern_replay_score
+      - news_sentiment_momentum
+      - macro_event_proximity_1h
+      - market_regime_shift
+      - volatility_context_score
+      - news_relevance_score
+      - market_sentiment_shift
+      - es_spy_volume_ratio
+      - gold_price_trend
+      - iv_atm_oi_ratio
+      - gex_slope_vanna_skew
+      - option_skew_volume
+      - iv_atm_rsi_14
+      - gex_slope_net_gamma
+      - option_skew_atr_14
+      - iv_atm_vwap
+      - gex_slope_oi_sweep
+      - option_skew_theta_exposure
+      - iv_atm_news_spike
+      - iv_atm_trend
+      - option_skew_momentum
+      - gex_slope_acceleration
+      - vanna_skew_ratio
+      - micro_vol_acceleration
+      - liquidity_absorption_trend
+      - depth_imbalance_momentum
+      - iv_atm_spread
+      - gex_slope_volume_ratio
+      - option_skew_vix_correlation
+  MNQ:
+    training:
+      - open
+      - high
+      - low
+      - close
+      - volume
+      - delta_volume
+      - ofi_score
+      - bid_ask_imbalance
+      - effective_spread
+      - iv_atm
+      - iv_skew
+      - option_skew
+      - call_wall
+      - put_wall
+      - net_gamma
+      - key_strikes_1
+      - key_strikes_2
+      - key_strikes_3
+      - adx_14
+      - vwap
+      - rsi_14
+      - atr_14
+      - volatility_score
+      - option_activity_score
+      - trade_success_prob
+      - neural_dynamic_feature_1
+      - neural_dynamic_feature_2
+      - neural_dynamic_feature_3
+      - spoofing_score
+      - volume_anomaly
+      - news_volume_spike
+      - predicted_volatility
+      - neural_regime
+    inference:
+      - rsi_14
+      - ofi_score
+      - iv_atm
+      - iv_skew
+      - option_skew
+      - net_gamma
+      - volatility_score
+      - trade_success_prob
+      - neural_dynamic_feature_1
+      - spoofing_score
+      - volume_anomaly
+      - news_volume_spike
+      - predicted_volatility
+      - neural_regime

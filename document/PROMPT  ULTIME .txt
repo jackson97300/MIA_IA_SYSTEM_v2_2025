@@ -1,0 +1,565 @@
+Prompt pour le développement de MIA_IA_SYSTEM_v2_2025 (Version 2.0 - Béton Armé)
+Métadonnées du projet
+
+Projet : MIA_IA_SYSTEM_v2_2025
+Description : Système de trading automatisé pour les futures E-mini S&P 500 (ES) utilisant l’API Teton de Sierra Chart via AMP Futures.
+Version : 2.1.3
+Date actuelle : 13 mai 2025
+Phase : Harmonisation (~70 fichiers), standardisation, intégration des 27 idées initiales, optimisations avancées, adoption d’une approche hybride pour les features, et utilisation exclusive d’IQFeed comme fournisseur de données.
+
+Objectif principal
+Améliorer les capacités du système tout en préservant 100 % du code existant pour éviter toute régression. Les modifications doivent être des ajouts (nouvelles fonctions, blocs de code) sauf si une suppression ou modification est explicitement validée par l’utilisateur après un rapport détaillé des conflits. Chaque fichier modifié doit être synchronisé à la version 2.1.3 (date : 2025-05-13) et accompagné de tests unitaires pour valider les ajouts et préserver les fonctionnalités existantes.
+Contexte
+
+Pipeline : Entraînement avec 350 features, inférence avec top 150 SHAP features, fallback à un cache ou une liste statique de 150 features.
+Source de données : IQFeed exclusif via pyiqfeed (protocole 6.2), configuré dans config/credentials.yaml et config/market_config.yaml.
+Environnement : GPU A100 pour Transformer, SHAP, et analyse NLP (BERT/VADER).
+Performances cibles : Win rate de 83-88 % (86-90 % avec SAC spécialisés, Transformer, feedback loop).
+
+Phases de développement (1-18)
+Les 27 idées initiales sont organisées en 18 phases pour structurer l’intégration des fonctionnalités :
+
+Phase 1 : Collecte et traitement des nouvelles (news_scraper.py, news_analyzer.py) :
+
+Objectif : Intégrer l’analyse de sentiment des nouvelles IQFeed pour enrichir les features contextuelles.
+Fichiers : news_analyzer.py, data_provider.py, feature_pipeline.py.
+Métriques : sentiment_score, news_impact_score, news_frequency_1h, news_frequency_1d, topic_vector_news_*.
+Actions : Traiter les flux DTN News Room, Benzinga Pro, Dow Jones avec VADER (prototype) ou BERT (production). Paralléliser sur A100 avec cache (data/news_cache/).
+
+
+Phase 2 : Données de marché brutes (data_provider.py) :
+
+Objectif : Centraliser la collecte de données IQFeed (OHLC, carnet d’ordres, options, cross-market).
+Fichiers : data_provider.py, tests/test_data_provider.py.
+Métriques : open, close, bid_size_level_1, ask_size_level_1, es_spy_volume_ratio.
+Actions : Implémenter IQFeedProvider avec retries (max 3, délai 2^attempt). Supprimer dxFeed après validation.
+
+
+Phase 3 : Features d’ordre et flux (order_flow.py) :
+
+Objectif : Générer des features basées sur le carnet d’ordres et le flux d’ordres.
+Fichiers : order_flow.py, feature_pipeline.py.
+Métriques : delta_volume, ofi_score, orderbook_imbalance, depth_imbalance.
+Actions : Calculer les métriques à partir des données IQFeed DOM.
+
+
+Phase 4 : Features de tendance (trend_indicators.py) :
+
+Objectif : Capturer les tendances du marché.
+Fichiers : trend_indicators.py, feature_pipeline.py.
+Métriques : rsi_14, adx_14, spy_lead_return.
+Actions : Générer les indicateurs techniques à partir des données OHLC.
+
+
+Phase 5 : Features de volatilité (volatility_indicators.py) :
+
+Objectif : Mesurer la volatilité pour ajuster les stratégies.
+Fichiers : volatility_indicators.py, feature_pipeline.py.
+Métriques : atr_14, vix_es_correlation, latent_vol_regime_vec_*.
+Actions : Intégrer les données VIX et calculer les métriques de volatilité.
+
+
+Phase 6 : Pipeline neuronal (neural_pipeline.py) :
+
+Objectif : Générer des features avancées via CNN et modèles neuronaux.
+Fichiers : neural_pipeline.py, feature_pipeline.py.
+Métriques : cnn_pressure, neural_regime, neural_dynamic_feature_1.
+Actions : Utiliser les données IQFeed pour entraîner des CNN légers.
+
+
+Phase 7 : Mémoire contextuelle (market_memory.py) :
+
+Objectif : Stocker et réutiliser les patterns de marché via clusterisation.
+Fichiers : market_memory.py, pca_orderflow.py, feature_pipeline.py.
+Métriques : pattern_replay_score, clusters dans market_memory.db.
+Actions : Appliquer PCA (10-15 dimensions, 95 % variance) et K-means (10 clusters).
+
+
+Phase 8 : Auto-conscience (self_awareness.py) :
+
+Objectif : Mesurer la confiance et la robustesse des prédictions.
+Fichiers : self_awareness.py, feature_pipeline.py.
+Métriques : confidence_drop_rate, prediction_uncertainty.
+Actions : Calculer les métriques à partir des sorties des modèles SAC.
+
+
+Phase 9 : Attention contextuelle (transformer_policy.py) :
+
+Objectif : Pondérer dynamiquement les features par régime via Transformer.
+Fichiers : transformer_policy.py, main_router.py.
+Métriques : Attention weights pour 150 SHAP features.
+Actions : Configurer Transformer (d_model=128, num_layers=4, num_heads=8).
+
+
+Phase 10 : Apprentissage en ligne (adaptive_learner.py) :
+
+Objectif : Ajuster les modèles en temps réel avec les données récentes.
+Fichiers : adaptive_learner.py, train_sac_auto.py.
+Métriques : online_learning_rate, reward_granularity.
+Actions : Implémenter un feedback loop avec rewards granulaires.
+
+
+Phase 11 : Détection des régimes (detect_regime.py) :
+
+Objectif : Identifier les régimes (trend, range, défensif).
+Fichiers : detect_regime.py, main_router.py.
+Métriques : neural_regime, regime_probability.
+Actions : Utiliser les 350/150 SHAP features pour la classification.
+
+
+Phase 12 : Gestion des risques (risk_controller.py) :
+
+Objectif : Limiter les pertes et ajuster les positions.
+Fichiers : risk_controller.py, trade_executor.py.
+Métriques : stop_loss_ratio, position_size_adjustment.
+Actions : Intégrer les métriques de volatilité et de régime.
+
+
+Phase 13 : Métriques d’options (orderflow_indicators.py, options_metrics.py) :
+
+Objectif : Capturer les dynamiques des options pour enrichir les stratégies.
+Fichiers : options_metrics.py, feature_pipeline.py.
+Métriques : gex, iv_atm, option_skew, latent_option_skew_vec.
+Actions : Traiter les données d’options IQFeed.
+
+
+Phase 14 : Régularisation dynamique (train_sac.py) :
+
+Objectif : Ajuster la régularisation selon la volatilité.
+Fichiers : train_sac.py, transformer_policy.py.
+Métriques : dynamic_dropout_rate, l2_regularization.
+Actions : Configurer les hyperparamètres par régime.
+
+
+Phase 15 : Garde-fou microstructure (microstructure_guard.py, spotgamma_recalculator.py) :
+
+Objectif : Détecter les anomalies de microstructure (ex. : spoofing).
+Fichiers : microstructure_guard.py, feature_pipeline.py.
+Métriques : spoofing_score, volume_anomaly, latent_microstructure_vec.
+Actions : Analyser les données DOM IQFeed.
+
+
+Phase 16 : Ensemble et transfer learning (prediction_aggregator.py, finetune_utils.py) :
+
+Objectif : Combiner les prédictions SAC/PPO/DDPG et réutiliser les poids.
+Fichiers : prediction_aggregator.py, finetune_utils.py.
+Métriques : ensemble_confidence, transfer_learning_score.
+Actions : Implémenter un vote pondéré et fine-tuning.
+
+
+Phase 17 : Interprétabilité SHAP (feature_pipeline.py) :
+
+Objectif : Fournir une analyse SHAP pour les 350 features.
+Fichiers : feature_pipeline.py, analyse_results.py.
+Métriques : shap_values, feature_importance.
+Actions : Générer data/features/shap_full_daily.csv avec joblib.
+
+
+Phase 18 : Optimisation HFT et trading rapide :
+
+Objectif : Intégrer des métriques pour le trading haute fréquence (HFT).
+Fichiers : feature_pipeline.py, live_trading.py.
+Métriques : hft_activity_score, trade_velocity, latent_hft_activity_vec.
+Actions : Traiter les données HFT IQFeed pour des stratégies rapides.
+
+
+
+Source de données
+
+Fournisseur exclusif : IQFeed, implémenté via IQFeedProvider dans data_provider.py.
+Actions :
+Supprimer toutes références, stubs, et configurations liés à dxFeed (ex. : fetch_dxfeed_context, dxfeed_config.yaml, dxfeed_fetch.py, option_chain_fetch.py) après validation explicite.
+Implémenter les appels IQFeed avec :
+Retries : Max 3 tentatives, délai exponentiel (2^attempt secondes).
+Logs psutil : Latence, CPU, mémoire dans data/logs/<module>_performance.csv.
+Snapshots JSON : États et erreurs dans data/<module>_snapshots/.
+
+
+Mettre à jour la documentation (en-tête des fichiers, docs/index.md, README.md, docs/setup.md, docs/usage.md) pour refléter l’utilisation exclusive d’IQFeed.
+Fournir des tests unitaires dans tests/test_data_provider.py pour valider :
+Collecte de données (OHLC, carnet d’ordres, options, actualités, cross-market).
+Gestion des erreurs (ex. : réseau, données manquantes).
+Performance (CPU < 80 %, RAM < 16 Go).
+
+
+
+
+Stub CSV : Utiliser CsvDataProvider pour les tests avec des fichiers simulés (data/iqfeed/merged_data.csv, option_chain.csv, cross_market.csv, news.csv).
+
+Ligne de conduite pour les features
+
+Entraînement :
+
+Utiliser 350 features définies dans config/feature_sets.yaml, couvrant toutes les catégories mentionnées dans les Phases 1-18.
+Fournir les 350 features aux modèles SAC, PPO, DDPG, et Transformer dans train_sac.py, train_sac_auto.py, transformer_policy.py.
+
+
+Inférence :
+
+Pré-sélectionner les top 150 SHAP features via calculate_shap_features dans feature_pipeline.py.
+Générer data/features/feature_importance.csv pour live_trading.py, inference.py, analyse_results.py, mia_dashboard.py.
+Fallback :
+Utiliser un cache des dernières 150 SHAP features valides (data/features/feature_importance_cache.csv).
+Si le cache est indisponible, utiliser une liste statique de 150 features dans config/feature_sets.yaml.
+
+
+Implémenter une projection (ex. : padding, couche linéaire) pour aligner les 150 SHAP features sur l’espace des 350 features attendu par le modèle.
+
+
+Suppression :
+
+Supprimer toutes références aux 320 features, 81 features, et obs_t dans le code, la documentation, et les commentaires, après validation explicite dans un rapport des conflits.
+
+
+Mémoire contextuelle (Phase 7) :
+
+Appliquer PCA (10-15 dimensions) via pca_orderflow.py sur les 350 features pour clusterisation (K-means, 10 clusters) dans market_memory.db, table clusters (colonnes : cluster_id, event_type, features, timestamp).
+Configurer PCA pour capturer 95 % de la variance expliquée.
+Stocker les clusters pour adaptive_learner.py, risk_controller.py, strategy_discovery.py.
+
+
+SHAP périodique (Phase 17) :
+
+Générer une analyse SHAP quotidienne des 350 features via calculate_full_shap dans feature_pipeline.py, stockée dans data/features/shap_full_daily.csv.
+Paralléliser avec joblib sur l’A100.
+Utiliser pour l’interprétabilité dans analyse_results.py, mia_dashboard.py (visualisations matplotlib).
+
+
+Analyse de sentiment (Phase 1) :
+
+Traiter les nouvelles d’IQFeed (fetch_news dans data_provider.py) avec un modèle NLP (VADER pour prototype, BERT pour production) dans news_analyzer.py.
+Générer sentiment_score, sentiment pour news_impact_score, news_frequency_1h, news_frequency_1d dans feature_pipeline.py.
+
+
+
+Procédure cognitive pour la mise à jour des fichiers
+1. Analyse du fichier
+
+Étape : Examiner le code existant pour identifier :
+Fonctions, importations, variables, et notifications (miya_speak, miya_alerts dans src.model.utils.miya_console).
+Références obsolètes (dxFeed, 320/81 features, obs_t).
+Conformité avec les exigences (IQFeed, 350/150 SHAP features, retries, logs psutil, SIGINT, alertes, Phases 1-18).
+
+
+Sortie : Rapport d’analyse dans la réponse, incluant :
+Statut du fichier : Version initiale ou modifiée, date actuelle (ex. : 2025-05-13).
+Conformité : Liste des exigences satisfaites et manquantes.
+Conflits potentiels : Détails des suppressions/modifications nécessaires (ex. : lignes spécifiques, raison, impact).
+
+
+
+2. Rapport des modifications proposées
+
+Format :### Rapport des modifications proposées
+- **Fichier** : <nom_du_fichier>.py
+- **Statut actuel** : Version <version>, Date <date>
+- **Ajouts proposés** :
+  - Nouvelle fonction : `<nom_fonction>` (ex. : gestion SIGINT, retries).
+  - Nouveau bloc : `<description>` (ex. : logs psutil dans `log_performance`).
+- **Conflits potentiels** :
+  - Ligne : <numéro_ligne>
+  - Conflit : <description> (ex. : Utilisation de `obs_t` au lieu de `feature_cols`).
+  - Action proposée : <suppression/remplacement> (ex. : Remplacer `env.obs_t` par `env.feature_cols`).
+  - Validation requise : Oui/Non
+- **Tests proposés** :
+  - Fichier : `tests/test_<module>.py`
+  - Scénarios : <liste> (ex. : validation des 350/150 SHAP features, gestion SIGINT).
+
+
+Règle : Aucun code existant ne doit être modifié ou supprimé sans validation explicite dans la réponse de l’utilisateur.
+
+3. Validation par l’utilisateur
+
+Étape :
+Attendre la réponse de l’utilisateur pour valider chaque conflit signalé (ex. : "Oui, validez la suppression de obs_t").
+Si aucune validation n’est fournie, conserver le code existant (ex. : marquer obs_t comme obsolète avec un commentaire TODO).
+
+
+Sortie : Confirmation dans la réponse, ex. :### Validation reçue
+- Suppression de `obs_t` : Validée
+- Suppression de dxFeed : Non validée, conservée avec TODO
+
+
+
+4. Exécution des modifications
+
+Actions :
+Implémenter les ajouts approuvés comme des fonctions ou blocs séparés, intégrés harmonieusement.
+Effectuer les suppressions/modifications validées avec un commentaire expliquant le changement (ex. : # Remplacé obs_t par feature_cols, validé le 2025-05-13).
+Mettre à jour l’en-tête du fichier :
+Version : 2.1.3
+Date : 2025-05-13
+Note : Utilisation exclusive d’IQFeed, 350/150 SHAP features, Phases 1-18.
+Dépendances, inputs/outputs, lien avec les méthodes SAC.
+
+
+Fournir un artifact pour chaque fichier modifié, encapsulé dans <xaiArtifact> avec :
+artifact_id : UUID unique (réutilisé pour les mises à jour du même fichier).
+title : Nom du fichier.
+contentType : Type de contenu (ex. : text/python).
+
+
+
+
+Sortie : Code mis à jour dans <xaiArtifact>, avec un résumé des changements appliqués.
+
+5. Tests et validation
+
+Actions :
+Fournir un fichier de test (tests/test_<module>.py) pour chaque fichier modifié, validant :
+Les ajouts (ex. : SIGINT, retries, logs psutil, Phases 1-18).
+La préservation des fonctionnalités existantes.
+Les suppressions validées (ex. : absence de obs_t, dxFeed).
+Les scénarios limites (ex. : données manquantes, VIX > 25, erreurs réseau IQFeed).
+Performance : Vérifier CPU < 80 %, RAM < 16 Go avec psutil.
+
+
+Exécuter les tests avec pytest et inclure les résultats dans la réponse :### Résultats des tests
+- Fichier : tests/test_<module>.py
+- Tests passés : <nombre>/<total>
+- Erreurs : <détails, si applicable>
+
+
+
+
+Automatisation :
+Mettre à jour scripts/run_all_tests.py pour exécuter tous les tests globaux.
+Fournir un script scripts/validate_prompt_compliance.py pour vérifier :
+Absence de obs_t, dxFeed, 320/81 features.
+Présence de SIGINT, retries, logs psutil, alertes via alert_manager.py.
+Validation des 350/150 SHAP features avec training_mode.
+Date correcte (2025-05-13) dans l’en-tête.
+
+
+
+
+
+Directives pour les modifications
+1. Préservation du code existant
+
+Règle : Conserver intégralement toutes les fonctions, importations, variables, et notifications (miya_speak, miya_alerts) sauf si une suppression est validée.
+Action : Ajouter des fonctionnalités en complément (ex. : send_alert via alert_manager.py en plus de miya_speak).
+Exemple :# Code existant
+miya_speak("Données chargées", tag="MODULE")
+# Ajout
+AlertManager().send_alert("Données chargées", priority=1)
+
+
+
+2. Ajouts de fonctionnalités
+
+Fonctionnalités requises :
+Mémoire contextuelle (Phase 7) : Clusterisation K-means (10 clusters) dans market_memory.db, table clusters.
+Retries : Max 3 tentatives, délai exponentiel (2^attempt secondes) pour les appels critiques (ex. : API IQFeed, SQLite).
+Logs psutil : Enregistrer latence, CPU, mémoire dans data/logs/<module>_performance.csv.
+Alertes : Ajouter AlertManager().send_alert pour les erreurs critiques (priorités : 1=info, 2=warning, 3=error, 4=urgent).
+Snapshots JSON : Enregistrer les états et erreurs dans data/<module>_snapshots/.
+SIGINT : Gérer l’arrêt propre avec sauvegarde d’un snapshot JSON.
+Sauvegardes :
+Incrémentielle : Toutes les 5 min dans data/checkpoints/.
+Distribuée : Toutes les 15 min sur disque local et cloud (ex. : AWS S3).
+Versionnée : Conserver 5 versions dans data/checkpoints/.
+
+
+Visualisations : Générer des graphiques matplotlib dans data/figures/<module>/ (ex. : equity curves, feature importance).
+
+
+Implémentation :
+Ajouter des fonctions comme log_performance, save_snapshot, handle_sigint dans chaque module.
+Exemple pour retries :def with_retries(func, max_attempts=3, delay_base=2.0):
+    for attempt in range(max_attempts):
+        try:
+            return func()
+        except Exception as e:
+            if attempt == max_attempts - 1:
+                AlertManager().send_alert(f"Échec après {max_attempts} tentatives: {str(e)}", priority=4)
+                raise
+            time.sleep(delay_base ** attempt)
+
+
+
+
+
+3. Robustesse et compatibilité
+
+Configuration :
+Utiliser config_manager.py pour charger les configurations :from src.model.utils.config_manager import config_manager
+self.config = config_manager.get_config("<nom_du_fichier>.yaml")
+
+
+Valider les configurations avec alertes via alert_manager.py.
+Générer des logs d’erreurs dans data/logs/config_errors.log.
+
+
+Encodage : UTF-8 pour tous les fichiers (code, CSV, JSON, logs).
+Normalisation : Utiliser MinMaxScaler avec fenêtre glissante (WINDOW_SIZE=100) pour les 150 SHAP features en inférence.
+Nommage : Adopter un nommage intuitif (ex. : sac_feature_validation, sac_train_loop).
+
+4. Tests
+
+Fichiers : Créer tests/test_<module>.py pour chaque fichier modifié.
+Scénarios :
+Validation des 350 features (entraînement) et 150 SHAP features (inférence).
+Fallback à 150 features (cache, liste statique).
+Suppression de obs_t, dxFeed, 320/81 features.
+Gestion SIGINT et snapshots JSON.
+Retries et logs psutil.
+Analyse de sentiment et flux d’actualités IQFeed.
+Performance : Vérifier CPU < 80 %, RAM < 16 Go avec psutil.
+
+
+Automatisation : Mettre à jour scripts/run_all_tests.py pour exécuter tous les tests.
+
+5. Documentation
+
+En-tête standard :# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/src/<module>/<fichier>.py
+# <Rôle du fichier>
+#
+# Version : 2.1.3
+# Date : 2025-05-13
+#
+# Rôle : <Description détaillée>
+#
+# Dépendances : <Liste des dépendances, ex. : pandas, config_manager.py>
+#
+# Inputs : <Liste des fichiers d’entrée, ex. : config/es_config.yaml>
+#
+# Outputs : <Liste des fichiers de sortie, ex. : data/logs/<module>.log>
+#
+# Notes :
+# - Utilise IQFeed exclusivement via data_provider.py.
+# - Gère 350 features pour l’entraînement et 150 SHAP features pour l’inférence.
+# - Implémente retries (max 3, délai 2^attempt), logs psutil, alertes via alert_manager.py.
+# - Intègre les Phases 1-18 : <Liste des phases pertinentes>.
+# - Tests unitaires dans tests/test_<module>.py.
+
+
+Mises à jour : Modifier docs/index.md, README.md, docs/setup.md, docs/usage.md pour inclure :
+Approche hybride (350/150 SHAP features).
+Utilisation exclusive d’IQFeed.
+Analyse de sentiment.
+Phases 1-18.
+Tests unitaires.
+
+
+
+Erreurs à éviter
+
+Supprimer ou modifier le code existant (fonctions, importations, miya_speak, miya_alerts) sans validation explicite.
+Introduire des références à 320 features, 81 features, ou obs_t.
+Conserver des stubs/configurations liés à dxFeed.
+Oublier les tests unitaires ou la documentation.
+Utiliser des méthodes de chargement de configuration autres que config_manager.py sans autorisation.
+Modifier les fonctionnalités existantes sans tests pour valider leur préservation.
+
+Standards du projet
+
+Préservation des fonctionnalités existantes :
+Conserver toutes les fonctionnalités existantes sauf en cas de conflit validé.
+Valider les modifications avec des tests unitaires pour éviter les régressions.
+
+
+Configurations :
+Centraliser via config_manager.py, utilisant :
+router_config.yaml, algo_config.yaml, feature_sets.yaml, alert_config.yaml, market_config.yaml, iqfeed_config.yaml, es_config.yaml, trading_env_config.yaml, model_params.yaml, mia_config.yaml, credentials.yaml.
+
+
+Implémenter un cache LRU pour les chargements fréquents.
+
+
+Alertes :
+Utiliser alert_manager.py pour Telegram, SMS (Twilio), email (smtplib), Slack.
+Priorités : 1=info, 2=warning, 3=error, 4=urgent.
+Configurer via alert_config.yaml.
+
+
+Logs :
+Enregistrer latence, CPU, mémoire, métadonnées IA dans data/logs/<module>_performance.csv.
+Uniformiser les logs avec contexte (ex. : régime, volatilité).
+
+
+Sauvegardes :
+Incrémentielle : Toutes les 5 min dans data/checkpoints/.
+Distribuée : Toutes les 15 min sur disque local et cloud (ex. : AWS S3).
+Versionnée : Conserver 5 versions dans data/checkpoints/.
+
+
+GPU A100 :
+Configurer PyTorch pour Transformer, joblib pour SHAP, BERT/VADER pour NLP.
+Utiliser un cache local (SHAP_CACHE_DIR, transformer_cache, news_cache, expiration : 24h).
+Transformer : d_model=128, num_layers=4, num_heads=8.
+
+
+
+Fichiers à mettre à jour
+Les fichiers suivants doivent être alignés sur les standards (IQFeed exclusif, 350/150 SHAP features, retries, SIGINT, logs psutil, tests, Phases 1-18) :
+
+train_sac.py, utils_model.py, trade_probability.py, backtest_lab.py, backtest_sac.py, inference.py, reward_engine.py :
+Mettre à jour la date à 2025-05-13.
+Ajouter SIGINT avec handle_sigint.
+Supprimer obs_t, dxFeed, 320/81 features après validation.
+Ajouter retries, logs psutil, alertes via alert_manager.py.
+Améliorer la validation des features avec training_mode.
+Fournir des tests dans tests/test_<module>.py.
+
+
+Autres fichiers (ex. : feature_pipeline.py, live_trading.py, data_provider.py) :
+Appliquer les mêmes standards, avec un rapport des conflits pour chaque fichier.
+
+
+
+Plan de développement
+
+Phase 1 : Analyse et validation :
+Analyser chaque fichier pour identifier les conflits et les exigences manquantes.
+Fournir un rapport des modifications proposées avec validation requise.
+
+
+Phase 2 : Mise à jour des fichiers :
+Implémenter les ajouts et suppressions validées.
+Mettre à jour les en-têtes et la documentation.
+
+
+Phase 3 : Tests et validation :
+Fournir des tests unitaires pour chaque fichier modifié.
+Exécuter scripts/run_all_tests.py et scripts/validate_prompt_compliance.py.
+
+
+Phase 4 : Documentation finale :
+Mettre à jour docs/index.md, README.md, docs/setup.md, docs/usage.md.
+
+
+
+Exemple de réponse attendue
+### Analyse de <fichier>.py
+- **Statut actuel** : Version 2.1.3, Date 2025-05-09
+- **Conformité** :
+  - IQFeed : Conforme
+  - Features : Contient `obs_t` (non conforme)
+  - SIGINT : Absent
+  - Retries : Partiel
+  - Logs psutil : Présent
+- **Conflits potentiels** :
+  - Ligne 558 : `env.obs_t = ...`
+  - Action proposée : Remplacer par `env.feature_cols = ...`
+  - Validation requise : Oui/Non
+- **Ajouts proposés** :
+  - Fonction `handle_sigint` pour SIGINT.
+  - `with_retries` pour les prédictions.
+  - Validation `training_mode` dans `validate_data`.
+
+### Modifications appliquées
+- Ajout de `handle_sigint`.
+- Suppression de `obs_t` (validée).
+- Mise à jour de l’en-tête : Version 2.1.3, Date 2025-05-13.
+
+### Tests
+- Fichier : `tests/test_<module>.py`
+- Scénarios : Validation des 350/150 SHAP features, absence de `obs_t`, SIGINT.
+- Résultats : <résultats des tests>
+
+### Validation requise
+- Suppression de `obs_t` : Oui/Non
+- Ajout de SIGINT : Oui/Non
+

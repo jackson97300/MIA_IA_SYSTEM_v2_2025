@@ -1,0 +1,178 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/mia_config.yaml
+# Configuration cognitive pour le système MIA dans MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.3"
+  updated: "2025-05-13"
+  description: |
+    Configuration des fonctionnalités cognitives de MIA, incluant les interactions vocales et textuelles
+    via miya_speak, miya_alerts, et miya_thinks (mind_stream.py, mind.py, mind_voice.py).
+    Calibré pour les 350 features IQFeed pour l’entraînement et top 150 SHAP features pour l’inférence/fallback,
+    aligné avec feature_sets.yaml et les régimes trend, range, defensive.
+    Utilisé par tous les modules pour la traçabilité et l’affichage dans mia_dashboard.py.
+    API sociales désactivées. Validé via config_manager.py avec alertes via alert_manager.py.
+    Utilise exclusivement IQFeed comme source de données via data_provider.py.
+    Conforme à la Phase 8 (auto-conscience pour les interactions cognitives),
+    Phase 16 (ensemble et transfer learning via meta-learning),
+    et inclut les méthodes 5 (seuils adaptatifs), 7 (mémoire contextuelle), et 18 (meta-learning).
+    Tests unitaires disponibles dans tests/test_mia_config.py.
+
+# Paramètres principaux de MIA
+mia:
+  language:
+    value: "fr"
+    options: ["fr", "en", "es"]
+    description: |
+      Langue pour les interactions vocales et textuelles (fr=français, en=anglais, es=espagnol).
+  vocal_enabled:
+    value: true
+    description: |
+      Active les sorties vocales via miya_speak et miya_alerts (mind_voice.py).
+  vocal_async:
+    value: true
+    description: |
+      Si true, les messages vocaux sont traités de manière asynchrone pour éviter les blocages.
+  max_retries:
+    value: 3
+    range: [1, 5]
+    description: |
+      Nombre maximum de tentatives pour les opérations vocales critiques (ex. : synthèse vocale).
+  retry_delay_base:
+    value: 2.0
+    range: [1.0, 5.0]
+    description: |
+      Base pour le délai exponentiel des retries (délai = retry_delay_base^attempt secondes).
+  interactive_mode:
+    enabled: true
+    language: "fr"
+    description: |
+      Active l’interface vocale interactive (mind_dialogue.py) pour dialoguer avec MIA.
+      - enabled: Si true, MIA écoute et répond aux commandes vocales (ex. : “Régime actuel ?”).
+      - language: Langue pour la reconnaissance vocale (doit correspondre à mia.language).
+  verbosity:
+    value: "normal"
+    options: ["silent", "minimal", "normal", "detailed"]
+    description: |
+      Niveau de verbosité des messages :
+      - silent : aucun message sauf erreurs critiques.
+      - minimal : alertes uniquement (miya_alerts).
+      - normal : alertes et messages clés (miya_speak).
+      - detailed : tous les messages, y compris miya_thinks.
+  voice_profile:
+    default: "calm"
+    options: ["calm", "urgent", "informative"]
+    description: |
+      Profil vocal par défaut pour miya_speak (calm=neutre, urgent=pressant, informative=détaillé).
+  voice_profiles_by_regime:
+    trend: "informative"
+    range: "calm"
+    defensive: "urgent"
+    description: |
+      Profil vocal spécifique pour chaque régime de marché, utilisé si neural_regime est défini.
+  interruptible:
+    value: true
+    description: |
+      Si true, permet d’interrompre les messages vocaux en cours pour les alertes prioritaires.
+  max_message_length:
+    value: 200
+    range: [50, 500]
+    description: |
+      Longueur maximale des messages vocaux (en caractères) pour éviter les lectures trop longues.
+  social_features_enabled:
+    value: false
+    description: |
+      Si true, active les fonctionnalités liées aux API sociales (Reddit, Twitter, etc.). Désactivé dans cette version.
+  thresholds:
+    news_impact_threshold:
+      value: 0.5
+      range: [0.0, 1.0]
+      description: |
+        Seuil d’impact des nouvelles pour ajuster la verbosité ou la priorité des messages (méthode 5).
+        Une valeur élevée indique un impact significatif des actualités.
+    vix_threshold:
+      value: 20.0
+      range: [10.0, 50.0]
+      description: |
+        Seuil de volatilité VIX pour ajuster la verbosité ou la priorité des messages (méthode 5).
+        Une valeur élevée indique une volatilité extrême.
+
+# Configuration des journaux
+logging:
+  log_dir:
+    value: "data/logs/cognitive"
+    description: |
+      Répertoire pour les fichiers de log (ex. : mind_stream.log, mia_alerts.log).
+  log_formats:
+    value: ["txt"]
+    options: ["txt", "csv", "json"]
+    description: |
+      Formats des fichiers de log (txt par défaut, csv/json pour analyses avancées).
+  log_rotation_mb:
+    value: 10
+    range: [1, 100]
+    description: |
+      Taille maximale d’un fichier de log avant rotation (en Mo).
+  max_logs:
+    value: 1000
+    range: [100, 10000]
+    description: |
+      Nombre maximum de messages à conserver dans les logs pour éviter l’encombrement.
+  enable_debug:
+    value: false
+    description: |
+      Si true, active les logs de débogage détaillés pour mind_stream.py et mind.py.
+
+# Paramètres pour le tableau de bord
+dashboard:
+  notifications_enabled:
+    value: true
+    description: |
+      Si true, les messages miya_speak/miya_alerts sont envoyés à mia_dashboard.py.
+  status_file:
+    value: "data/mia_config_dashboard.json"
+    description: |
+      Fichier JSON pour partager l’état cognitif (ex. : langue, mode vocal) avec le dashboard.
+  priority_threshold:
+    value: 3
+    range: [1, 5]
+    description: |
+      Priorité minimale des messages à afficher dans le dashboard (1=bas, 5=critique).
+
+# Paramètres pour les méthodes cognitives
+cognitive_methods:
+  memory_contextual:
+    num_clusters: 10
+    pca_dimensions: 15
+    variance_explained: 0.95
+    description: |
+      Paramètres pour la méthode 7 (mémoire contextuelle via K-means et PCA dans market_memory.db).
+      - num_clusters: Nombre de clusters K-means pour la mémoire contextuelle.
+      - pca_dimensions: Nombre de dimensions après réduction PCA.
+      - variance_explained: Proportion de la variance expliquée par PCA.
+  meta_learning:
+    maml_steps: 5
+    learning_rate: 0.001
+    description: |
+      Paramètres pour la méthode 18 (meta-learning dans miya_thinks, mind_stream.py).
+      - maml_steps: Nombre d’étapes pour l’optimisation MAML.
+      - learning_rate: Taux d’apprentissage pour le meta-learning.
+
+# Notes pour recalibration future
+notes:
+  - Aligné sur 350 features pour l’entraînement et 150 SHAP features pour l’inférence dans feature_sets.yaml.
+  - Utilise exclusivement IQFeed comme source de données via data_provider.py.
+  - Vérifier language avec les moteurs vocaux disponibles (gtts, pyttsx3) après tests.
+  - Tester vocal_async: false pour environnements à faible latence si interruptions fréquentes.
+  - Ajuster verbosity pour inclure des niveaux spécifiques aux régimes trend/range/defensive.
+  - Tester interactive_mode avec différentes commandes vocales pour optimiser la reconnaissance.
+  - social_features_enabled: false confirme que les API sociales ne sont plus utilisées.
+  - news_impact_threshold et vix_threshold (méthode 5) intégrés pour ajuster la verbosité ou la priorité des messages.
+  - cognitive_methods configure la mémoire contextuelle (méthode 7) et le meta-learning (méthode 18).
+  - Configuration validée via config_manager.py pour garantir la cohérence avec mind.py, mind_stream.py, et mind_dialogue.py.
+  - Conforme à la Phase 8 (auto-conscience pour les interactions cognitives) et
+    Phase 16 (ensemble et transfer learning via meta-learning).
+  - Les performances des scripts cognitifs (ex. : interactions vocales, meta-learning) sont enregistrées via psutil dans
+    data/logs/cognitive/mind_stream.log ou fichiers similaires.
+  - Tests unitaires disponibles dans tests/test_mia_config.py pour valider la configuration.
+  - Surveiller les performances des scripts dans data/logs/cognitive/mind_stream.log ou fichiers similaires.

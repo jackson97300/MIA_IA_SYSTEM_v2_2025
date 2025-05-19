@@ -1,0 +1,64 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/trade_probability_config.yaml
+# Configuration pour TradeProbabilityPredictor dans MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.3"
+  updated: "2025-05-13"
+  description: |
+    Configuration des paramètres pour TradeProbabilityPredictor, utilisé pour estimer les probabilités de succès des trades
+    dans trading_env.py et live_trading.py. Calibré pour les 350 features IQFeed pour l’entraînement et top 150 SHAP
+    features pour l’inférence/fallback, aligné avec feature_sets.yaml. Utilise exclusivement IQFeed comme source de données
+    via data_provider.py. Conforme à la Phase 8 (auto-conscience pour les décisions de trading) et
+    Phase 16 (ensemble et transfer learning).
+    Tests unitaires disponibles dans tests/test_trade_probability_config.py.
+
+trade_probability:
+  buffer_size:
+    value: 100
+    range: [50, 1000]
+    description: |
+      Taille du buffer pour stocker les données récentes utilisées dans les prédictions.
+  min_trade_success_prob:
+    value: 0.7
+    range: [0.5, 1.0]
+    description: |
+      Seuil minimum de probabilité de succès pour valider un trade.
+  retrain_threshold:
+    value: 1000
+    range: [500, 5000]
+    description: |
+      Nombre minimum de nouvelles données avant de déclencher un réentraînement.
+  retrain_frequency:
+    value: "weekly"
+    options: ["daily", "weekly", "biweekly"]
+    description: |
+      Fréquence de réentraînement du modèle (ex. : hebdomadaire).
+  model_dir:
+    value: "model/trade_probability"
+    description: |
+      Répertoire pour stocker les modèles entraînés de TradeProbabilityPredictor.
+  snapshot_dir:
+    value: "data/trade_probability_snapshots"
+    description: |
+      Répertoire pour les snapshots JSON des états du modèle.
+  perf_log_path:
+    value: "data/logs/trade_probability_performance.csv"
+    description: |
+      Chemin du fichier CSV pour les logs de performance (latence, CPU, mémoire).
+  metrics_log_path:
+    value: "data/logs/trade_probability_metrics.csv"
+    description: |
+      Chemin du fichier CSV pour les métriques de prédiction (ex. : précision, confiance).
+
+# Notes pour configuration
+notes:
+  - Aligné sur 350 features pour l’entraînement et 150 SHAP features pour l’inférence/fallback, conformément à feature_sets.yaml.
+  - Utilise exclusivement IQFeed comme source de données via data_provider.py.
+  - Conforme à la Phase 8 (auto-conscience pour les décisions de trading) et Phase 16 (ensemble et transfer learning)
+    dans TradeProbabilityPredictor.
+  - Vérifier les chemins model_dir, snapshot_dir, perf_log_path, et metrics_log_path pour garantir leur accessibilité.
+  - Tests unitaires disponibles dans tests/test_trade_probability_config.py pour valider la configuration.
+  - Les opérations critiques (prédiction, réentraînement) implémentent des retries (max 3, délai 2^attempt) via standard.py.
+  - Les échecs de prédiction ou de réentraînement déclenchent des alertes via alert_manager.py (priorité 3=error).
+  - Surveiller les métriques de prédiction (précision, confiance) dans data/logs/trade_probability_metrics.csv.

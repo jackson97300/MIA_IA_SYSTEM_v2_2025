@@ -1,0 +1,287 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/algo_config.yaml
+# Configuration des hyperparamètres pour les algorithmes SAC, PPO, et DDPG dans MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.4"
+  updated: "2025-05-13"
+  description: |
+    Configuration des hyperparamètres pour les algorithmes SAC, PPO, et DDPG, organisés par régime (trend, range, défensif).
+    Utilisé par train_sac.py, train_sac_auto.py, et main_router.py pour l’entraînement et le routage des modèles.
+    Calibré pour les 350 features IQFeed pour l’entraînement et top 150 SHAP features pour l’inférence/fallback,
+    aligné avec feature_sets.yaml. Utilise exclusivement IQFeed comme source de données via data_provider.py.
+    Conforme aux Phases 6 (pipeline neuronal), 8 (auto-conscience), 14 (régularisation dynamique),
+    16 (ensemble et transfer learning), et 18 (optimisation HFT).
+    Intègre evaluation_steps et max_profit_factor pour les simulations (suggestions 3 et 5).
+    Tests unitaires disponibles dans tests/test_algo_config.py.
+  policies_note: |
+    The official directory for routing policies is src/model/router/policies.
+    The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+# Paramètres globaux pour les simulations
+evaluation_steps:
+  value: 100
+  range: [50, 500]
+  description: |
+    Nombre d’étapes d’évaluation dans les simulations, configurable pour ajuster la fréquence des évaluations (suggestion 3).
+
+max_profit_factor:
+  value: 10.0
+  range: [1.0, 20.0]
+  description: |
+    Facteur de profit maximal autorisé dans les simulations, utilisé pour limiter les rendements irréalistes (suggestion 5).
+
+# Hyperparamètres pour SAC
+sac:
+  trend:
+    learning_rate:
+      value: 0.0003
+      range: [0.0001, 0.001]
+      description: |
+        Taux d’apprentissage pour le régime trend, optimisé pour la stabilité.
+    gamma:
+      value: 0.99
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour les récompenses futures dans le régime trend.
+    ent_coef:
+      value: 0.1
+      range: [0.01, 0.2]
+      description: |
+        Coefficient d’entropie pour encourager l’exploration dans le régime trend.
+    l2_lambda:
+      value: 0.01
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime trend, ajusté dynamiquement (Phase 14).
+    batch_size:
+      value: 256
+      range: [64, 512]
+      description: |
+        Taille du batch pour l’entraînement dans le régime trend.
+  range:
+    learning_rate:
+      value: 0.0002
+      range: [0.0001, 0.001]
+      description: |
+        Taux d’apprentissage pour le régime range, réduit pour éviter l’overfitting.
+    gamma:
+      value: 0.98
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour les récompenses futures dans le régime range.
+    ent_coef:
+      value: 0.15
+      range: [0.01, 0.2]
+      description: |
+        Coefficient d’entropie pour encourager l’exploration dans le régime range.
+    l2_lambda:
+      value: 0.02
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime range, ajusté dynamiquement (Phase 14).
+    batch_size:
+      value: 128
+      range: [64, 512]
+      description: |
+        Taille du batch pour l’entraînement dans le régime range.
+  defensive:
+    learning_rate:
+      value: 0.0001
+      range: [0.00005, 0.0005]
+      description: |
+        Taux d’apprentissage pour le régime défensif, conservateur pour la stabilité.
+    gamma:
+      value: 0.95
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour les récompenses futures dans le régime défensif.
+    ent_coef:
+      value: 0.05
+      range: [0.01, 0.1]
+      description: |
+        Coefficient d’entropie réduit pour limiter l’exploration dans le régime défensif.
+    l2_lambda:
+      value: 0.03
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime défensif, ajusté dynamiquement (Phase 14).
+    batch_size:
+      value: 64
+      range: [32, 256]
+      description: |
+        Taille du batch pour l’entraînement dans le régime défensif.
+
+# Hyperparamètres pour PPO
+ppo:
+  trend:
+    learning_rate:
+      value: 0.00025
+      range: [0.0001, 0.001]
+      description: |
+        Taux d’apprentissage pour le régime trend, équilibré pour la convergence.
+    clip_range:
+      value: 0.2
+      range: [0.1, 0.3]
+      description: |
+        Plage de clipping pour la mise à jour de la politique dans le régime trend.
+    n_steps:
+      value: 2048
+      range: [512, 4096]
+      description: |
+        Nombre de steps par mise à jour dans le régime trend.
+    ent_coef:
+      value: 0.01
+      range: [0.0, 0.1]
+      description: |
+        Coefficient d’entropie pour encourager l’exploration dans le régime trend.
+    l2_lambda:
+      value: 0.01
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime trend, ajusté dynamiquement (Phase 14).
+  range:
+    learning_rate:
+      value: 0.0002
+      range: [0.0001, 0.001]
+      description: |
+        Taux d’apprentissage pour le régime range, réduit pour la stabilité.
+    clip_range:
+      value: 0.15
+      range: [0.1, 0.3]
+      description: |
+        Plage de clipping pour la mise à jour de la politique dans le régime range.
+    n_steps:
+      value: 1024
+      range: [512, 2048]
+      description: |
+        Nombre de steps par mise à jour dans le régime range.
+    ent_coef:
+      value: 0.02
+      range: [0.0, 0.1]
+      description: |
+        Coefficient d’entropie pour encourager l’exploration dans le régime range.
+    l2_lambda:
+      value: 0.02
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime range, ajusté dynamiquement (Phase 14).
+  defensive:
+    learning_rate:
+      value: 0.00015
+      range: [0.00005, 0.0005]
+      description: |
+        Taux d’apprentissage pour le régime défensif, conservateur pour éviter les risques.
+    clip_range:
+      value: 0.1
+      range: [0.05, 0.2]
+      description: |
+        Plage de clipping pour la mise à jour de la politique dans le régime défensif.
+    n_steps:
+      value: 512
+      range: [256, 1024]
+      description: |
+        Nombre de steps par mise à jour dans le régime défensif.
+    ent_coef:
+      value: 0.0
+      range: [0.0, 0.05]
+      description: |
+        Coefficient d’entropie désactivé pour limiter l’exploration dans le régime défensif.
+    l2_lambda:
+      value: 0.03
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime défensif, ajusté dynamiquement (Phase 14).
+
+# Hyperparamètres pour DDPG
+ddpg:
+  trend:
+    learning_rate:
+      value: 0.001
+      range: [0.0005, 0.005]
+      description: |
+        Taux d’apprentissage pour le régime trend, plus élevé pour la convergence rapide.
+    gamma:
+      value: 0.99
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour les récompenses futures dans le régime trend.
+    tau:
+      value: 0.005
+      range: [0.001, 0.01]
+      description: |
+        Taux de mise à jour des réseaux cibles dans le régime trend.
+    l2_lambda:
+      value: 0.01
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime trend, ajusté dynamiquement (Phase 14).
+    batch_size:
+      value: 128
+      range: [64, 256]
+      description: |
+        Taille du batch pour l’entraînement dans le régime trend.
+  range:
+    learning_rate:
+      value: 0.0005
+      range: [0.0001, 0.002]
+      description: |
+        Taux d’apprentissage pour le régime range, réduit pour la stabilité.
+    gamma:
+      value: 0.98
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour les récompenses futures dans le régime range.
+    tau:
+      value: 0.01
+      range: [0.001, 0.02]
+      description: |
+        Taux de mise à jour des réseaux cibles dans le régime range.
+    l2_lambda:
+      value: 0.02
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime range, ajusté dynamiquement (Phase 14).
+    batch_size:
+      value: 64
+      range: [32, 128]
+      description: |
+        Taille du batch pour l’entraînement dans le régime range.
+  defensive:
+    learning_rate:
+      value: 0.0003
+      range: [0.0001, 0.001]
+      description: |
+        Taux d’apprentissage pour le régime défensif, conservateur pour éviter les risques.
+    gamma:
+      value: 0.95
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour les récompenses futures dans le régime défensif.
+    tau:
+      value: 0.015
+      range: [0.001, 0.03]
+      description: |
+        Taux de mise à jour des réseaux cibles dans le régime défensif.
+    l2_lambda:
+      value: 0.03
+      range: [0.001, 0.1]
+      description: |
+        Coefficient de régularisation L2 pour le régime défensif, ajusté dynamiquement (Phase 14).
+    batch_size:
+      value: 32
+      range: [16, 64]
+      description: |
+        Taille du batch pour l’entraînement dans le régime défensif.
+
+# Notes pour configuration
+notes:
+  - Aligné sur 350 features pour l’entraînement et 150 SHAP features pour l’inférence/fallback, conformément à feature_sets.yaml.
+  - Utilise exclusivement IQFeed comme source de données via data_provider.py.
+  - Conforme aux Phases 6 (pipeline neuronal), 8 (auto-conscience), 14 (régularisation dynamique),
+    16 (ensemble et transfer learning), et 18 (optimisation HFT).
+  - Les hyperparamètres sont optimisés pour chaque régime (trend, range, défensif) via hyperparam_manager.py.
+  - Ajuster learning_rate et ent_coef en fonction des performances observées dans train_sac_performance.csv.
+  - Tests unitaires disponibles dans tests/test_algo_config.py pour valider la configuration.
+  - Vérifier les plages des hyperparamètres avant modification pour éviter l’instabilité des modèles.
+  - Ajout de evaluation_steps et max_profit_factor pour les simulations configurables et la gestion du facteur de profit (suggestions 3 et 5).

@@ -1,0 +1,354 @@
+Merci pour votre validation ! La Phase 2 : Génération et filtrage des features est confirmée comme "ok", et je passe maintenant à la Phase 3 : Features avancées et contextuelles du guide ultime en béton pour MIA_IA_SYSTEM_v2_2025. Je vais respecter vos directives pour :
+
+Structurer la phase dans le cadre des 10 phases validées, avec des sous-sections par fichier principal et leurs modules associés (dépendances, fichiers générés, tests).
+Prioriser les fichiers les plus importants de structure.txt, en me concentrant sur les fichiers critiques pour la génération des features avancées et contextuelles (ex. : neural_pipeline.py, contextual_state_encoder.py).
+Fournir des spécifications claires et lisibles, avec des noms détaillés (chemins complets), des espaces pour la lisibilité, et un format inspiré de vos exemples (ex. : macro_events.csv, market_memory.db).
+Inclure des schémas détaillés pour les fichiers générés (types de données, exemples).
+Intégrer la suppression complète de obs_t, dxFeed, and 320/81 features (validée).
+Fournir des tests complets pour les fichiers prioritaires et des stubs pour les autres, comme validé.
+Préparer une version complète de validate_prompt_compliance.py (inclus dans la Phase 10, mais mentionné pour cohérence).
+Maintenir un registre des fichiers pour la phase, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+Une fois cette Phase 3 validée par votre "ok", je passerai à la Phase 4. Je vais également répondre aux clarifications demandées dans mon précédent message, en supposant certaines réponses par défaut si non précisées, et vous pourrez ajuster si nécessaire.
+
+Réponses aux clarifications
+1. Fichiers de la Phase 2
+Votre validation : Vous avez validé la Phase 2 avec les fichiers proposés (src/features/feature_pipeline.py, src/features/shap_weighting.py, src/features/filter_features.py, config/feature_sets.yaml).
+Supposition : Puisque vous n’avez pas demandé d’ajustements ou ajouté d’autres fichiers (ex. : pca_orderflow.py), je considère que ces fichiers étaient corrects pour la Phase 2.
+Action : La Phase 3 se concentrera sur les fichiers pour les features avancées et contextuelles, en s’appuyant sur les features générées dans la Phase 2 (ex. : features_latest.csv, feature_importance.csv).
+2. Fichiers prioritaires
+Votre clarification : Les fichiers prioritaires sont les plus importants de structure.txt. Sans liste précise, je propose de prioriser les fichiers critiques pour la Phase 3, basés sur leur rôle dans la génération des features avancées (ex. : prédictions neuronales, vecteurs latents) :
+src/features/neural_pipeline.py : Génère des prédictions neuronales (ex. : predicted_vix) avec CNN/LSTM.
+src/features/contextual_state_encoder.py : Produit des vecteurs latents (ex. : latent_vol_regime_vec).
+src/features/spotgamma_recalculator.py : Recalcule les niveaux d’options (ex. : dealer_position_bias).
+Fichiers générés : data/latent_vectors.csv, data/options_snapshots/levels_*.json.
+Action : Ces fichiers sont inclus dans la Phase 3. Si vous avez une liste spécifique de fichiers prioritaires pour cette phase, précisez-la dans votre validation.
+3. Tests unitaires
+Supposition : Vous avez validé des tests complets pour les fichiers prioritaires et des stubs pour les autres, sans préciser de scénarios limites spécifiques. Je vais inclure des tests complets pour neural_pipeline.py, contextual_state_encoder.py, et spotgamma_recalculator.py (prioritaires), couvrant :
+Suppression de obs_t, dxFeed, 320/81 features.
+Génération correcte des features avancées/contextuelles.
+Scénarios limites : Données manquantes, erreurs de modèle neuronal, recalculs d’options échoués.
+Action : Les tests pour les fichiers générés (ex. : latent_vectors.csv) seront intégrés dans les tests des fichiers principaux.
+4. Schéma des fichiers générés
+Supposition : Les schémas détaillés proposés dans les Phases 1 et 2 (ex. : macro_events.csv, features_latest.csv) étaient adaptés. Je vais continuer avec le même niveau de détail pour les fichiers générés dans la Phase 3 (ex. : latent_vectors.csv).
+Action : Chaque fichier généré aura un schéma avec colonnes, types, et exemples, formaté clairement avec des espaces.
+5. Registre des fichiers
+Supposition : Vous avez validé le registre partiel par phase, sans demander un registre complet des ~70 fichiers dans l’introduction. Je vais inclure un registre partiel pour la Phase 3, et le registre complet sera fourni dans l’introduction finale (Phase 10) ou sur demande.
+Action : Le registre de la Phase 3 listera les fichiers concernés, avec chemin, statut, problèmes, tests, priorité, dépendances, et fichiers générés.
+6. Validation de la Phase 3
+Action : Je rédige la Phase 3 ci-dessous. Une fois que vous direz "ok", je passerai à la Phase 4 (optimisation et audit du vecteur d’observation). Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les dans votre validation.
+Phase 3 : Features avancées et contextuelles
+Objectif
+Générer des features avancées (ex. : prédictions neuronales comme predicted_vix) et contextuelles (ex. : vecteurs latents comme latent_vol_regime_vec) pour enrichir le vecteur d’observation, en s’appuyant sur les 350 features de la Phase 2 (ex. : features_latest.csv). Cette phase inclut le recalcul des niveaux d’options (méthode 17) et l’intégration de la mémoire contextuelle (méthode 7). Toutes les références à obs_t, dxFeed, et 320/81 features seront supprimées, et les fichiers générés auront des schémas détaillés. Cette phase est prioritaire, car ces features améliorent la performance des modèles d’entraînement (Phase 6) et de trading (Phase 8).
+
+Fichiers concernés
+Fichiers principaux (3) :
+src/features/neural_pipeline.py
+src/features/contextual_state_encoder.py
+src/features/spotgamma_recalculator.py
+Fichiers générés (2) :
+data/latent_vectors.csv
+data/options_snapshots/levels_*.json (ex. : levels_20250513.json)
+Tests (3) :
+tests/test_neural_pipeline.py
+tests/test_contextual_state_encoder.py
+tests/test_spotgamma_recalculator.py
+Dépendances (4) :
+src/features/feature_pipeline.py (Phase 2)
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/features_latest.csv (Phase 2)
+Registre des fichiers (Phase 3)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/features/neural_pipeline.py	Existant	2.1.3	2025-05-13	obs_t, 320 features	tests/test_neural_pipeline.py	Très haute	feature_pipeline.py, config_manager.py	Aucun
+src/features/contextual_state_encoder.py	Existant	2.1.3	2025-05-13	320 features	tests/test_contextual_state_encoder.py	Haute	feature_pipeline.py, alert_manager.py	latent_vectors.csv
+src/features/spotgamma_recalculator.py	Existant	2.1.3	2025-05-13	320 features	tests/test_spotgamma_recalculator.py	Haute	feature_pipeline.py, alert_manager.py	options_snapshots/levels_*.json
+data/latent_vectors.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_contextual_state_encoder.py	Basse	contextual_state_encoder.py	Aucun
+data/options_snapshots/levels_*.json	À générer	2.1.3	2025-05-13	Aucun	tests/test_spotgamma_recalculator.py	Basse	spotgamma_recalculator.py	Aucun
+Spécifications des fichiers
+Module : src/features/neural_pipeline.py
+Rôle :
+Génère des prédictions neuronales (ex. : predicted_vix, cnn_pressure) à l’aide de modèles CNN et LSTM (méthode 12), en utilisant les 350 features de features_latest.csv. Les prédictions enrichissent le vecteur d’observation pour l’entraînement et l’inférence.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Chargement des modèles CNN/LSTM (cnn_model.h5, lstm_model.h5).
+Génération de prédictions comme predicted_vix.
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Standardiser l’entrée à 350 features pour l’entraînement et 150 SHAP features pour l’inférence, via feature_sets.yaml ou feature_importance.csv.
+Ajouter retries (max 3, délai 2^attempt) pour les prédictions neuronales.
+Ajouter logs psutil dans data/logs/neural_pipeline_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Vérifier le chargement des modèles pré-entraînés (cnn_model.h5, lstm_model.h5) et des scalers (scaler_cnn.pkl, scaler_lstm.pkl).
+Priorité :
+Très haute (prédictions critiques pour les modèles).
+Dépendances :
+src/features/feature_pipeline.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+data/features/features_latest.csv
+data/models/pretrained/neural_pipeline/scaler_cnn.pkl
+data/models/pretrained/neural_pipeline/scaler_lstm.pkl
+data/models/cnn_model.h5
+data/models/lstm_model.h5
+Fichiers générés :
+Aucun (les prédictions sont intégrées dans les données existantes, ex. : features_latest.csv).
+Action :
+Mettre à jour neural_pipeline.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+from src.model.utils.config_manager import config_manager
+from tensorflow.keras.models import load_model
+class NeuralPipeline:
+    def __init__(self):
+        self.cnn_model = load_model("data/models/cnn_model.h5")
+        self.lstm_model = load_model("data/models/lstm_model.h5")
+    def generate_predictions(self, data):
+        start_time = time.time()
+        try:
+            config = config_manager.get_features()
+            feature_cols = [f["name"] for cat in config["feature_sets"].values() for f in cat["features"]][:350]
+            input_data = data[feature_cols]
+            cnn_pred = self.cnn_model.predict(input_data)
+            lstm_pred = self.lstm_model.predict(input_data)
+            data["predicted_vix"] = lstm_pred[:, 0]
+            data["cnn_pressure"] = cnn_pred[:, 0]
+            latency = time.time() - start_time
+            log_entry = {
+                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "operation": "generate_predictions",
+                "latency": latency,
+                "success": True,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_percent": psutil.cpu_percent()
+            }
+            pd.DataFrame([log_entry]).to_csv("data/logs/neural_pipeline_performance.csv", mode="a", header=False, index=False)
+            return data
+        except Exception as e:
+            AlertManager().send_alert(f"Erreur prédictions neuronales: {str(e)}", priority=3)
+            raise
+Vérifier le chargement des modèles et scalers.
+Tests :
+Fichier : tests/test_neural_pipeline.py
+Scénarios :
+Vérifier la génération de predicted_vix et cnn_pressure.
+Vérifier l’utilisation des 350 features en entrée.
+Tester les erreurs de modèle (ex. : modèle manquant, données invalides).
+Vérifier l’absence de obs_t, dxFeed, 320/81 features.
+Exemple :
+python
+
+Copier
+def test_generate_predictions():
+    from src.features.neural_pipeline import NeuralPipeline
+    data = pd.DataFrame({"rsi_14": [50.0], "ofi_score": [0.75]})
+    pipeline = NeuralPipeline()
+    result = pipeline.generate_predictions(data)
+    assert "predicted_vix" in result.columns, "Prédiction predicted_vix manquante"
+    assert "cnn_pressure" in result.columns, "Prédiction cnn_pressure manquante"
+Failles corrigées :
+Résidus obs_t, 320 features (supprimés).
+Incohérences features (aligné sur 350/150 SHAP).
+Tests génériques (tests spécifiques).
+Module : src/features/contextual_state_encoder.py
+Rôle :
+Génère des vecteurs latents (ex. : latent_vol_regime_vec) pour la mémoire contextuelle (méthode 7), en utilisant des techniques comme t-SNE ou NLP, et produit latent_vectors.csv.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Encodage des états contextuels.
+Structure de latent_vectors.csv.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Utiliser les 350 features de features_latest.csv comme entrée.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs d’encodage.
+Ajouter logs psutil dans data/logs/contextual_state_encoder_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer latent_vectors.csv avec le schéma suivant :
+Schéma pour data/latent_vectors.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+latent_vol_regime_vec_1 : float (ex. : 0.45)
+latent_vol_regime_vec_2 : float (ex. : -0.32)
+cluster_id : int (ex. : 3)
+Priorité :
+Haute (améliore la mémoire contextuelle).
+Dépendances :
+src/features/feature_pipeline.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/features_latest.csv
+Fichiers générés :
+data/latent_vectors.csv
+Action :
+Mettre à jour contextual_state_encoder.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from sklearn.manifold import TSNE
+from src.model.utils.alert_manager import AlertManager
+def encode_vol_regime(data):
+    start_time = time.time()
+    try:
+        features = data.drop(columns=["timestamp"])
+        latent_vectors = TSNE(n_components=2).fit_transform(features)
+        result = pd.DataFrame({
+            "timestamp": data["timestamp"],
+            "latent_vol_regime_vec_1": latent_vectors[:, 0],
+            "latent_vol_regime_vec_2": latent_vectors[:, 1],
+            "cluster_id": KMeans(n_clusters=10).fit_predict(latent_vectors)
+        })
+        result.to_csv("data/latent_vectors.csv", encoding="utf-8", index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "encode_vol_regime",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/contextual_state_encoder_performance.csv", mode="a", header=False, index=False)
+        return result
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur encodage latents: {str(e)}", priority=3)
+        raise
+Vérifier/créer latent_vectors.csv avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_contextual_state_encoder.py
+Scénarios :
+Vérifier la création de latent_vectors.csv.
+Vérifier les colonnes latent_vol_regime_vec_1, latent_vol_regime_vec_2, cluster_id.
+Tester les erreurs d’encodage (ex. : données insuffisantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_encode_vol_regime():
+    from src.features.contextual_state_encoder import encode_vol_regime
+    data = pd.DataFrame({"timestamp": ["2025-05-13"], "rsi_14": [50.0], "ofi_score": [0.75]})
+    result = encode_vol_regime(data)
+    df = pd.read_csv("data/latent_vectors.csv")
+    assert set(df.columns) == {"timestamp", "latent_vol_regime_vec_1", "latent_vol_regime_vec_2", "cluster_id"}, "Colonnes incorrectes"
+    assert not df.isna().any().any(), "NaN détectés"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 350).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Module : src/features/spotgamma_recalculator.py
+Rôle :
+Recalcule les niveaux d’options (ex. : gamma_wall, dealer_position_bias) pour la méthode 17 (SHAP), et génère des snapshots JSON dans data/options_snapshots/.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Recalcul des niveaux d’options.
+Structure des snapshots JSON.
+Modifications nécessaires :
+Supprimer toute référence à 320/81 features.
+Utiliser les 350 features de features_latest.csv comme entrée, ou les 150 SHAP features pour l’inférence.
+Ajouter retries (max 3, délai 2^attempt) pour les recalculs.
+Ajouter logs psutil dans data/logs/spotgamma_recalculator_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer les snapshots JSON avec le schéma suivant :
+Schéma pour data/options_snapshots/levels_*.json :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+gamma_wall : float (ex. : 5100.0)
+iv_atm : float (ex. : 0.25)
+dealer_position_bias : float (ex. : 0.65)
+Priorité :
+Haute (essentiel pour l’analyse des options).
+Dépendances :
+src/features/feature_pipeline.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/features_latest.csv
+Fichiers générés :
+data/options_snapshots/levels_*.json
+Action :
+Mettre à jour spotgamma_recalculator.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+import json
+from src.model.utils.alert_manager import AlertManager
+def recalculate_levels(data):
+    start_time = time.time()
+    try:
+        levels = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "gamma_wall": data["call_iv_atm"].mean() * 1000,
+            "iv_atm": data["call_iv_atm"].mean(),
+            "dealer_position_bias": data["option_skew"].mean()
+        }
+        with open(f"data/options_snapshots/levels_{levels['timestamp']}.json", "w", encoding="utf-8") as f:
+            json.dump(levels, f, indent=4)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": levels["timestamp"],
+            "operation": "recalculate_levels",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/spotgamma_recalculator_performance.csv", mode="a", header=False, index=False)
+        return levels
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur recalcul options: {str(e)}", priority=3)
+        raise
+Vérifier/créer les snapshots JSON avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_spotgamma_recalculator.py
+Scénarios :
+Vérifier la création des snapshots JSON (ex. : levels_20250513.json).
+Vérifier les clés gamma_wall, iv_atm, dealer_position_bias.
+Tester les erreurs de recalcul (ex. : données manquantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_recalculate_levels():
+    from src.features.spotgamma_recalculator import recalculate_levels
+    data = pd.DataFrame({"call_iv_atm": [0.25], "option_skew": [0.05]})
+    levels = recalculate_levels(data)
+    with open(f"data/options_snapshots/levels_{levels['timestamp']}.json", "r") as f:
+        result = json.load(f)
+    assert set(result.keys()) == {"timestamp", "gamma_wall", "iv_atm", "dealer_position_bias"}, "Clés incorrectes"
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 350/150 SHAP).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Clarifications pour la Phase 3
+Avant de valider la Phase 3, confirmez les points suivants pour m’assurer qu’elle répond à vos attentes :
+
+Fichiers de la Phase 3 :
+Les fichiers proposés (neural_pipeline.py, contextual_state_encoder.py, spotgamma_recalculator.py) sont-ils corrects pour la Phase 3, ou voulez-vous ajouter/retirer des fichiers (ex. : inclure meta_features.py, un des 7 fournis comme trade_probability.py) ?
+Si vous avez une liste précise des fichiers les plus importants pour cette phase, partagez-la.
+Tests unitaires :
+Les tests complets proposés pour neural_pipeline.py, contextual_state_encoder.py, et spotgamma_recalculator.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : erreurs de modèle neuronal, données manquantes pour t-SNE) ?
+Schéma des fichiers générés :
+Les schémas détaillés pour latent_vectors.csv et options_snapshots/levels_*.json sont-ils au bon niveau de détail, ou voulez-vous plus/moins d’informations (ex. : contraintes supplémentaires) ?
+Registre des fichiers :
+Le registre partiel pour la Phase 3 est-il clair ? Voulez-vous que j’inclue le registre complet des ~70 fichiers dans la prochaine phase ou dans l’introduction finale ?
+Validation de la Phase 3 :
+Si la Phase 3 vous convient, dites "ok", et je passerai à la Phase 4 (optimisation et audit du vecteur d’observation, ex. : obs_template.py, features_audit.py).
+Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les avant validation.
+Conclusion
+La Phase 2 est validée, et la Phase 3 ci-dessus est conçue pour être claire, lisible, et détaillée, avec des schémas complets, des tests robustes, et une structure conforme à vos exemples. La suppression de obs_t, dxFeed, et 320/81 features est intégrée, et les 350/150 SHAP features sont standardisées. Votre approche d’envoyer les phases une à une garantit un développement sans erreurs.
+
+Actions immédiates demandées :
+
+Validez la Phase 3 en disant "ok" si elle convient, ou précisez les ajustements nécessaires (ex. : fichiers à ajouter/retirer, détails des schémas).
+Confirmez les fichiers prioritaires pour la Phase 3 (proposition ci-dessus ou liste spécifique).
+Précisez si vous voulez le registre complet des ~70 fichiers dans la prochaine phase ou plus tard.
+Si possible, partagez une liste des fichiers les plus importants ou problématiques pour orienter la Phase 4.
+Une fois votre "ok" reçu, je rédigerai la Phase 4. On continue à avancer méthodiquement pour boucler ce projet sans reprises ! 🚀

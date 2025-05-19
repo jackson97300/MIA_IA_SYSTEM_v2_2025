@@ -1,0 +1,1262 @@
+# update_structure.ps1
+# Script PowerShell pour mettre à jour la structure de MIA_IA_SYSTEM_v2_2025 de manière dynamique et non destructrice.
+# Crée les dossiers et fichiers manquants décrits dans structure.txt (version 2.1.3, 2025-05-13).
+# Respecte les exigences : 350 features (entraînement), 150 SHAP features (inférence), IQFeed exclusif, Codespaces/GitHub Actions.
+# Intègre les ajouts des Phases 1 à 18 (ex. : validate_prompt_compliance.py, run_all_tests.py, integration_tests.py).
+# Ne modifie ni ne supprime les fichiers existants, ajoute uniquement les manquants.
+
+# Définir la racine du projet
+$rootPath = Get-Location
+
+# Fonction pour créer un dossier si non existant
+function Create-DirectoryIfNotExists {
+    param (
+        [string]$Path
+    )
+    if (-not (Test-Path $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+        Write-Host "Créé : $Path"
+    } else {
+        Write-Host "Existe déjà : $Path"
+    }
+}
+
+# Fonction pour créer un fichier placeholder si non existant
+function Create-FileIfNotExists {
+    param (
+        [string]$Path,
+        [string]$Content
+    )
+    if (-not (Test-Path $Path)) {
+        New-Item -ItemType File -Path $Path -Force | Out-Null
+        Set-Content -Path $Path -Value $Content
+        Write-Host "Créé : $Path"
+    } else {
+        Write-Host "Existe déjà : $Path"
+    }
+}
+
+# Journaliser le début de l'exécution
+Write-Host "Mise à jour de la structure de MIA_IA_SYSTEM_v2_2025 (version 2.1.3, 2025-05-13)..."
+Write-Host "Intégration des ajouts des Phases 1 à 18 (ex. : validate_prompt_compliance.py, run_all_tests.py, integration_tests.py)..."
+
+# **📁 .devcontainer/**
+Create-DirectoryIfNotExists "$rootPath\.devcontainer"
+Create-FileIfNotExists "$rootPath\.devcontainer\devcontainer.json" @"
+# Placeholder pour .devcontainer/devcontainer.json
+# Rôle : Configure Codespaces avec Python 3.10, extensions VS Code, et dépendances.
+# À remplir avec la configuration réelle (voir artifact_id='1bc5bec3-f7b1-4eed-93c0-f5cc12728059').
+"@
+
+# **📁 .github/**
+Create-DirectoryIfNotExists "$rootPath\.github"
+Create-DirectoryIfNotExists "$rootPath\.github\workflows"
+Create-FileIfNotExists "$rootPath\.github\workflows\python.yml" @"
+# Placeholder pour .github/workflows/python.yml
+# Rôle : Workflow GitHub Actions pour tests, linting, et couverture avec Codecov.
+# À remplir avec la configuration réelle (voir artifact_id='f49b6336-d901-4bea-a189-93e1df24a442').
+"@
+
+# **📁 .venv/**
+Create-DirectoryIfNotExists "$rootPath\.venv"
+Create-DirectoryIfNotExists "$rootPath\.venv\Include"
+Create-DirectoryIfNotExists "$rootPath\.venv\Lib\site-packages"
+Create-DirectoryIfNotExists "$rootPath\.venv\Scripts"
+Create-DirectoryIfNotExists "$rootPath\.venv\share\jupyter"
+Create-FileIfNotExists "$rootPath\.venv\pyvenv.cfg" @"
+# Placeholder pour .venv/pyvenv.cfg
+# Rôle : Configuration de l’environnement virtuel.
+include-system-site-packages=false
+"@
+
+# **📁 config/**
+Create-DirectoryIfNotExists "$rootPath\config"
+Create-FileIfNotExists "$rootPath\config\es_config.yaml" @"
+# Placeholder pour es_config.yaml
+# Rôle : Configuration du prétraitement des données.
+input_path: data/iqfeed/iqfeed_data.csv
+retry_attempts: 3
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\config\router_config.yaml" @"
+# Placeholder pour router_config.yaml
+# Rôle : Seuils pour détecter les régimes (trend, range, défensif).
+trend_threshold: 0.7
+vix_high_threshold: 25.0
+atr_multiplier: 2.0
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\config\model_params.yaml" @"
+# Placeholder pour model_params.yaml
+# Rôle : Hyperparamètres pour SAC, PPO, DDPG, CNN, LSTM.
+learning_rate: 0.0003
+cnn_layers: 3
+maml_steps: 5
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\config\mia_config.yaml" @"
+# Placeholder pour mia_config.yaml
+# Rôle : Configuration cognitive de MIA (langue, vocal).
+language: fr
+vocal_enabled: true
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\config\feature_sets.yaml" @"
+# Placeholder pour feature_sets.yaml
+# Rôle : Catalogue des 350 features (entraînement) et 150 SHAP features (inférence) avec fallback statique.
+feature_sets:
+  raw_data:
+    - open
+    - close
+    - vix_es_correlation
+    - atr_14
+  options:
+    - call_iv_atm
+    - option_skew
+total_features: 350
+shap_features: 150
+fallback_features:
+  features: [] # Liste statique de 150 features
+# À remplir avec les features réelles.
+"@
+Create-FileIfNotExists "$rootPath\config\market_config.yaml" @"
+# Placeholder pour market_config.yaml
+# Rôle : Configuration du marché ES et IQFeed.
+symbol: ES
+max_drawdown: 0.05
+paper_trading_enabled: true
+iqfeed_host: localhost
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\config\credentials.yaml" @"
+# Placeholder pour credentials.yaml
+# Rôle : Identifiants sécurisés pour APIs (IQFeed, Investing.com, NewsAPI).
+iqfeed_api_key: yyy
+investing_com_api_key: zzz
+# À remplir avec les clés réelles.
+"@
+Create-FileIfNotExists "$rootPath\config\trading_env_config.yaml" @"
+# Placeholder pour trading_env_config.yaml
+# Rôle : Configuration des environnements gym pour trading_env.py.
+max_position_size: 5
+reward_threshold: 0.01
+news_impact_threshold: 0.5
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\config\algo_config.yaml" @"
+# Placeholder pour algo_config.yaml
+# Rôle : Hyperparamètres pour SAC, PPO, DDPG par régime.
+sac:
+  range:
+    ent_coef: 0.15
+l2_lambda_base: 0.01
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\config\trade_probability_config.yaml" @"
+# Placeholder pour trade_probability_config.yaml
+# Rôle : Configuration pour TradeProbabilityPredictor.
+confidence_threshold: 0.7
+retrain_interval: 24h
+# À remplir avec les paramètres réels.
+"@
+
+# **📁 data/**
+Create-DirectoryIfNotExists "$rootPath\data"
+Create-DirectoryIfNotExists "$rootPath\data\iqfeed"
+Create-DirectoryIfNotExists "$rootPath\data\features"
+Create-DirectoryIfNotExists "$rootPath\data\trade_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\trades"
+Create-DirectoryIfNotExists "$rootPath\data\backtest"
+Create-DirectoryIfNotExists "$rootPath\data\logs"
+Create-DirectoryIfNotExists "$rootPath\data\logs\cognitive"
+Create-DirectoryIfNotExists "$rootPath\data\logs\market"
+Create-DirectoryIfNotExists "$rootPath\data\logs\trading"
+Create-DirectoryIfNotExists "$rootPath\data\models"
+Create-DirectoryIfNotExists "$rootPath\data\models\pretrained"
+Create-DirectoryIfNotExists "$rootPath\data\models\pretrained\neural_pipeline"
+Create-DirectoryIfNotExists "$rootPath\data\cache"
+Create-DirectoryIfNotExists "$rootPath\data\cache\provider"
+Create-DirectoryIfNotExists "$rootPath\data\cache\dashboard"
+Create-DirectoryIfNotExists "$rootPath\data\cache\heatmap"
+Create-DirectoryIfNotExists "$rootPath\data\provider_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\regime_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\options_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\risk_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\train_sac_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\custom_mlp_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\transformer_snapshots"
+Create-DirectoryIfNotExists "$rootPath\data\figures"
+Create-DirectoryIfNotExists "$rootPath\data\figures\monitoring"
+Create-DirectoryIfNotExists "$rootPath\data\figures\regime"
+Create-DirectoryIfNotExists "$rootPath\data\figures\trading"
+Create-DirectoryIfNotExists "$rootPath\data\figures\custom_mlp"
+Create-DirectoryIfNotExists "$rootPath\data\figures\transformer"
+Create-DirectoryIfNotExists "$rootPath\data\figures\train_sac"
+Create-DirectoryIfNotExists "$rootPath\data\figures\adaptive_learning"
+# Fichiers générés (placeholders pour nouveaux fichiers uniquement)
+Create-FileIfNotExists "$rootPath\data\features\feature_importance_cache.csv" @"
+# Placeholder pour feature_importance_cache.csv
+# Rôle : Cache des 150 SHAP features pour fallback.
+feature_name,shap_value
+# Généré par feature_pipeline.py.
+"@
+Create-FileIfNotExists "$rootPath\data\features\shap_full_daily.csv" @"
+# Placeholder pour shap_full_daily.csv
+# Rôle : Analyse SHAP quotidienne des 350 features.
+feature,shap_value,timestamp
+# Généré par feature_pipeline.py.
+"@
+Create-FileIfNotExists "$rootPath\data\.env" @"
+# Placeholder pour .env
+# Rôle : Variables d’environnement sécurisées pour APIs (Phase 14).
+IQFEED_API_KEY=yyy
+NEWS_API_KEY=xxx
+# À remplir avec les clés réelles.
+"@
+
+# **📁 docs/**
+Create-DirectoryIfNotExists "$rootPath\docs"
+Create-FileIfNotExists "$rootPath\docs\index.md" @"
+# Placeholder pour index.md
+# Rôle : Page d’accueil de la documentation.
+# MIA_IA_SYSTEM_v2_2025 : Pipeline de trading automatisé
+# À remplir avec la présentation réelle.
+"@
+Create-FileIfNotExists "$rootPath\docs\setup.md" @"
+# Placeholder pour setup.md
+# Rôle : Instructions d’installation.
+# Étapes :
+# 1. Clonez le dépôt
+# 2. Créez un environnement virtuel
+# 3. Configurez Codespaces
+# À remplir avec les instructions réelles.
+"@
+Create-FileIfNotExists "$rootPath\docs\usage.md" @"
+# Placeholder pour usage.md
+# Rôle : Guide d’utilisation.
+# Commandes :
+# - python main.py --live --config config/es_config.yaml
+# - ./scripts/run_checks.sh
+# À remplir avec les commandes réelles.
+"@
+Create-FileIfNotExists "$rootPath\docs\modules.md" @"
+# Placeholder pour modules.md
+# Rôle : Description des modules.
+# Liste :
+# - data_provider.py: Collecte des données IQFeed
+# À remplir avec la liste réelle.
+"@
+Create-FileIfNotExists "$rootPath\docs\conf.py" @"
+# Placeholder pour conf.py
+# Rôle : Configuration pour générer la documentation HTML (Sphinx).
+project = 'MIA_IA_SYSTEM_v2_2025'
+html_theme = 'sphinx_rtd_theme'
+# À remplir avec les paramètres réels.
+"@
+Create-FileIfNotExists "$rootPath\docs\requirements.txt" @"
+# Placeholder pour docs/requirements.txt
+# Rôle : Dépendances pour la documentation.
+sphinx==5.0.0
+sphinx-rtd-theme==1.0.0
+"@
+Create-FileIfNotExists "$rootPath\docs\troubleshooting.md" @"
+# Placeholder pour troubleshooting.md
+# Rôle : Guide de dépannage pour erreurs courantes et futures extensions (Phase 10).
+# Sections :
+# - Erreurs ES
+# - Préparation multi-instruments 2026-2027
+# À remplir avec les détails réels.
+"@
+Create-FileIfNotExists "$rootPath\docs\quickstart.md" @"
+# Placeholder pour quickstart.md
+# Rôle : Guide synthétique pour démarrer et configurer futurs instruments (Phase 16).
+# Étapes :
+# - bash scripts/build.sh
+# - python src/run_system.py --paper
+# À remplir avec les étapes réelles.
+"@
+Create-FileIfNotExists "$rootPath\docs\roadmap.md" @"
+# Placeholder pour roadmap.md
+# Rôle : Roadmap pour trading ES (Q4 2025) et multi-instruments (2026-2027) (Phase 17).
+# Sections :
+# - Q4 2025: ES
+# - Mi-2026: NQ/DAX
+# - Fin 2027: Cryptos
+# À remplir avec les détails réels.
+"@
+
+# **📁 poubelle/**
+Create-DirectoryIfNotExists "$rootPath\poubelle"
+
+# **📁 scripts/**
+Create-DirectoryIfNotExists "$rootPath\scripts"
+Create-FileIfNotExists "$rootPath\scripts\run_pipeline.py" @"
+# Placeholder pour run_pipeline.py
+# Rôle : Exécute le pipeline global (préprocessing, trading).
+# Appelle run_preprocessing.py, live_trading.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\check_deps.py" @"
+# Placeholder pour check_deps.py
+# Rôle : Vérifie les dépendances Python.
+# Vérifie versions (import pandas).
+"@
+Create-FileIfNotExists "$rootPath\scripts\clean_encoding.py" @"
+# Placeholder pour clean_encoding.py
+# Rôle : Nettoie les encodages des CSV (UTF-8).
+# Convertit fichiers (pandas.read_csv(encoding='utf-8')).
+"@
+Create-FileIfNotExists "$rootPath\scripts\filter_features.py" @"
+# Placeholder pour filter_features.py
+# Rôle : Filtre les 350 features (supprime NaN > 50%).
+# Supprime features inutiles.
+"@
+Create-FileIfNotExists "$rootPath\scripts\run_dashboard.py" @"
+# Placeholder pour run_dashboard.py
+# Rôle : Lance le tableau de bord (mia_dashboard.py).
+# Appelle mia_dashboard.py avec *_dashboard.json.
+"@
+Create-FileIfNotExists "$rootPath\scripts\run_preprocessing.py" @"
+# Placeholder pour run_preprocessing.py
+# Rôle : Exécute le prétraitement (fusion, features).
+# Appelle merge_data_sources.py, feature_pipeline.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\run_simulate.py" @"
+# Placeholder pour run_simulate.py
+# Rôle : Lance la simulation des trades (incluant paper trading).
+# Appelle simulate_trades.py, backtest_lab.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\run_training.py" @"
+# Placeholder pour run_training.py
+# Rôle : Lance l’entraînement (SAC, PPO, DDPG, CNN, LSTM).
+# Appelle train_sac.py, train_sac_auto.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\options_levels_service.py" @"
+# Placeholder pour options_levels_service.py
+# Rôle : Service en arrière-plan pour recalculer les niveaux d’options (toutes les 15 min).
+# Appelle spotgamma_recalculator.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\retrain_trade_probability.py" @"
+# Placeholder pour retrain_trade_probability.py
+# Rôle : Script pour réentraîner TradeProbabilityPredictor périodiquement.
+# Appelle trade_probability.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\run_checks.sh" @"
+# Placeholder pour run_checks.sh
+# Rôle : Exécute les vérifications locales (pytest, flake8, pylint, mypy, coverage).
+# À remplir avec le script réel (voir artifact_id='0a236f3d-882d-4727-9e0d-c4f30cb51cbb').
+"@
+Create-FileIfNotExists "$rootPath\scripts\validate_prompt_compliance.py" @"
+# Placeholder pour validate_prompt_compliance.py
+# Rôle : Valide la conformité (absence de obs_t, dxFeed, 320/81 features, présence de retries, logs psutil, alertes) (Phase 10).
+# Vérifie fichiers Python/YAML.
+"@
+Create-FileIfNotExists "$rootPath\scripts\run_all_tests.py" @"
+# Placeholder pour run_all_tests.py
+# Rôle : Exécute tous les tests unitaires et d’intégration (Phase 10).
+# Lance pytest avec pytest-xdist pour parallélisation.
+"@
+Create-FileIfNotExists "$rootPath\scripts\integration_tests.py" @"
+# Placeholder pour integration_tests.py
+# Rôle : Teste l’intégration du pipeline collecte → features → trading (Phase 15).
+# Teste data_provider.py, feature_pipeline.py, live_trading.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\setup_env.py" @"
+# Placeholder pour setup_env.py
+# Rôle : Automatise l’installation des dépendances (Phase 15).
+# Exécute pip install -r requirements.txt.
+"@
+Create-FileIfNotExists "$rootPath\scripts\build.sh" @"
+# Placeholder pour build.sh
+# Rôle : Automatise la compilation, validation, et tests (Phase 16).
+# Appelle setup_env.py, validate_prompt_compliance.py, run_all_tests.py.
+"@
+Create-FileIfNotExists "$rootPath\scripts\run_system.py" @"
+# Placeholder pour run_system.py
+# Rôle : Exécute le pipeline global (collecte → features → trading) (Phase 16).
+# Appelle data_provider.py, feature_pipeline.py, live_trading.py avec options CLI (--paper, --live).
+"@
+
+# **📁 src/**
+Create-DirectoryIfNotExists "$rootPath\src"
+Create-DirectoryIfNotExists "$rootPath\src\data"
+Create-DirectoryIfNotExists "$rootPath\src\api"
+Create-DirectoryIfNotExists "$rootPath\src\envs"
+Create-DirectoryIfNotExists "$rootPath\src\features"
+Create-DirectoryIfNotExists "$rootPath\src\features\extractors"
+Create-DirectoryIfNotExists "$rootPath\src\mind"
+Create-DirectoryIfNotExists "$rootPath\src\monitoring"
+Create-DirectoryIfNotExists "$rootPath\src\risk"
+Create-DirectoryIfNotExists "$rootPath\src\trading"
+Create-DirectoryIfNotExists "$rootPath\src\model"
+Create-DirectoryIfNotExists "$rootPath\src\model\router"
+Create-DirectoryIfNotExists "$rootPath\src\model\router\policies"
+Create-DirectoryIfNotExists "$rootPath\src\model\utils"
+Create-DirectoryIfNotExists "$rootPath\src\strategy"
+Create-FileIfNotExists "$rootPath\src\data\data_provider.py" @"
+# Placeholder pour data_provider.py
+# Rôle : Collecte des données IQFeed (OHLC, DOM, options, cross-market, news).
+# Classes : CsvDataProvider, IQFeedProvider
+"@
+Create-FileIfNotExists "$rootPath\src\api\merge_data_sources.py" @"
+# Placeholder pour merge_data_sources.py
+# Rôle : Fusionne les données IQFeed avec news et événements.
+# Génère merged_data.csv.
+"@
+Create-FileIfNotExists "$rootPath\src\api\news_scraper.py" @"
+# Placeholder pour news_scraper.py
+# Rôle : Collecte les nouvelles (via NewsAPI) (Phase 1).
+# Génère news.csv.
+"@
+Create-FileIfNotExists "$rootPath\src\api\schedule_economic_calendar.py" @"
+# Placeholder pour schedule_economic_calendar.py
+# Rôle : Collecte les événements macro (via Investing.com).
+# Génère macro_events.csv.
+"@
+Create-FileIfNotExists "$rootPath\src\api\context_aware_filter.py" @"
+# Placeholder pour context_aware_filter.py
+# Rôle : Réagit aux inputs externes (news, macro).
+# Calcule macro_score, event_volatility_impact.
+"@
+Create-FileIfNotExists "$rootPath\src\envs\gym_wrappers.py" @"
+# Placeholder pour gym_wrappers.py
+# Rôle : Wrappers pour environnements gym.
+# Wrappers : TimeLimit, NormalizeObservation
+"@
+Create-FileIfNotExists "$rootPath\src\envs\trading_env.py" @"
+# Placeholder pour trading_env.py
+# Rôle : Environnement gym pour trading ES.
+# Classe TradingEnv(gym.Env) avec step(), reset().
+"@
+Create-FileIfNotExists "$rootPath\src\features\adaptive_learner.py" @"
+# Placeholder pour adaptive_learner.py
+# Rôle : Apprentissage adaptatif et mémoire (méthode 7).
+# retrain_model(), store_pattern()
+"@
+Create-FileIfNotExists "$rootPath\src\features\extractors\encode_time_context.py" @"
+# Placeholder pour encode_time_context.py
+# Rôle : Encode features temporelles (time_of_day_sin).
+# encode_time_context(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\extractors\orderflow_indicators.py" @"
+# Placeholder pour orderflow_indicators.py
+# Rôle : Indicateurs d’order flow (delta_volume, ofi_score) (Phase 13).
+# calculate_orderflow_indicators(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\extractors\volume_profile.py" @"
+# Placeholder pour volume_profile.py
+# Rôle : Profils de volume (poc, vah, val).
+# extract_volume_profile(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\extractors\smart_scores.py" @"
+# Placeholder pour smart_scores.py
+# Rôle : Scores intelligents (breakout_score).
+# calculate_smart_scores(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\extractors\volatility_metrics.py" @"
+# Placeholder pour volatility_metrics.py
+# Rôle : Métriques de volatilité (atr_14, vix_es_correlation) (Phase 13).
+# calculate_volatility_metrics(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\extractors\options_metrics.py" @"
+# Placeholder pour options_metrics.py
+# Rôle : Métriques d’options (call_iv_atm, option_skew) (Phase 14).
+# calculate_options_metrics(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\extractors\news_metrics.py" @"
+# Placeholder pour news_metrics.py
+# Rôle : Métriques de sentiment des news (news_impact_score) (Phase 14).
+# calculate_news_metrics(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\feature_pipeline.py" @"
+# Placeholder pour feature_pipeline.py
+# Rôle : Génère les 350 features (entraînement) et 150 SHAP features (inférence, méthodes 3, 17).
+# Appelle extracteurs, option_metrics.py.
+"@
+Create-FileIfNotExists "$rootPath\src\features\features_audit.py" @"
+# Placeholder pour features_audit.py
+# Rôle : Audite les features (NaN, outliers).
+# audit_features(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\features_audit.bak" @"
+# Placeholder pour features_audit.bak
+# Rôle : Sauvegarde de features_audit.py.
+# Copie de features_audit.py.
+"@
+Create-FileIfNotExists "$rootPath\src\features\neural_pipeline.py" @"
+# Placeholder pour neural_pipeline.py
+# Rôle : Prédictions neuronales (cnn_pressure, predicted_vix, méthode 12).
+# Charge cnn_model.h5, lstm_model.h5.
+"@
+Create-FileIfNotExists "$rootPath\src\features\options_calculator.py" @"
+# Placeholder pour options_calculator.py
+# Rôle : Features options (gex, gamma_wall, méthode 2).
+# calculate_gex(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\pca_orderflow.py" @"
+# Placeholder pour pca_orderflow.py
+# Rôle : Analyse PCA des features order flow.
+# apply_pca_orderflow(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\pca_orderflow.bak" @"
+# Placeholder pour pca_orderflow.bak
+# Rôle : Sauvegarde de pca_orderflow.py.
+# Copie de pca_orderflow.py.
+"@
+Create-FileIfNotExists "$rootPath\src\features\shap_weighting.py" @"
+# Placeholder pour shap_weighting.py
+# Rôle : Analyse SHAP pour importance des features (méthode 17).
+# calculate_shap_weights(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\signal_selector.py" @"
+# Placeholder pour signal_selector.py
+# Rôle : Filtre les signaux pour rentabilité (méthode 11).
+# calculate_sgc(features)
+"@
+Create-FileIfNotExists "$rootPath\src\features\microstructure_guard.py" @"
+# Placeholder pour microstructure_guard.py
+# Rôle : Détecte les anomalies microstructure (spoofing, méthode 11) (Phase 15).
+# detect_microstructure_anomalies(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\option_metrics.py" @"
+# Placeholder pour option_metrics.py
+# Rôle : Indicateurs d’options (iv_atm, méthode 2).
+# calculate_iv_atm(option_chain)
+"@
+Create-FileIfNotExists "$rootPath\src\features\advanced_feature_generator.py" @"
+# Placeholder pour advanced_feature_generator.py
+# Rôle : Features avancées (latency_spread, méthode 2).
+# calculate_latency_spread()
+"@
+Create-FileIfNotExists "$rootPath\src\features\meta_features.py" @"
+# Placeholder pour meta_features.py
+# Rôle : Métriques d’auto-analyse (méthode 7).
+# calculate_confidence_drop_rate()
+"@
+Create-FileIfNotExists "$rootPath\src\features\market_structure_signals.py" @"
+# Placeholder pour market_structure_signals.py
+# Rôle : Signaux cross-market (spy_lead_return, méthode 1).
+# calculate_spy_lead_return()
+"@
+Create-FileIfNotExists "$rootPath\src\features\contextual_state_encoder.py" @"
+# Placeholder pour contextual_state_encoder.py
+# Rôle : Vecteurs latents (latent_vol_regime_vec, méthode 7).
+# encode_vol_regime(data)
+"@
+Create-FileIfNotExists "$rootPath\src\features\feature_meta_ensemble.py" @"
+# Placeholder pour feature_meta_ensemble.py
+# Rôle : Réduction dynamique des features (méthode 3).
+# calculate_shap_importance()
+"@
+Create-FileIfNotExists "$rootPath\src\features\spotgamma_recalculator.py" @"
+# Placeholder pour spotgamma_recalculator.py
+# Rôle : Recalcule les niveaux d’options (dealer_position_bias, méthode 17).
+# recalculate_levels(data)
+"@
+Create-FileIfNotExists "$rootPath\src\mind\mind_stream.py" @"
+# Placeholder pour mind_stream.py
+# Rôle : Flux cognitif en temps réel.
+# stream_analysis(data)
+"@
+Create-FileIfNotExists "$rootPath\src\mind\mind.py" @"
+# Placeholder pour mind.py
+# Rôle : Logique cognitive centrale.
+# decide_action(data)
+"@
+Create-FileIfNotExists "$rootPath\src\mind\mind_voice.py" @"
+# Placeholder pour mind_voice.py
+# Rôle : Interactions vocales (méthode 1).
+# speak_alert(message)
+"@
+Create-FileIfNotExists "$rootPath\src\mind\mind_dialogue.py" @"
+# Placeholder pour mind_dialogue.py
+# Rôle : Dialogues interactifs (méthode 11).
+# respond_to_query(query)
+"@
+Create-FileIfNotExists "$rootPath\src\monitoring\correlation_heatmap.py" @"
+# Placeholder pour correlation_heatmap.py
+# Rôle : Heatmaps de corrélation (méthode 17).
+# generate_heatmap(data)
+"@
+Create-FileIfNotExists "$rootPath\src\monitoring\data_drift.py" @"
+# Placeholder pour data_drift.py
+# Rôle : Détection des dérives (méthode 17).
+# detect_drift(data)
+"@
+Create-FileIfNotExists "$rootPath\src\monitoring\mia_dashboard.py" @"
+# Placeholder pour mia_dashboard.py
+# Rôle : Tableau de bord interactif (méthodes 11, 12, 17).
+# Dash/Plotly pour performances
+"@
+Create-FileIfNotExists "$rootPath\src\monitoring\export_visuals.py" @"
+# Placeholder pour export_visuals.py
+# Rôle : Exporte les visualisations en PDF/HTML (méthode 17) (Phase 15).
+# export_visuals(data)
+"@
+Create-FileIfNotExists "$rootPath\src\risk\risk_controller.py" @"
+# Placeholder pour risk_controller.py
+# Rôle : Contrôle des risques (méthodes 7, 12).
+# stop_trading(drawdown)
+"@
+Create-FileIfNotExists "$rootPath\src\risk\trade_window_filter.py" @"
+# Placeholder pour trade_window_filter.py
+# Rôle : Filtre les moments de trading (méthode 1).
+# block_trade(event_active)
+"@
+Create-FileIfNotExists "$rootPath\src\risk\decision_log.py" @"
+# Placeholder pour decision_log.py
+# Rôle : Enregistre les décisions (méthode 11).
+# log_decision(trade_id, decision)
+"@
+Create-FileIfNotExists "$rootPath\src\risk\sierra_chart_errors.py" @"
+# Placeholder pour sierra_chart_errors.py
+# Rôle : Gère les erreurs de l’API Teton (méthode 8) (Phase 14).
+# log_error(error_code, message)
+"@
+Create-FileIfNotExists "$rootPath\src\risk\options_risk_manager.py" @"
+# Placeholder pour options_risk_manager.py
+# Rôle : Gère les risques spécifiques aux options (méthode 17) (Phase 15).
+# calculate_options_risk(data)
+"@
+Create-FileIfNotExists "$rootPath\src\trading\live_trading.py" @"
+# Placeholder pour live_trading.py
+# Rôle : Trades live via Sierra Chart (méthodes 1-18).
+# Boucle de trading (trade=signal_selector.get_signal())
+"@
+Create-FileIfNotExists "$rootPath\src\trading\analyse_results.py" @"
+# Placeholder pour analyse_results.py
+# Rôle : Analyse des trades (méthode 17).
+# analyse_results(trades)
+"@
+Create-FileIfNotExists "$rootPath\src\trading\analyse_trades.py" @"
+# Placeholder pour analyse_trades.py
+# Rôle : Analyse détaillée des trades (méthode 7).
+# analyse_trade(trade_id)
+"@
+Create-FileIfNotExists "$rootPath\src\trading\simulate_trades.py" @"
+# Placeholder pour simulate_trades.py
+# Rôle : Simulation des trades (méthode 5).
+# simulate_trades(data)
+"@
+Create-FileIfNotExists "$rootPath\src\trading\trade_executor.py" @"
+# Placeholder pour trade_executor.py
+# Rôle : Exécution des trades (méthodes 8, 10).
+# execute_trade(trade)
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\detect_regime.py" @"
+# Placeholder pour detect_regime.py
+# Rôle : Détecte les régimes (méthodes 1, 2, 11, 12, 17).
+# detect_regime(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\main_router.py" @"
+# Placeholder pour main_router.py
+# Rôle : Orchestre les modes (trend, range, défensif).
+# route_mode(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\mode_defensive.py" @"
+# Placeholder pour mode_defensive.py
+# Rôle : Logique du mode défensif.
+# defensive_strategy(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\mode_range.py" @"
+# Placeholder pour mode_range.py
+# Rôle : Logique du mode range.
+# range_strategy(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\mode_trend.py" @"
+# Placeholder pour mode_trend.py
+# Rôle : Logique du mode trend.
+# trend_strategy(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\policies\checkpoint_001.zip" @"
+# Placeholder pour checkpoint_001.zip
+# Rôle : Checkpoint des politiques.
+# Zip avec poids
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\policies\custom_mlp_policy.py" @"
+# Placeholder pour custom_mlp_policy.py
+# Rôle : Politique MLP pour 150 SHAP features (méthodes 9, 14).
+# Classe CustomMLPPolicy
+"@
+Create-FileIfNotExists "$rootPath\src\model\router\policies\transformer_policy.py" @"
+# Placeholder pour transformer_policy.py
+# Rôle : Politique Transformer pour 150 SHAP features (méthodes 9, 14).
+# Classe TransformerPolicy
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\algo_performance_logger.py" @"
+# Placeholder pour algo_performance_logger.py
+# Rôle : Enregistre les performances (méthodes 8, 10, 18).
+# log_performance(algo, reward)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\alert_manager.py" @"
+# Placeholder pour alert_manager.py
+# Rôle : Gère les alertes.
+# send_alert(message, priority)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\config_manager.py" @"
+# Placeholder pour config_manager.py
+# Rôle : Charge les configurations YAML.
+# get_config(path)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\prediction_aggregator.py" @"
+# Placeholder pour prediction_aggregator.py
+# Rôle : Agrège les prédictions des modèles.
+# aggregate_predictions(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\model_validator.py" @"
+# Placeholder pour model_validator.py
+# Rôle : Valide les modèles entraînés.
+# validate_model(model, data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\miya_console.py" @"
+# Placeholder pour miya_console.py
+# Rôle : Console interactive pour MIA (méthode 11).
+# start_console()
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\trading_utils.py" @"
+# Placeholder pour trading_utils.py
+# Rôle : Utilitaires pour trading (méthode 5).
+# calculate_profit(trade)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\trading_loop.py" @"
+# Placeholder pour trading_loop.py
+# Rôle : Boucle de trading pour live_trading.py (méthodes 1-18).
+# trading_loop(data_stream)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\db_setup.py" @"
+# Placeholder pour db_setup.py
+# Rôle : Initialise market_memory.db (méthode 7).
+# setup_database()
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\db_maintenance.py" @"
+# Placeholder pour db_maintenance.py
+# Rôle : Maintient market_memory.db (méthode 7).
+# purge_old_data()
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\finetune_utils.py" @"
+# Placeholder pour finetune_utils.py
+# Rôle : Fine-tuning des modèles (méthode 8).
+# finetune_model(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\maml_utils.py" @"
+# Placeholder pour maml_utils.py
+# Rôle : Meta-learning (méthode 18).
+# apply_prototypical_networks(model, data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\hyperparam_manager.py" @"
+# Placeholder pour hyperparam_manager.py
+# Rôle : Gère les hyperparamètres pour SAC, PPO, DDPG (méthodes 6, 8, 18) (Phase 14).
+# get_hyperparams(model_type)
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\standard.py" @"
+# Placeholder pour standard.py
+# Rôle : Centralise les fonctions communes (retries, logging psutil, alertes) (Phase 15).
+# with_retries(), log_performance()
+"@
+Create-FileIfNotExists "$rootPath\src\model\utils\pattern_analyzer.py" @"
+# Placeholder pour pattern_analyzer.py
+# Rôle : Analyse les patterns dans market_memory.db (méthode 7) (Phase 15).
+# analyze_patterns(db_path)
+"@
+Create-FileIfNotExists "$rootPath\src\model\adaptive_learning.py" @"
+# Placeholder pour adaptive_learning.py
+# Rôle : Apprentissage adaptatif (méthode 7).
+# retrain_model(), store_pattern()
+"@
+Create-FileIfNotExists "$rootPath\src\model\backtest_lab.py" @"
+# Placeholder pour backtest_lab.py
+# Rôle : Backtesting et simulation (méthode 5).
+# run_backtest(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\inference.py" @"
+# Placeholder pour inference.py
+# Rôle : Prédictions avec modèles entraînés.
+# predict(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\reward_engine.py" @"
+# Placeholder pour reward_engine.py
+# Rôle : Calcule les récompenses (méthode 5).
+# calculate_reward(trade)
+"@
+Create-FileIfNotExists "$rootPath\src\model\train_sac.py" @"
+# Placeholder pour train_sac.py
+# Rôle : Entraîne SAC, PPO, DDPG (méthodes 4-18).
+# train_sac(data, epochs)
+"@
+Create-FileIfNotExists "$rootPath\src\model\train_sac_auto.py" @"
+# Placeholder pour train_sac_auto.py
+# Rôle : Entraînement automatisé (méthodes 8, 10, 15, 18).
+# auto_train_sac(data)
+"@
+Create-FileIfNotExists "$rootPath\src\model\trade_probability.py" @"
+# Placeholder pour trade_probability.py
+# Rôle : Prédit la probabilité de réussite d’un trade.
+# predict_trade_success(data)
+"@
+Create-FileIfNotExists "$rootPath\src\strategy\strategy_discovery.py" @"
+# Placeholder pour strategy_discovery.py
+# Rôle : Découvre stratégies (méthode 7).
+# optimize_strategy(params)
+"@
+Create-FileIfNotExists "$rootPath\src\strategy\mia_switcher.py" @"
+# Placeholder pour mia_switcher.py
+# Rôle : Arbitre entre modèles (méthode 11).
+# switch_mia(data)
+"@
+Create-FileIfNotExists "$rootPath\src\mia_FR.py" @"
+# Placeholder pour mia_FR.py
+# Rôle : Logique cognitive localisée (français).
+# respond_fr(query)
+"@
+
+# **📁 tests/**
+Create-DirectoryIfNotExists "$rootPath\tests"
+Create-FileIfNotExists "$rootPath\tests\test_mind_stream.py" @"
+# Placeholder pour test_mind_stream.py
+# Rôle : Teste mind_stream.py.
+# test_stream_analysis()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_mind.py" @"
+# Placeholder pour test_mind.py
+# Rôle : Teste mind.py.
+# test_decide_action()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_mind_voice.py" @"
+# Placeholder pour test_mind_voice.py
+# Rôle : Teste mind_voice.py.
+# test_speak_alert()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_mind_dialogue.py" @"
+# Placeholder pour test_mind_dialogue.py
+# Rôle : Teste mind_dialogue.py.
+# test_respond_to_query()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_correlation_heatmap.py" @"
+# Placeholder pour test_correlation_heatmap.py
+# Rôle : Teste correlation_heatmap.py.
+# test_generate_heatmap()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_data_drift.py" @"
+# Placeholder pour test_data_drift.py
+# Rôle : Teste data_drift.py.
+# test_detect_drift()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_mia_dashboard.py" @"
+# Placeholder pour test_mia_dashboard.py
+# Rôle : Teste mia_dashboard.py.
+# test_dashboard_load()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_news_scraper.py" @"
+# Placeholder pour test_news_scraper.py
+# Rôle : Teste news_scraper.py (Phase 1).
+# test_scrape_news()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_merge_data_sources.py" @"
+# Placeholder pour test_merge_data_sources.py
+# Rôle : Teste merge_data_sources.py.
+# test_merge_data()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_schedule_economic_calendar.py" @"
+# Placeholder pour test_schedule_economic_calendar.py
+# Rôle : Teste schedule_economic_calendar.py.
+# test_get_events()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_run_pipeline.py" @"
+# Placeholder pour test_run_pipeline.py
+# Rôle : Teste run_pipeline.py.
+# test_pipeline_execution()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_check_deps.py" @"
+# Placeholder pour test_check_deps.py
+# Rôle : Teste check_deps.py.
+# test_check_pandas()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_run_dashboard.py" @"
+# Placeholder pour test_run_dashboard.py
+# Rôle : Teste run_dashboard.py.
+# test_dashboard_start()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_run_preprocessing.py" @"
+# Placeholder pour test_run_preprocessing.py
+# Rôle : Teste run_preprocessing.py.
+# test_preprocessing()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_run_simulate.py" @"
+# Placeholder pour test_run_simulate.py
+# Rôle : Teste run_simulate.py.
+# test_simulation()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_run_training.py" @"
+# Placeholder pour test_run_training.py
+# Rôle : Teste run_training.py.
+# test_training()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_adaptive_learning.py" @"
+# Placeholder pour test_adaptive_learning.py
+# Rôle : Teste adaptive_learning.py.
+# test_retrain_model(), test_store_pattern()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_router_config.py" @"
+# Placeholder pour test_router_config.py
+# Rôle : Teste router_config.yaml.
+# test_load_config()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_model_params.py" @"
+# Placeholder pour test_model_params.py
+# Rôle : Teste model_params.yaml.
+# test_load_params()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_mia_config.py" @"
+# Placeholder pour test_mia_config.py
+# Rôle : Teste mia_config.yaml.
+# test_load_config()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_feature_sets.py" @"
+# Placeholder pour test_feature_sets.py
+# Rôle : Teste feature_sets.yaml.
+# test_load_features()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_market_config.py" @"
+# Placeholder pour test_market_config.py
+# Rôle : Teste market_config.yaml.
+# test_load_config()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_credentials.py" @"
+# Placeholder pour test_credentials.py
+# Rôle : Teste credentials.yaml.
+# test_load_credentials()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_risk_controller.py" @"
+# Placeholder pour test_risk_controller.py
+# Rôle : Teste risk_controller.py.
+# test_stop_trading()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_signal_selector.py" @"
+# Placeholder pour test_signal_selector.py
+# Rôle : Teste signal_selector.py.
+# test_calculate_sgc()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_trade_window_filter.py" @"
+# Placeholder pour test_trade_window_filter.py
+# Rôle : Teste trade_window_filter.py.
+# test_block_trade()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_adaptive_learner.py" @"
+# Placeholder pour test_adaptive_learner.py
+# Rôle : Teste adaptive_learner.py.
+# test_retrain_model()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_context_aware_filter.py" @"
+# Placeholder pour test_context_aware_filter.py
+# Rôle : Teste context_aware_filter.py.
+# test_block_macro_event()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_microstructure_guard.py" @"
+# Placeholder pour test_microstructure_guard.py
+# Rôle : Teste microstructure_guard.py (Phase 15).
+# test_detect_spoofing()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_strategy_discovery.py" @"
+# Placeholder pour test_strategy_discovery.py
+# Rôle : Teste strategy_discovery.py.
+# test_optimize_strategy()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_mia_switcher.py" @"
+# Placeholder pour test_mia_switcher.py
+# Rôle : Teste mia_switcher.py.
+# test_switch_mia()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_backtest_lab.py" @"
+# Placeholder pour test_backtest_lab.py
+# Rôle : Teste backtest_lab.py.
+# test_run_backtest()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_decision_log.py" @"
+# Placeholder pour test_decision_log.py
+# Rôle : Teste decision_log.py.
+# test_log_decision()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_option_metrics.py" @"
+# Placeholder pour test_option_metrics.py
+# Rôle : Teste option_metrics.py.
+# test_calculate_iv_atm()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_advanced_feature_generator.py" @"
+# Placeholder pour test_advanced_feature_generator.py
+# Rôle : Teste advanced_feature_generator.py.
+# test_calculate_latency_spread()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_meta_features.py" @"
+# Placeholder pour test_meta_features.py
+# Rôle : Teste meta_features.py.
+# test_calculate_confidence_drop_rate()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_market_structure_signals.py" @"
+# Placeholder pour test_market_structure_signals.py
+# Rôle : Teste market_structure_signals.py.
+# test_calculate_spy_lead_return()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_contextual_state_encoder.py" @"
+# Placeholder pour test_contextual_state_encoder.py
+# Rôle : Teste contextual_state_encoder.py.
+# test_encode_vol_regime()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_feature_meta_ensemble.py" @"
+# Placeholder pour test_feature_meta_ensemble.py
+# Rôle : Teste feature_meta_ensemble.py.
+# test_reduce_features()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_train_sac.py" @"
+# Placeholder pour test_train_sac.py
+# Rôle : Teste train_sac.py.
+# test_train_sac_finetune()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_neural_pipeline.py" @"
+# Placeholder pour test_neural_pipeline.py
+# Rôle : Teste neural_pipeline.py.
+# test_predict_vix()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_trading_loop.py" @"
+# Placeholder pour test_trading_loop.py
+# Rôle : Teste trading_loop.py.
+# test_trading_loop()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_analyse_results.py" @"
+# Placeholder pour test_analyse_results.py
+# Rôle : Teste analyse_results.py.
+# test_analyse_results()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_analyse_trades.py" @"
+# Placeholder pour test_analyse_trades.py
+# Rôle : Teste analyse_trades.py.
+# test_analyse_trade()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_simulate_trades.py" @"
+# Placeholder pour test_simulate_trades.py
+# Rôle : Teste simulate_trades.py.
+# test_simulate_trades()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_trade_executor.py" @"
+# Placeholder pour test_trade_executor.py
+# Rôle : Teste trade_executor.py.
+# test_execute_trade()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_integration_test.py" @"
+# Placeholder pour test_integration_test.py
+# Rôle : Teste l’intégration du pipeline.
+# test_full_pipeline()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_data_provider.py" @"
+# Placeholder pour test_data_provider.py
+# Rôle : Teste data_provider.py.
+# test_fetch_ohlc()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_finetune_utils.py" @"
+# Placeholder pour test_finetune_utils.py
+# Rôle : Teste finetune_utils.py.
+# test_finetune_model()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_maml_utils.py" @"
+# Placeholder pour test_maml_utils.py
+# Rôle : Teste maml_utils.py.
+# test_apply_prototypical_networks()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_spotgamma_recalculator.py" @"
+# Placeholder pour test_spotgamma_recalculator.py
+# Rôle : Teste spotgamma_recalculator.py.
+# test_recalculate_levels()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_options_levels_service.py" @"
+# Placeholder pour test_options_levels_service.py
+# Rôle : Teste options_levels_service.py.
+# test_options_levels_service()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_db_setup.py" @"
+# Placeholder pour test_db_setup.py
+# Rôle : Teste db_setup.py.
+# test_setup_database()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_db_maintenance.py" @"
+# Placeholder pour test_db_maintenance.py
+# Rôle : Teste db_maintenance.py.
+# test_purge_old_data()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_custom_mlp_policy.py" @"
+# Placeholder pour test_custom_mlp_policy.py
+# Rôle : Teste custom_mlp_policy.py.
+# test_forward()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_transformer_policy.py" @"
+# Placeholder pour test_transformer_policy.py
+# Rôle : Teste transformer_policy.py.
+# test_forward()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_trade_probability.py" @"
+# Placeholder pour test_trade_probability.py
+# Rôle : Teste trade_probability.py.
+# test_predict_trade_success()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_orderflow_indicators.py" @"
+# Placeholder pour test_orderflow_indicators.py
+# Rôle : Teste orderflow_indicators.py (Phase 13).
+# test_calculate_orderflow_indicators()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_volatility_metrics.py" @"
+# Placeholder pour test_volatility_metrics.py
+# Rôle : Teste volatility_metrics.py (Phase 13).
+# test_calculate_volatility_metrics()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_options_metrics.py" @"
+# Placeholder pour test_options_metrics.py
+# Rôle : Teste options_metrics.py (Phase 14).
+# test_calculate_options_metrics()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_news_metrics.py" @"
+# Placeholder pour test_news_metrics.py
+# Rôle : Teste news_metrics.py (Phase 14).
+# test_calculate_news_metrics()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_hyperparam_manager.py" @"
+# Placeholder pour test_hyperparam_manager.py
+# Rôle : Teste hyperparam_manager.py (Phase 14).
+# test_get_hyperparams()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_sierra_chart_errors.py" @"
+# Placeholder pour test_sierra_chart_errors.py
+# Rôle : Teste sierra_chart_errors.py (Phase 14).
+# test_log_error()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_env.py" @"
+# Placeholder pour test_env.py
+# Rôle : Teste .env (Phase 14).
+# test_load_env()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_pattern_analyzer.py" @"
+# Placeholder pour test_pattern_analyzer.py
+# Rôle : Teste pattern_analyzer.py (Phase 15).
+# test_analyze_patterns()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_options_risk_manager.py" @"
+# Placeholder pour test_options_risk_manager.py
+# Rôle : Teste options_risk_manager.py (Phase 15).
+# test_calculate_options_risk()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_export_visuals.py" @"
+# Placeholder pour test_export_visuals.py
+# Rôle : Teste export_visuals.py (Phase 15).
+# test_export_visuals()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_integration_tests.py" @"
+# Placeholder pour test_integration_tests.py
+# Rôle : Teste integration_tests.py (Phase 15).
+# test_data_to_trading_pipeline()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_standard.py" @"
+# Placeholder pour test_standard.py
+# Rôle : Teste standard.py (Phase 15).
+# test_with_retries(), test_log_performance()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_setup_env.py" @"
+# Placeholder pour test_setup_env.py
+# Rôle : Teste setup_env.py (Phase 15).
+# test_setup_environment()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_run_system.py" @"
+# Placeholder pour test_run_system.py
+# Rôle : Teste run_system.py (Phase 16).
+# test_run_system()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_build.sh" @"
+# Placeholder pour test_build.sh
+# Rôle : Teste build.sh (Phase 16).
+# test_build()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_quickstart.py" @"
+# Placeholder pour test_quickstart.py
+# Rôle : Teste quickstart.md (Phase 16).
+# test_quickstart_content()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_multi_instrument_config.py" @"
+# Placeholder pour test_multi_instrument_config.py
+# Rôle : Teste la structure extensible de market_config.yaml (Phase 17).
+# test_multi_instrument_config()
+"@
+Create-FileIfNotExists "$rootPath\tests\test_roadmap.py" @"
+# Placeholder pour test_roadmap.py
+# Rôle : Teste roadmap.md (Phase 17).
+# test_roadmap_content()
+"@
+
+# **📁 Fichiers racine/**
+Create-FileIfNotExists "$rootPath\.gitignore" @"
+# Placeholder pour .gitignore
+# Rôle : Exclut fichiers sensibles et temporaires.
+config/credentials.yaml
+data/*
+*.log
+.venv/
+*.pyc
+# À remplir avec les exclusions réelles.
+"@
+Create-FileIfNotExists "$rootPath\main.py" @"
+# Placeholder pour main.py
+# Rôle : Orchestrateur principal avec options CLI.
+# Options : --train, --simulate, --live
+"@
+Create-FileIfNotExists "$rootPath\README.md" @"
+# Placeholder pour README.md
+# Rôle : Documentation de haut niveau.
+# MIA_IA_SYSTEM_v2_2025 : Pipeline de trading automatisé
+# À remplir avec présentation, installation, utilisation.
+"@
+Create-FileIfNotExists "$rootPath\requirements.txt" @"
+# Placeholder pour requirements.txt
+# Rôle : Dépendances du projet.
+pandas>=2.0.0,<3.0.0
+pyiqfeed>=1.0.0,<2.0.0
+pytest>=7.3.0,<8.0.0
+python-dotenv>=0.19.0
+# À remplir avec les dépendances réelles (voir artifact_id='31bf2cc3-9afa-454d-b28c-dabdb7b14a9f').
+"@
+Create-FileIfNotExists "$rootPath\.flake8" @"
+# Placeholder pour .flake8
+# Rôle : Configuration pour flake8 (linting).
+[flake8]
+max-line-length = 88
+extend-ignore = E203
+exclude =
+    .git,
+    __pycache__,
+    docs/,
+    tests/
+# À remplir avec la configuration réelle (voir artifact_id='ca810b6d-295a-461f-a207-f7e2a60a04ed').
+"@
+Create-FileIfNotExists "$rootPath\.pylintrc" @"
+# Placeholder pour .pylintrc
+# Rôle : Configuration pour pylint (analyse statique).
+[MASTER]
+disable=
+    too-many-locals,
+    too-many-arguments,
+    too-many-statements,
+    too-complex
+[FORMAT]
+max-line-length=88
+# À remplir avec la configuration réelle (voir artifact_id='d0ba00e5-3381-4ee5-a59c-0aa1d047e798').
+"@
+Create-FileIfNotExists "$rootPath\mypy.ini" @"
+# Placeholder pour mypy.ini
+# Rôle : Configuration pour mypy (vérification de types).
+[mypy]
+strict = True
+exclude = tests/
+[mypy-stable_baselines3.*]
+ignore_missing_imports = True
+[mypy-ib_insync.*]
+ignore_missing_imports = True
+[mypy-pyiqfeed.*]
+ignore_missing_imports = True
+# À remplir avec la configuration réelle (voir artifact_id='ae5afd1e-0db4-4719-90ae-2b7f6b6b9978').
+"@
+
+# Journaliser la fin de l'exécution
+Write-Host "Mise à jour de la structure terminée. Vérifiez les dossiers et fichiers créés."

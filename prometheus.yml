@@ -1,0 +1,41 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/prometheus.yml
+# Configuration du scraping Prometheus pour MIA_IA_SYSTEM_v2_2025
+#
+# Version: 2.1.5
+# Date: 2025-05-14
+#
+# Rôle: Configure le scraping des métriques Prometheus pour monitorer les performances
+#       de l’application de trading, incluant les métriques pour les suggestions 1-4, 6-10.
+#
+# Utilisé par: Prometheus, intégré avec prometheus_metrics.py et grafana.ini.
+#
+# Notes:
+# - Conforme à structure.txt (version 2.1.5, 2025-05-14).
+# - Supporte les suggestions :
+#   - 1 (Position sizing dynamique) : atr_dynamic, orderflow_imbalance.
+#   - 2 (Coûts de transaction) : slippage_estimate.
+#   - 3 (Microstructure) : bid_ask_imbalance, trade_aggressiveness.
+#   - 4 (HMM/Changepoint Detection) : hmm_state_distribution.
+#   - 6 (Drift detection) : sharpe_drift.
+#   - 7 (Safe RL/CVaR-PPO) : cvar_loss.
+#   - 8 (Distributional RL/QR-DQN) : qr_dqn_quantiles.
+#   - 9 (Surface de volatilité) : iv_skew, iv_term_structure.
+#   - 10 (Ensembles de politiques) : ensemble_weight_sac, ensemble_weight_ppo, ensemble_weight_ddpg.
+# - Pas de références à dxFeed, obs_t, 320 features, ou 81 features.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'mia-ia-system'
+    static_configs:
+      - targets: ['localhost:8000']  # Port aligné avec Dockerfile
+    metrics_path: /metrics
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '^(trade_latency|profit_factor|position_size_percent|position_size_variance|regime_hmm_state|regime_transition_rate|atr_dynamic|orderflow_imbalance|slippage_estimate|bid_ask_imbalance|trade_aggressiveness|hmm_state_distribution|sharpe_drift|cvar_loss|qr_dqn_quantiles|iv_skew|iv_term_structure|ensemble_weight_sac|ensemble_weight_ppo|ensemble_weight_ddpg)$'
+        action: keep

@@ -1,0 +1,471 @@
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.features.regime_detector import RegimeDetector
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+from src.monitoring.prometheus_metrics import Gauge
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "feature_pipeline.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+atr_dynamic_metric = Gauge("atr_dynamic", "ATR dynamique sur 1-5 min", ["market"])
+orderflow_imbalance_metric = Gauge("orderflow_imbalance", "Imbalance du carnet", ["market"])
+slippage_estimate_metric = Gauge("slippage_estimate", "Estimation du slippage", ["market"])
+bid_ask_imbalance_metric = Gauge("bid_ask_imbalance", "Imbalance bid-ask", ["market"])
+trade_aggressiveness_metric = Gauge("trade_aggressiveness", "Agressivité des trades", ["market"])
+iv_skew_metric = Gauge("iv_skew", "Skew de volatilité implicite", ["market"])
+iv_term_metric = Gauge("iv_term_structure", "Structure de terme IV", ["market"])
+
+class FeaturePipeline:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.alert_manager = AlertManager()
+        self.regime_detector = RegimeDetector(market=market)
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def calculate_atr_dynamic(self, data: pd.DataFrame, window: int = 5) -> pd.Series:
+        """Calcule l'ATR dynamique sur 1-5 min."""
+        try:
+            high_low = data["high"] - data["low"]
+            high_close = np.abs(data["high"] - data["close"].shift())
+            low_close = np.abs(data["low"] - data["close"].shift())
+            ranges = pd.concat([high_low, high_close, low_close], axis=1)
+            true_range = ranges.max(axis=1)
+            atr = true_range.rolling(window=window).mean()
+            atr_dynamic_metric.labels(market=self.market).set(atr.iloc[-1])
+            return atr
+        except Exception as e:
+            capture_error(e, context={"market": self.market}, market=self.market, operation="calculate_atr_dynamic")
+            return pd.Series(0, index=data.index)
+
+    def calculate_orderflow_imbalance(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule l'imbalance du carnet d'ordres."""
+        try:
+            imbalance = (data["bid_volume"] - data["ask_volume"]) / (data["bid_volume"] + data["ask_volume"])
+            orderflow_imbalance_metric.labels(market=self.market).set(imbalance.iloc[-1])
+            return imbalance
+        except Exception as e:
+            capture_error(e, context={"market": self.market}, market=self.market, operation="calculate_orderflow_imbalance")
+            return pd.Series(0, index=data.index)
+
+    def calculate_slippage_estimate(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule l'estimation du slippage."""
+        try:
+            slippage = data["bid_ask_spread"] * data["order_volume"]
+            slippage_estimate_metric.labels(market=self.market).set(slippage.iloc[-1])
+            return slippage
+        except Exception as e:
+            capture_error(e, context={"market": self.market}, market=self.market, operation="calculate_slippage_estimate")
+            return pd.Series(0, index=data.index)
+
+    def calculate_bid_ask_imbalance(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule l'imbalance bid-ask."""
+        try:
+            imbalance = (data["bid_volume"] - data["ask_volume"]) / (data["bid_volume"] + data["ask_volume"])
+            bid_ask_imbalance_metric.labels(market=self.market).set(imbalance.iloc[-1])
+            return imbalance
+        except Exception as e:
+            capture_error(e, context={"market": self.market}, market=self.market, operation="calculate_bid_ask_imbalance")
+            return pd.Series(0, index=data.index)
+
+    def calculate_trade_aggressiveness(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule l'agressivité des trades."""
+        try:
+            aggressiveness = data["taker_volume"] / (data["bid_volume"] + data["ask_volume"])
+            trade_aggressiveness_metric.labels(market=self.market).set(aggressiveness.iloc[-1])
+            return aggressiveness
+        except Exception as e:
+            capture_error(e, context={"market": self.market}, market=self.market, operation="calculate_trade_aggressiveness")
+            return pd.Series(0, index=data.index)
+
+    def calculate_iv_skew(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule le skew de volatilité implicite."""
+        try:
+            iv_skew = (data["iv_call"] - data["iv_put"]) / data["strike"]
+            iv_skew_metric.labels(market=self.market).set(iv_skew.iloc[-1])
+            return iv_skew
+        except Exception as e:
+            capture_error(e, context={"market": self.market}, market=self.market, operation="calculate_iv_skew")
+            return pd.Series(0, index=data.index)
+
+    def calculate_iv_term_structure(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule la structure de terme de la volatilité implicite."""
+        try:
+            iv_term = data["iv_3m"] - data["iv_1m"]
+            iv_term_metric.labels(market=self.market).set(iv_term.iloc[-1])
+            return iv_term
+        except Exception as e:
+            capture_error(e, context={"market": self.market}, market=self.market, operation="calculate_iv_term_structure")
+            return pd.Series(0, index=data.index)
+
+    def generate_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Génère toutes les features."""
+        start_time = datetime.now()
+        try:
+            data["atr_dynamic"] = self.calculate_atr_dynamic(data)
+            data["orderflow_imbalance"] = self.calculate_orderflow_imbalance(data)
+            data["slippage_estimate"] = self.calculate_slippage_estimate(data)
+            data["bid_ask_imbalance"] = self.calculate_bid_ask_imbalance(data)
+            data["trade_aggressiveness"] = self.calculate_trade_aggressiveness(data)
+            data["iv_skew"] = self.calculate_iv_skew(data)
+            data["iv_term_structure"] = self.calculate_iv_term_structure(data)
+            data["regime_hmm"] = self.regime_detector.detect_regime(data)
+            output_path = BASE_DIR / "data" / "features" / "features_latest.csv"
+            data.to_csv(output_path, index=False, encoding="utf-8")
+            latency = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Features générées pour {self.market}. Latence: {latency}s")
+            self.alert_manager.send_alert(f"Features générées pour {self.market}", priority=2)
+            return data
+        except Exception as e:
+            logger.error(f"Erreur génération features: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="generate_features")
+            self.alert_manager.send_alert(f"Erreur génération features: {str(e)}", priority=4)
+            return dataGuide d’implémentation pour MIA_IA_SYSTEM_v2_2025 : Partie 2
+Objectif : Mettre en place les fonctionnalités de prise de décision stratégique et de monitoring des performances, intégrant les améliorations 1-4 et 7-10, en corrigeant les failles (décisions non optimisées, manque de métriques dynamiques, absence de dashboards avancés).
+
+Module : src/model/mia_switcher.py
+
+Rôle : Arbitre entre les stratégies et modèles RL (SAC, PPO, DDPG) en fonction des régimes de marché et des features dynamiques, pour optimiser les décisions de trading.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Arbitrage entre stratégies basées sur les régimes détectés par detect_regime.py.
+Intégration avec trade_probability.py pour les prédictions.
+Utilisation des seuils de router_config.yaml pour le routage.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Intégrer appel à risk_manager.calculate_position_size avant chaque ordre pour ajuster la taille des positions.
+Microstructure (3) : Utiliser bid_ask_imbalance et trade_aggressiveness pour pondérer les décisions stratégiques.
+HMM / Changepoint Detection (4) : Utiliser regime_hmm pour affiner les décisions en complément des seuils de detect_regime.py.
+Ensembles de politiques (10) : Implémenter un vote bayésien pour combiner les prédictions de SAC, PPO, DDPG, en utilisant les poids journalisés par mlflow_tracker.py.
+Ajouter métriques Prometheus pour ensemble_weight_sac, ensemble_weight_ppo, ensemble_weight_ddpg afin de monitorer les poids bayésiens.
+Ajouter logs psutil dans data/logs/mia_switcher_performance.csv pour suivre les performances.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Très haute (central pour les décisions de trading).
+Dépendances : risk_manager.py, feature_pipeline.py, trade_probability.py, mlflow_tracker.py, prometheus_metrics.py, error_tracker.py, alert_manager.py.
+Action :
+Mettre à jour mia_switcher.py avec les nouvelles fonctionnalités :import pandas as pd
+import numpy as np
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.risk_management.risk_manager import RiskManager
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+from src.monitoring.prometheus_metrics import Gauge
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "mia_switcher.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+ensemble_weight_sac_metric = Gauge("ensemble_weight_sac", "Poids SAC dans le vote bayésien", ["market"])
+ensemble_weight_ppo_metric = Gauge("ensemble_weight_ppo", "Poids PPO dans le vote bayésien", ["market"])
+ensemble_weight_ddpg_metric = Gauge("ensemble_weight_ddpg", "Poids DDPG dans le vote bayésien", ["market"])
+
+class MiaSwitcher:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.risk_manager = RiskManager(market=market)
+        self.alert_manager = AlertManager()
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def switch_strategy(self, data: pd.DataFrame, model_predictions: Dict) -> Dict:
+        """Arbitre les stratégies en fonction des features et prédictions."""
+        start_time = datetime.now()
+        try:
+            # Récupérer les features dynamiques
+            bid_ask_imbalance = data["bid_ask_imbalance"].iloc[-1]
+            trade_aggressiveness = data["trade_aggressiveness"].iloc[-1]
+            regime_hmm = data["regime_hmm"].iloc[-1]
+
+            # Calculer la taille de position
+            position_size = self.risk_manager.calculate_position_size(
+                atr_dynamic=data["atr_dynamic"].iloc[-1],
+                orderflow_imbalance=data["orderflow_imbalance"].iloc[-1],
+                volatility_score=0.2  # Placeholder
+            )
+
+            # Vote bayésien pour les prédictions
+            from src.model.utils.mlflow_tracker import get_model_weights
+            weights = get_model_weights(["sac", "ppo", "ddpg"])
+            ensemble_weight_sac_metric.labels(market=self.market).set(weights["sac"])
+            ensemble_weight_ppo_metric.labels(market=self.market).set(weights["ppo"])
+            ensemble_weight_ddpg_metric.labels(market=self.market).set(weights["ddpg"])
+            ensemble_pred = sum(weights[model] * pred for model, pred in model_predictions.items())
+
+            # Ajuster la décision en fonction des features
+            decision = ensemble_pred * (1 + bid_ask_imbalance * 0.1 + trade_aggressiveness * 0.1)
+            if regime_hmm == 0:  # Bull
+                decision *= 1.2
+            elif regime_hmm == 1:  # Bear
+                decision *= 0.8
+
+            result = {"decision": decision, "position_size": position_size}
+            latency = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Décision stratégique pour {self.market}. Latence: {latency}s")
+            self.alert_manager.send_alert(f"Décision stratégique pour {self.market}", priority=2)
+            return result
+        except Exception as e:
+            logger.error(f"Erreur arbitrage stratégie: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="switch_strategy")
+            self.alert_manager.send_alert(f"Erreur arbitrage stratégie: {str(e)}", priority=4)
+            return {"decision": 0.0, "position_size": 0.0}
+
+
+Mettre à jour tests/test_mia_switcher.py :import unittest
+import pandas as pd
+from src.model.mia_switcher import MiaSwitcher
+
+class TestMiaSwitcher(unittest.TestCase):
+    def setUp(self):
+        self.switcher = MiaSwitcher(market="ES")
+        self.data = pd.DataFrame({
+            "atr_dynamic": [2.0], "orderflow_imbalance": [0.5],
+            "bid_ask_imbalance": [0.1], "trade_aggressiveness": [0.2],
+            "regime_hmm": [0]
+        })
+        self.model_predictions = {"sac": 0.7, "ppo": 0.65, "ddpg": 0.6}
+
+    def test_switch_strategy(self):
+        result = self.switcher.switch_strategy(self.data, self.model_predictions)
+        self.assertIn("decision", result)
+        self.assertIn("position_size", result)
+        self.assertTrue(isinstance(result["decision"], float))
+        self.assertTrue(0 <= result["position_size"] <= 0.1)
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Décisions non optimisées (suggestion 1, manque de features dynamiques), absence de sizing dynamique, manque de robustesse des prédictions (vote bayésien).
+
+
+Module : src/monitoring/prometheus_metrics.py
+
+Rôle : Expose les métriques de performance (latence, trades, features, modèles) pour le monitoring via Prometheus.
+Statut : Existant (version 2.1.3), partiellement modifié (métriques position_size_percent, position_size_variance, regime_hmm_state, regime_transition_rate ajoutées).
+Fonctionnalités existantes à préserver :
+Exposition des métriques existantes (trade_latency, profit_factor).
+Intégration avec prometheus.yml pour le scraping.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter métriques atr_dynamic, orderflow_imbalance.
+Coûts de transaction (2) : Ajouter métrique slippage_estimate.
+Microstructure (3) : Ajouter métriques bid_ask_imbalance, trade_aggressiveness.
+HMM / Changepoint Detection (4) : Ajouter métrique hmm_state_distribution pour la répartition des états.
+Drift detection (6) : Ajouter métrique sharpe_drift.
+Safe RL / CVaR-PPO (7) : Ajouter métrique cvar_loss.
+Distributional RL (QR-DQN) (8) : Ajouter métrique qr_dqn_quantiles.
+Surface de volatilité (9) : Ajouter métriques iv_skew, iv_term_structure.
+Ensembles de politiques (10) : Ajouter métriques ensemble_weight_sac, ensemble_weight_ppo, ensemble_weight_ddpg.
+Ajouter logs psutil dans data/logs/prometheus_metrics_performance.csv.
+Configurer scraping dans prometheus.yml.
+
+
+Priorité : Haute
+Dépendances : feature_pipeline.py, trade_probability.py, mia_switcher.py, drift_detector.py, prometheus.yml, error_tracker.py, alert_manager.py.
+Action :
+Mettre à jour prometheus_metrics.py avec les nouvelles métriques :from prometheus_client import Gauge
+from datetime import datetime
+from pathlib import Path
+import psutil
+from loguru import logger
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "prometheus_metrics.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+# Métriques existantes
+trade_latency = Gauge("trade_latency", "Latence des trades", ["market"])
+profit_factor = Gauge("profit_factor", "Facteur de profit", ["market"])
+position_size_percent = Gauge("position_size_percent", "Taille de position en %", ["market"])
+position_size_variance = Gauge("position_size_variance", "Variance des tailles", ["market"])
+regime_hmm_state = Gauge("regime_hmm_state", "État HMM (0: bull, 1: bear, 2: range)", ["market"])
+regime_transition_rate = Gauge("regime_transition_rate", "Taux de transition par heure", ["market"])
+
+# Nouvelles métriques
+atr_dynamic = Gauge("atr_dynamic", "ATR dynamique sur 1-5 min", ["market"])
+orderflow_imbalance = Gauge("orderflow_imbalance", "Imbalance du carnet", ["market"])
+slippage_estimate = Gauge("slippage_estimate", "Estimation du slippage", ["market"])
+bid_ask_imbalance = Gauge("bid_ask_imbalance", "Imbalance bid-ask", ["market"])
+trade_aggressiveness = Gauge("trade_aggressiveness", "Agressivité des trades", ["market"])
+hmm_state_distribution = Gauge("hmm_state_distribution", "Répartition des états HMM", ["market", "state"])
+sharpe_drift = Gauge("sharpe_drift", "Drift du ratio de Sharpe", ["market"])
+cvar_loss = Gauge("cvar_loss", "Perte CVaR pour PPO-Lagrangian", ["market"])
+qr_dqn_quantiles = Gauge("qr_dqn_quantiles", "Quantiles QR-DQN", ["market"])
+iv_skew = Gauge("iv_skew", "Skew de volatilité implicite", ["market"])
+iv_term_structure = Gauge("iv_term_structure", "Structure de terme IV", ["market"])
+ensemble_weight_sac = Gauge("ensemble_weight_sac", "Poids SAC dans le vote bayésien", ["market"])
+ensemble_weight_ppo = Gauge("ensemble_weight_ppo", "Poids PPO dans le vote bayésien", ["market"])
+ensemble_weight_ddpg = Gauge("ensemble_weight_ddpg", "Poids DDPG dans le vote bayésien", ["market"])
+
+class PrometheusMetrics:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.alert_manager = AlertManager()
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def log_performance(self, operation: str, latency: float, success: bool, **kwargs):
+        """Journalise les performances des métriques."""
+        try:
+            memory_usage = psutil.Process().memory_info().rss / 1024 / 1024
+            cpu_usage = psutil.cpu_percent()
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "operation": operation,
+                "latency": latency,
+                "success": success,
+                "memory_usage_mb": memory_usage,
+                "cpu_usage_percent": cpu_usage,
+                **kwargs
+            }
+            log_df = pd.DataFrame([log_entry])
+            log_path = LOG_DIR / "prometheus_metrics_performance.csv"
+            if not log_path.exists():
+                log_df.to_csv(log_path, index=False, encoding="utf-8")
+            else:
+                log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+            logger.info(f"Performance journalisée pour {operation}. CPU: {cpu_usage}%")
+        except Exception as e:
+            logger.error(f"Erreur journalisation performance: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="log_performance")
+            self.alert_manager.send_alert(f"Erreur journalisation performance: {str(e)}", priority=3)
+
+
+Créer tests/test_prometheus_metrics.py :import unittest
+from src.monitoring.prometheus_metrics import PrometheusMetrics
+
+class TestPrometheusMetrics(unittest.TestCase):
+    def setUp(self):
+        self.metrics = PrometheusMetrics(market="ES")
+
+    def test_log_performance(self):
+        self.metrics.log_performance("test_op", 0.1, success=True)
+        log_path = "/path/to/MIA_IA_SYSTEM_v2_2025/data/logs/prometheus_metrics_performance.csv"
+        self.assertTrue(os.path.exists(log_path))
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Manque de métriques dynamiques (suggestions 1, 9), absence de monitoring des performances RL, validation insuffisante des drifts.
+
+
+Module : grafana.ini
+
+Rôle : Configure Grafana pour afficher des dashboards et des alertes basés sur les métriques Prometheus.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Configuration des dashboards existants pour trade_latency, profit_factor.
+Intégration avec prometheus.yml pour les sources de données.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter dashboards pour atr_dynamic, orderflow_imbalance.
+Coûts de transaction (2) : Ajouter dashboard pour slippage_estimate.
+Microstructure (3) : Ajouter dashboards pour bid_ask_imbalance, trade_aggressiveness.
+HMM / Changepoint Detection (4) : Ajouter dashboard pour regime_hmm, hmm_state_distribution.
+Drift detection (6) : Ajouter alerte pour sharpe_drift (ex. : seuil > 0.5).
+Safe RL / CVaR-PPO (7) : Ajouter dashboard pour cvar_loss.
+Distributional RL (QR-DQN) (8) : Ajouter dashboard pour qr_dqn_quantiles.
+Surface de volatilité (9) : Ajouter dashboards pour iv_skew, iv_term_structure.
+Ensembles de politiques (10) : Ajouter dashboard pour ensemble_weight_sac, ensemble_weight_ppo, ensemble_weight_ddpg.
+Configurer alertes pour les métriques critiques (ex. : sharpe_drift, cvar_loss).
+
+
+Priorité : Moyenne
+Dépendances : prometheus_metrics.py, prometheus.yml, alert_manager.py.
+Action :
+Mettre à jour grafana.ini pour inclure les nouvelles sources de données :[datasources]
+datasource_prometheus = prometheus
+
+[dashboards]
+dashboard_trade_metrics = enabled
+dashboard_feature_metrics = enabled
+dashboard_rl_metrics = enabled
+
+[alerting]
+alert_sharpe_drift = enabled
+alert_sharpe_drift_threshold = 0.5
+alert_cvar_loss = enabled
+alert_cvar_loss_threshold = 0.1
+
+
+Créer un fichier de provisioning Grafana (ex. : grafana/provisioning/dashboards/feature_metrics.yml) :apiVersion: 1
+providers:
+- name: 'default'
+  orgId: 1
+  folder: ''
+  type: file
+  disableDeletion: false
+  updateIntervalSeconds: 10
+  options:
+    path: /etc/grafana/dashboards
+dashboards:
+- name: Feature Metrics
+  type: dashboard
+  uid: feature_metrics
+  panels:
+    - type: graph
+      title: ATR Dynamique
+      targets:
+        - expr: atr_dynamic{market="ES"}
+    - type: graph
+      title: Orderflow Imbalance
+      targets:
+        - expr: orderflow_imbalance{market="ES"}
+    - type: graph
+      title: Slippage Estimate
+      targets:
+        - expr: slippage_estimate{market="ES"}
+    - type: graph
+      title: Bid-Ask Imbalance
+      targets:
+        - expr: bid_ask_imbalance{market="ES"}
+    - type: graph
+      title: Trade Aggressiveness
+      targets:
+        - expr: trade_aggressiveness{market="ES"}
+    - type: graph
+      title: IV Skew
+      targets:
+        - expr: iv_skew{market="ES"}
+    - type: graph
+      title: IV Term Structure
+      targets:
+        - expr: iv_term_structure{market="ES"}
+    - type: graph
+      title: HMM State Distribution
+      targets:
+        - expr: hmm_state_distribution{market="ES"}
+
+
+Tester via interface Grafana (vérifier les dashboards et alertes).
+
+
+Failles corrigées : Absence de dashboards avancés (suggestions 1, 9), manque de monitoring des drifts et des performances RL.
+
+

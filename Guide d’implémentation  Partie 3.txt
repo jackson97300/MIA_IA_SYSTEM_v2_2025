@@ -1,0 +1,626 @@
+Guide d’implémentation pour MIA_IA_SYSTEM_v2_2025 : Partie 3
+Objectif : Mettre en place les fonctionnalités de validation des features, de stockage des données, de détection des drifts, et de mise à jour du détecteur de régimes, intégrant les améliorations 1-4 et 6-10, en corrigeant les failles (validation insuffisante des features, absence de stockage structuré, manque de détection proactive des drifts, paramètres HMM statiques).
+
+Module : src/data/validate_data.py
+
+Rôle : Valide les features générées par feature_pipeline.py à l’aide de Great Expectations pour garantir leur qualité avant utilisation.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Validation des features existantes (rsi_14, ofi_score, vix_es_correlation) avec Great Expectations.
+Intégration avec feature_pipeline.py pour les données d’entrée.
+Génération de rapports dans data/features/features_audit_final.csv.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter règles de validation pour atr_dynamic (non négatif, plage raisonnable) et orderflow_imbalance (entre -1 et 1).
+Coûts de transaction (2) : Ajouter règle pour slippage_estimate (non négatif).
+Microstructure (3) : Ajouter règles pour bid_ask_imbalance (entre -1 et 1) et trade_aggressiveness (entre 0 et 1).
+HMM / Changepoint Detection (4) : Ajouter règle pour regime_hmm (entiers entre 0 et n_components-1).
+Surface de volatilité (9) : Ajouter règles pour iv_skew (non négatif) et iv_term_structure (plage raisonnable).
+Ajouter logs psutil dans data/logs/validate_data_performance.csv.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Haute (essentiel pour la qualité des features).
+Dépendances : feature_pipeline.py, error_tracker.py, alert_manager.py, great_expectations.
+Action :
+Mettre à jour validate_data.py avec les nouvelles règles :import pandas as pd
+import great_expectations as ge
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "validate_data.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class DataValidator:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.alert_manager = AlertManager()
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def validate_features(self, data: pd.DataFrame) -> Dict:
+        """Valide les features avec Great Expectations."""
+        start_time = datetime.now()
+        try:
+            ge_df = ge.from_pandas(data)
+            
+            # Règles pour Position sizing dynamique
+            ge_df.expect_column_values_to_be_between("atr_dynamic", min_value=0, max_value=100)
+            ge_df.expect_column_values_to_be_between("orderflow_imbalance", min_value=-1, max_value=1)
+            
+            # Règle pour Coûts de transaction
+            ge_df.expect_column_values_to_be_between("slippage_estimate", min_value=0, max_value=1000)
+            
+            # Règles pour Microstructure
+            ge_df.expect_column_values_to_be_between("bid_ask_imbalance", min_value=-1, max_value=1)
+            ge_df.expect_column_values_to_be_between("trade_aggressiveness", min_value=0, max_value=1)
+            
+            # Règle pour HMM / Changepoint Detection
+            ge_df.expect_column_values_to_be_in_set("regime_hmm", value_set=[0, 1, 2])
+            
+            # Règles pour Surface de volatilité
+            ge_df.expect_column_values_to_be_between("iv_skew", min_value=0, max_value=1)
+            ge_df.expect_column_values_to_be_between("iv_term_structure", min_value=-1, max_value=1)
+
+            validation_results = ge_df.validate()
+            output_path = BASE_DIR / "data" / "features" / "features_audit_final.csv"
+            pd.DataFrame(validation_results["results"]).to_csv(output_path, index=False, encoding="utf-8")
+            
+            latency = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Features validées pour {self.market}. Latence: {latency}s")
+            self.alert_manager.send_alert(f"Features validées pour {self.market}", priority=2)
+            return validation_results
+        except Exception as e:
+            logger.error(f"Erreur validation features: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="validate_features")
+            self.alert_manager.send_alert(f"Erreur validation features: {str(e)}", priority=4)
+            return {"success": False}
+
+
+Créer tests/test_validate_data.py :import unittest
+import pandas as pd
+from src.data.validate_data import DataValidator
+
+class TestDataValidator(unittest.TestCase):
+    def setUp(self):
+        self.validator = DataValidator(market="ES")
+        self.data = pd.DataFrame({
+            "atr_dynamic": [2.0], "orderflow_imbalance": [0.5],
+            "slippage_estimate": [0.1], "bid_ask_imbalance": [0.1],
+            "trade_aggressiveness": [0.2], "regime_hmm": [0],
+            "iv_skew": [0.01], "iv_term_structure": [0.02]
+        })
+
+    def test_validate_features(self):
+        results = self.validator.validate_features(self.data)
+        self.assertTrue(results["success"])
+        output_path = "/path/to/MIA_IA_SYSTEM_v2_2025/data/features/features_audit_final.csv"
+        self.assertTrue(os.path.exists(output_path))
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Validation insuffisante des features (suggestion 1), absence de règles pour les nouvelles features.
+
+
+Module : src/data/data_lake.py
+
+Rôle : Stocke les données brutes, traitées, et les résultats des modèles dans un data lake S3 (raw/processed/presentation).
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Stockage des données brutes (data/iqfeed/*) et traitées (data/features/*) dans S3.
+Intégration avec secret_manager.py pour les identifiants AWS.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Stocker atr_dynamic, orderflow_imbalance dans processed/features/.
+Coûts de transaction (2) : Stocker slippage_estimate dans processed/features/.
+Microstructure (3) : Stocker bid_ask_imbalance, trade_aggressiveness dans processed/features/.
+HMM / Changepoint Detection (4) : Stocker regime_hmm dans processed/features/.
+Surface de volatilité (9) : Stocker iv_skew, iv_term_structure dans processed/features/.
+Ensembles de politiques (10) : Stocker les résultats des modèles (SAC, PPO, DDPG) dans processed/models/.
+Ajouter logs psutil dans data/logs/data_lake_performance.csv.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Haute (essentiel pour la persistance des données).
+Dépendances : feature_pipeline.py, trade_probability.py, secret_manager.py, error_tracker.py, alert_manager.py, boto3.
+Action :
+Mettre à jour data_lake.py avec le stockage des nouvelles données :import pandas as pd
+from datetime import datetime
+from pathlib import Path
+import boto3
+import psutil
+from typing import Dict
+from loguru import logger
+from src.utils.secret_manager import get_secret
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "data_lake.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+class DataLake:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.alert_manager = AlertManager()
+        self.s3_client = boto3.client("s3", **get_secret("aws_credentials"))
+        self.bucket = "mia-ia-system-data-lake"
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def store_features(self, data: pd.DataFrame, prefix: str = "processed/features"):
+        """Stocke les features dans S3."""
+        start_time = datetime.now()
+        try:
+            features = [
+                "atr_dynamic", "orderflow_imbalance", "slippage_estimate",
+                "bid_ask_imbalance", "trade_aggressiveness", "regime_hmm",
+                "iv_skew", "iv_term_structure"
+            ]
+            feature_data = data[features]
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            key = f"{prefix}/{self.market}/features_{timestamp}.csv"
+            feature_data.to_csv(f"s3://{self.bucket}/{key}", index=False, encoding="utf-8")
+            latency = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Features stockées pour {self.market}. Latence: {latency}s")
+            self.alert_manager.send_alert(f"Features stockées pour {self.market}", priority=2)
+        except Exception as e:
+            logger.error(f"Erreur stockage features: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="store_features")
+            self.alert_manager.send_alert(f"Erreur stockage features: {str(e)}", priority=4)
+
+    def store_model_results(self, model_results: Dict, prefix: str = "processed/models"):
+        """Stocke les résultats des modèles dans S3."""
+        start_time = datetime.now()
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            key = f"{prefix}/{self.market}/model_results_{timestamp}.json"
+            self.s3_client.put_object(
+                Bucket=self.bucket,
+                Key=key,
+                Body=json.dumps(model_results)
+            )
+            latency = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Résultats modèles stockés pour {self.market}. Latence: {latency}s")
+            self.alert_manager.send_alert(f"Résultats modèles stockés pour {self.market}", priority=2)
+        except Exception as e:
+            logger.error(f"Erreur stockage résultats modèles: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="store_model_results")
+            self.alert_manager.send_alert(f"Erreur stockage résultats modèles: {str(e)}", priority=4)
+
+
+Créer tests/test_data_lake.py :import unittest
+from unittest.mock import patch
+from src.data.data_lake import DataLake
+import pandas as pd
+
+class TestDataLake(unittest.TestCase):
+    def setUp(self):
+        self.data_lake = DataLake(market="ES")
+        self.data = pd.DataFrame({
+            "atr_dynamic": [2.0], "orderflow_imbalance": [0.5],
+            "slippage_estimate": [0.1], "bid_ask_imbalance": [0.1],
+            "trade_aggressiveness": [0.2], "regime_hmm": [0],
+            "iv_skew": [0.01], "iv_term_structure": [0.02]
+        })
+
+    @patch("boto3.client")
+    def test_store_features(self, mock_s3):
+        self.data_lake.store_features(self.data)
+        mock_s3.return_value.put_object.assert_called()
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Absence de stockage structuré (suggestion 1), manque de persistance pour les nouvelles features et résultats.
+
+
+Module : src/monitoring/drift_detector.py
+
+Rôle : Détecte les drifts des features ou des performances (ex. : Sharpe) en temps réel pour déclencher des réentraînements.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Détection des drifts pour les 150 SHAP features.
+Intégration avec train_pipeline.py pour les réentraînements.
+
+
+Modifications nécessaires :
+Drift detection (6) : Intégrer ADWIN pour détecter les drifts du Sharpe (sharpe_drift).
+HMM / Changepoint Detection (4) : Valider les transitions de regime_hmm pour détecter les anomalies.
+Ajouter métrique Prometheus pour sharpe_drift.
+Ajouter logs psutil dans data/logs/drift_detector_performance.csv.
+Capturer les erreurs via error_tracker.py et envoyer des alertes via alert_manager.py.
+
+
+Priorité : Haute (essentiel pour la stabilité du système).
+Dépendances : feature_pipeline.py, train_pipeline.py, prometheus_metrics.py, error_tracker.py, alert_manager.py, river.
+Action :
+Mettre à jour drift_detector.py avec la détection ADWIN :import pandas as pd
+from datetime import datetime
+from pathlib import Path
+import psutil
+from typing import Dict
+from loguru import logger
+from river.drift import ADWIN
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+from src.monitoring.prometheus_metrics import Gauge
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "drift_detector.log", rotation="10 MB", level="INFO", encoding="utf-8")
+
+sharpe_drift_metric = Gauge("sharpe_drift", "Drift du ratio de Sharpe", ["market"])
+
+class DriftDetector:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.alert_manager = AlertManager()
+        self.drift_detector = ADWIN()
+        LOG_DIR.mkdir(exist_ok=True)
+
+    def detect_drift(self, data: pd.DataFrame) -> bool:
+        """Détecte les drifts dans les performances ou features."""
+        start_time = datetime.now()
+        try:
+            # Calculer le Sharpe sur une fenêtre glissante (placeholder)
+            sharpe = data["profit"].rolling(window=20).mean() / data["profit"].rolling(window=20).std()
+            for value in sharpe.dropna():
+                self.drift_detector.update(value)
+                if self.drift_detector.drift_detected:
+                    sharpe_drift_metric.labels(market=self.market).set(value)
+                    logger.info(f"Drift détecté pour {self.market}: Sharpe={value}")
+                    self.alert_manager.send_alert(f"Drift détecté pour {self.market}: Sharpe={value}", priority=4)
+                    return True
+            
+            # Valider les transitions HMM
+            regime_changes = data["regime_hmm"].diff().abs().sum()
+            if regime_changes > 10:  # Seuil arbitraire
+                logger.warning(f"Anomalie dans les transitions HMM pour {self.market}")
+                self.alert_manager.send_alert(f"Anomalie dans les transitions HMM pour {self.market}", priority=3)
+            
+            latency = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Détection drift pour {self.market}. Latence: {latency}s")
+            return False
+        except Exception as e:
+            logger.error(f"Erreur détection drift: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="detect_drift")
+            self.alert_manager.send_alert(f"Erreur détection drift: {str(e)}", priority=4)
+            return False
+
+
+Créer tests/test_drift_detector.py :import unittest
+import pandas as pd
+from src.monitoring.drift_detector import DriftDetector
+
+class TestDriftDetector(unittest.TestCase):
+    def setUp(self):
+        self.detector = DriftDetector(market="ES")
+        self.data = pd.DataFrame({
+            "profit": [100, 110, 90, 120, 80], "regime_hmm": [0, 0, 1, 1, 2]
+        })
+
+    def test_detect_drift(self):
+        result = self.detector.detect_drift(self.data)
+        self.assertTrue(isinstance(result, bool))
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Manque de détection proactive des drifts (suggestion 9), absence de validation des transitions HMM.
+
+
+Module : src/features/regime_detector.py
+
+Rôle : Détecte les régimes de marché (bull, bear, range) avec un modèle HMM, générant la feature regime_hmm pour feature_pipeline.py.
+Statut : Existant (version 2.1.4), codé pour HMM / Changepoint Detection, mais nécessite mise à jour pour nouveaux paramètres de regime_detector_config.yaml.
+Fonctionnalités existantes à préserver :
+Entraînement et prédiction avec GaussianHMM.
+Génération de regime_hmm et heatmap regime_vs_vix.png.
+Intégration avec feature_pipeline.py et prometheus_metrics.py.
+Cache TTLCache, logs psutil, alertes via alert_manager.py.
+
+
+Modifications nécessaires :
+HMM / Changepoint Detection (4) : Intégrer nouveaux paramètres de regime_detector_config.yaml :
+min_state_duration : Ignorer les transitions si le régime actuel a moins de min_state_duration observations.
+window_size_adaptive : Ajuster window_size dynamiquement en fonction de la volatilité (ex. : réduire à 20 si VIX > 25).
+cache_ttl_adaptive : Ajuster cache_ttl_seconds en fonction de la volatilité (ex. : réduire à 60s si VIX > 25).
+convergence_threshold : Arrêter l’entraînement HMM si la log-vraisemblance converge.
+hmm_state_distribution : Ajouter métrique Prometheus pour la répartition des états.
+
+
+Ajouter logs critiques dans data/logs/regime_detector_errors.csv.
+Mettre à jour la validation Pydantic pour les nouveaux paramètres.
+
+
+Priorité : Moyenne (mise à jour incrémentale, amélioration déjà codée).
+Dépendances : feature_pipeline.py, prometheus_metrics.py, error_tracker.py, alert_manager.py, pydantic, cachetools, hmmlearn.
+Action :
+Mettre à jour regime_detector.py avec les nouveaux paramètres :import pandas as pd
+import numpy as np
+from datetime import datetime
+from pathlib import Path
+import time
+import os
+import random
+import psutil
+from typing import Dict, Optional
+from loguru import logger
+from hmmlearn.hmm import GaussianHMM
+from sklearn.preprocessing import StandardScaler
+from pydantic import BaseModel, ValidationError, PositiveInt, conint, constr
+from cachetools import TTLCache
+from collections import deque
+import joblib
+from src.utils.error_tracker import capture_error
+from src.model.utils.alert_manager import AlertManager
+from src.monitoring.prometheus_metrics import Gauge
+
+logger.remove()
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = BASE_DIR / "data" / "logs"
+MODEL_DIR = BASE_DIR / "data" / "models"
+FIGURES_DIR = BASE_DIR / "data" / "figures" / "monitoring"
+LOG_DIR.mkdir(exist_ok=True)
+logger.add(LOG_DIR / "regime_detector.log", rotation="10 MB", level="INFO", encoding="utf-8")
+logger.add(LOG_DIR / "regime_detector_errors.csv", rotation="10 MB", level="ERROR", encoding="utf-8")
+
+regime_hmm_state = Gauge("regime_hmm_state", "État HMM (0: bull, 1: bear, 2: range)", ["market"])
+regime_transition_rate = Gauge("regime_transition_rate", "Taux de transition par heure", ["market"])
+hmm_state_distribution = Gauge("hmm_state_distribution", "Répartition des états HMM", ["market", "state"])
+
+class RegimeConfig(BaseModel):
+    buffer_size: PositiveInt
+    max_retries: PositiveInt
+    retry_delay: float
+    n_iterations: PositiveInt
+    convergence_threshold: float
+    covariance_type: constr(pattern="^(full|diag|tied|spherical)$")
+    n_components: conint(ge=2, le=5)
+    window_size: PositiveInt
+    window_size_adaptive: bool
+    random_state: PositiveInt
+    use_random_state: bool
+    min_train_rows: PositiveInt
+    min_state_duration: PositiveInt
+    cache_ttl_seconds: PositiveInt
+    cache_ttl_adaptive: bool
+    prometheus_labels: Dict[str, str]
+
+class RegimeDetector:
+    def __init__(self, market: str = "ES"):
+        self.market = market
+        self.log_buffer = []
+        self.feature_cache = None
+        self.data_buffer = deque(maxlen=None)
+        self.hmm_model = None
+        self.scaler = StandardScaler()
+        self.alert_manager = AlertManager()
+        self.last_regime = 2
+        self.transitions = []
+        self.state_counts = {i: 0 for i in range(3)}  # Placeholder
+        self.current_state_duration = 0
+        from src.model.utils.config_manager import get_config
+        config_raw = get_config(BASE_DIR / "config/regime_detector_config.yaml")
+        self.config = RegimeConfig(**config_raw).dict()
+        self.feature_cache = TTLCache(maxsize=100, ttl=self.config["cache_ttl_seconds"])
+        self.data_buffer.maxlen = self.config["window_size"]
+        LOG_DIR.mkdir(exist_ok=True)
+        MODEL_DIR.mkdir(exist_ok=True)
+        FIGURES_DIR.mkdir(exist_ok=True)
+        self._load_model()
+
+    def _load_model(self):
+        model_path = MODEL_DIR / f"hmm_{self.market}.pkl"
+        if model_path.exists():
+            try:
+                self.hmm_model = joblib.load(model_path)
+                logger.info(f"Modèle HMM chargé depuis {model_path}")
+                self.alert_manager.send_alert(f"Modèle HMM chargé depuis {model_path}", priority=2)
+            except Exception as e:
+                logger.error(f"Erreur chargement modèle HMM: {str(e)}")
+                self.alert_manager.send_alert(f"Erreur chargement modèle HMM: {str(e)}", priority=4)
+                self.hmm_model = None
+
+    def with_retries(self, func, max_attempts: int = None, delay_base: float = None) -> Optional[any]:
+        max_attempts = max_attempts or self.config["max_retries"]
+        delay_base = delay_base or self.config["retry_delay"]
+        for attempt in range(max_attempts):
+            try:
+                return func()
+            except Exception as e:
+                if attempt == max_attempts - 1:
+                    logger.error(f"Échec après {max_attempts} tentatives: {str(e)}")
+                    capture_error(e, context={"market": self.market}, market=self.market, operation="retry_regime_detector")
+                    self.alert_manager.send_alert(f"Échec après {max_attempts} tentatives: {str(e)}", priority=4)
+                    raise
+                delay = delay_base * (2 ** attempt) * (1 + random.uniform(-0.1, 0.1))
+                logger.warning(f"Tentative {attempt+1} échouée, retry après {delay:.2f}s")
+                time.sleep(delay)
+        return None
+
+    def log_performance(self, operation: str, latency: float, success: bool, error: str = None, **kwargs):
+        memory_usage = psutil.Process().memory_info().rss / 1024 / 1024
+        cpu_usage = psutil.cpu_percent()
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "operation": operation,
+            "latency": latency,
+            "success": success,
+            "error": error,
+            "memory_usage_mb": memory_usage,
+            "cpu_usage_percent": cpu_usage,
+            **kwargs
+        }
+        self.log_buffer.append(log_entry)
+        if len(self.log_buffer) >= self.config["buffer_size"]:
+            log_df = pd.DataFrame(self.log_buffer)
+            log_path = LOG_DIR / "regime_detector_performance.csv"
+            if not log_path.exists():
+                log_df.to_csv(log_path, index=False, encoding="utf-8")
+            else:
+                log_df.to_csv(log_path, mode="a", header=False, index=False, encoding="utf-8")
+            self.log_buffer = []
+        logger.info(f"Performance journalisée pour {operation}. CPU: {cpu_usage}%")
+
+    def train_hmm(self, orderflow_data: pd.DataFrame):
+        start_time = datetime.now()
+        try:
+            required_cols = ["bid_ask_imbalance", "total_volume"]
+            missing_cols = [col for col in required_cols if col not in orderflow_data.columns]
+            if missing_cols:
+                raise ValueError(f"Colonnes manquantes: {missing_cols}")
+            if len(orderflow_data) < self.config["min_train_rows"]:
+                raise ValueError(f"Données insuffisantes: {len(orderflow_data)} lignes")
+
+            X = orderflow_data[required_cols].ffill().fillna(orderflow_data[required_cols].median()).values
+            X_scaled = self.scaler.fit_transform(X)
+            self.hmm_model = GaussianHMM(
+                n_components=self.config["n_components"],
+                covariance_type=self.config["covariance_type"],
+                n_iter=self.config["n_iterations"],
+                tol=self.config["convergence_threshold"],
+                random_state=self.config["random_state"] if self.config["use_random_state"] else None
+            )
+            with joblib.parallel_backend("loky"):
+                self.hmm_model.fit(X_scaled)
+            joblib.dump(self.hmm_model, MODEL_DIR / f"hmm_{self.market}.pkl")
+            trans_df = pd.DataFrame(self.hmm_model.transmat_)
+            trans_df.to_csv(LOG_DIR / "hmm_transitions.csv", encoding="utf-8")
+            latency = (datetime.now() - start_time).total_seconds()
+            self.log_performance("train_hmm", latency, success=True, num_rows=len(orderflow_data))
+            logger.info(f"Modèle HMM entraîné pour {self.market}")
+            self.alert_manager.send_alert(f"Modèle HMM entraîné pour {self.market}", priority=2)
+        except Exception as e:
+            logger.error(f"Erreur entraînement HMM: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="train_hmm")
+            self.alert_manager.send_alert(f"Erreur entraînement HMM: {str(e)}", priority=4)
+            self.log_performance("train_hmm", 0, success=False, error=str(e))
+            raise
+
+    def detect_regime(self, orderflow_data: pd.DataFrame, vix: float = None) -> int:
+        start_time = datetime.now()
+        try:
+            if self.hmm_model is None:
+                raise ValueError("Modèle HMM non entraîné")
+            required_cols = ["bid_ask_imbalance", "total_volume"]
+            missing_cols = [col for col in required_cols if col not in orderflow_data.columns]
+            if missing_cols:
+                raise ValueError(f"Colonnes manquantes: {missing_cols}")
+
+            # Ajuster window_size dynamiquement si activé
+            window_size = self.config["window_size"]
+            cache_ttl = self.config["cache_ttl_seconds"]
+            if self.config["window_size_adaptive"] and vix is not None:
+                window_size = 20 if vix > 25 else self.config["window_size"]
+            if self.config["cache_ttl_adaptive"] and vix is not None:
+                cache_ttl = 60 if vix > 25 else self.config["cache_ttl_seconds"]
+            self.feature_cache = TTLCache(maxsize=100, ttl=cache_ttl)
+
+            data = orderflow_data[required_cols].ffill().fillna(orderflow_data[required_cols].median())
+            X = data.tail(window_size).values
+            X_scaled = self.scaler.transform(X)
+            for row in X:
+                self.data_buffer.append(row)
+            X_buffer = np.array(self.data_buffer)
+
+            cache_key = hash(tuple(X[-1]))
+            if cache_key in self.feature_cache:
+                regime = self.feature_cache[cache_key]
+                logger.debug(f"Cache hit pour régime: {regime}")
+            else:
+                regime = self.hmm_model.predict(X_scaled)[-1]
+                self.feature_cache[cache_key] = regime
+
+            # Appliquer min_state_duration
+            if regime != self.last_regime:
+                if self.current_state_duration < self.config["min_state_duration"]:
+                    regime = self.last_regime
+                else:
+                    self.transitions.append(datetime.now())
+                    self.current_state_duration = 0
+                    self.last_regime = regime
+            else:
+                self.current_state_duration += 1
+
+            # Mettre à jour la distribution des états
+            self.state_counts[regime] += 1
+            total_counts = sum(self.state_counts.values())
+            for state in self.state_counts:
+                hmm_state_distribution.labels(market=self.market, state=str(state)).set(
+                    self.state_counts[state] / total_counts if total_counts > 0 else 0
+                )
+
+            regime_hmm_state.labels(market=self.market).set(regime)
+            transition_rate = len(self.transitions) / max(1, (datetime.now() - self.transitions[0]).total_seconds() / 3600) if self.transitions else 0.0
+            regime_transition_rate.labels(market=self.market).set(transition_rate)
+
+            latency = (datetime.now() - start_time).total_seconds()
+            self.log_performance("detect_regime", latency, success=True, regime=regime)
+            return regime
+        except Exception as e:
+            logger.error(f"Erreur détection régime: {str(e)}")
+            capture_error(e, context={"market": self.market}, market=self.market, operation="detect_regime")
+            self.alert_manager.send_alert(f"Erreur détection régime: {str(e)}", priority=4)
+            self.log_performance("detect_regime", 0, success=False, error=str(e))
+            return 2
+
+
+Mettre à jour tests/test_regime_detector.py :import unittest
+from unittest.mock import patch
+import pandas as pd
+from src.features.regime_detector import RegimeDetector
+
+class TestRegimeDetector(unittest.TestCase):
+    def setUp(self):
+        self.detector = RegimeDetector(market="ES")
+        self.orderflow_data = pd.DataFrame({
+            "bid_ask_imbalance": [0.1, 0.2, 0.3], "total_volume": [1000, 1200, 1100]
+        })
+
+    def test_detect_regime_min_state_duration(self):
+        self.detector.hmm_model = DummyHMM()  # Placeholder
+        result = self.detector.detect_regime(self.orderflow_data)
+        self.assertIn(result, [0, 1, 2])
+
+    def test_detect_regime_adaptive_window(self):
+        self.detector.config["window_size_adaptive"] = True
+        result = self.detector.detect_regime(self.orderflow_data, vix=30)
+        self.assertIn(result, [0, 1, 2])
+
+class DummyHMM:
+    def predict(self, X):
+        return [0]
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+Failles corrigées : Paramètres HMM statiques (suggestion 1), absence de contraintes sur les transitions, manque de monitoring de la distribution des états.
+
+

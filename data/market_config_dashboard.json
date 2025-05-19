@@ -1,0 +1,17 @@
+{
+    "//": [
+        "Template for market configuration in MIA_IA_SYSTEM_v2_2025",
+        "Version: 2.1.4",
+        "Date: 2025-05-13",
+        "Role: Stores market configuration for the dashboard, used by mia_dashboard.py",
+        "Notes:",
+        "- Generated and updated by src/model/utils/mia_dashboard.py",
+        "- symbol: Market symbol, possible values: 'ES' (E-mini S&P 500), 'MNQ' (Micro E-mini Nasdaq-100)",
+        "- mode: Trading mode, possible values: 'live' (real trading), 'paper' (simulated trading)",
+        "- Policies Note: The official directory for routing policies is src/model/router/policies",
+        "  The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts",
+        "- Compliance: No references to dxFeed, obs_t, 320 features, or 81 features"
+    ],
+    "symbol": "",
+    "mode": ""
+}

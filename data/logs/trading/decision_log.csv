@@ -1,0 +1,17 @@
+# data/logs/trading/decision_log.csv
+# Version: 2.1.4
+# Date: 2025-05-13
+# Role: Logs trading decisions, including buffer selection for MIA_IA_SYSTEM_v2_2025.
+# Notes:
+# - Used by trade_executor.py to record decisions and reasons, supporting buffer selection (suggestion 2).
+# - Columns:
+#   - timestamp: ISO 8601 timestamp of the decision.
+#   - decision: Action taken (e.g., "enter_long", "exit_short", "hold").
+#   - reason: Reason for the decision (e.g., "high trade_success_prob", "buffer_switch").
+#   - regime: Market regime ("trend", "range", "defensive").
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+# - Compliance: No references to dxFeed, obs_t, 320 features, or 81 features.
+
+timestamp,decision,reason,regime
+2025-05-13T09:00:00Z,enter_long,high trade_success_prob,trend

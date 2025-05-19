@@ -1,0 +1,445 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/model_params.yaml
+# Configuration des modèles SAC et du pipeline neuronal pour trading ES avec MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.3"
+  updated: "2025-05-13"
+  description: |
+    Paramètres pour l'entraînement du modèle SAC et du pipeline neuronal utilisé dans run_training.py
+    et neural_pipeline.py. Calibré pour les 350 features IQFeed pour l’entraînement et top 150 SHAP
+    pour l’inférence/fallback, avec des configurations spécifiques pour les régimes trend, range, defensive.
+    Intègre t-SNE pour contextual_state_encoder.py et seuils adaptatifs (méthode 5) pour ajuster les hyperparamètres.
+    Validé via config_manager.py. Conforme à la Phase 8 (auto-conscience pour les décisions cognitives),
+    Phase 10 (SAC et pipeline neuronal), et Phase 16 (ensemble et transfer learning).
+    Tests unitaires disponibles dans tests/test_model_params.py.
+
+# Paramètres globaux par défaut
+default:
+  learning_rate:
+    value: 0.0001
+    range: [0.00001, 0.01]
+    description: |
+      Taux d’apprentissage conservateur pour stabilité sur ES. Ajustable via Optuna si nécessaire.
+  buffer_size:
+    value: 100000
+    range: [10000, 1000000]
+    description: |
+      Taille du buffer de replay, adaptée aux données IQFeed (ex. : 1 jour de ticks).
+  batch_size:
+    value: 256
+    range: [32, 1024]
+    description: |
+      Taille des batches pour vitesse et convergence, optimisée pour CPU/GPU.
+  tau:
+    value: 0.02
+    range: [0.005, 0.1]
+    description: |
+      Mise à jour soft des réseaux cibles, standard pour SAC.
+  gamma:
+    value: 0.98
+    range: [0.9, 0.999]
+    description: |
+      Facteur de discount, privilégie les récompenses à moyen terme.
+  verbose:
+    value: 1
+    range: [0, 2]
+    description: |
+      Niveau de verbosité (0=silencieux, 1=base, 2=détaillé) pour suivi dans run_training.py.
+  tensorboard_log:
+    value: "data/logs/tensorboard"
+    description: |
+      Chemin pour TensorBoard, utilisé pour visualiser les courbes d’apprentissage.
+  train_freq:
+    value: 1
+    range: [1, 10]
+    description: |
+      Fréquence d’entraînement (tous les steps), adapté au trading en temps réel.
+  gradient_steps:
+    value: 1
+    range: [1, 10]
+    description: |
+      Nombre de steps de gradient par mise à jour, équilibre vitesse/précision.
+  ent_coef:
+    value: "auto"
+    description: |
+      Coefficient d’entropie (auto ou float), favorise l’exploration pour SAC.
+  target_entropy:
+    value: "auto"
+    description: |
+      Entropie cible (auto ou float), ajustée dynamiquement par SAC.
+  log_interval:
+    value: 10
+    range: [1, 100]
+    description: |
+      Intervalle de logging pour réduire le spam tout en surveillant l’entraînement.
+  news_impact_threshold:
+    value: 0.5
+    range: [0.0, 1.0]
+    description: |
+      Seuil d’impact des nouvelles pour ajuster les hyperparamètres SAC adaptatifs (méthode 5).
+      Une valeur élevée indique un impact significatif des actualités.
+  vix_threshold:
+    value: 20.0
+    range: [10.0, 50.0]
+    description: |
+      Seuil de volatilité VIX pour ajuster les hyperparamètres SAC adaptatifs (méthode 5).
+      Une valeur élevée indique une volatilité extrême.
+
+# Configuration du pipeline neuronal
+neural_pipeline:
+  window_size:
+    value: 50
+    range: [20, 200]
+    description: |
+      Taille de la fenêtre temporelle pour LSTM et CNN, alignée avec TradingEnv.sequence_length.
+  base_features:
+    value: 350
+    range: [150, 400]
+    description: |
+      Nombre de features de base pour l’entraînement (350 features IQFeed).
+      Les top 150 SHAP features sont utilisées pour l’inférence/fallback.
+  lstm:
+    units:
+      value: 128
+      range: [64, 256]
+      description: |
+        Nombre d’unités LSTM pour capturer les dynamiques temporelles ES.
+    hidden_layers:
+      value: [64, 20]
+      description: |
+        Couches Dense après LSTM, produisant 20 features pour neural_features.
+    dropout:
+      value: 0.2
+      range: [0.0, 0.5]
+      description: |
+        Dropout pour éviter le surapprentissage sur données bruitées.
+    learning_rate:
+      value: 0.001
+      range: [0.0001, 0.01]
+      description: |
+        Taux d’apprentissage pour LSTM, plus rapide que SAC pour pré-entraînement.
+    optimizer:
+      value: "adam"
+      description: |
+        Optimiseur standard pour réseaux neuronaux, robuste et rapide.
+  cnn:
+    filters:
+      value: 32
+      range: [16, 128]
+      description: |
+        Nombre de filtres pour détecter des motifs dans order flow et données IQFeed.
+    kernel_size:
+      value: 5
+      range: [3, 10]
+      description: |
+        Taille du noyau, adaptée à des fenêtres de 50 ticks.
+    hidden_layers:
+      value: [16, 1]
+      description: |
+        Couches Dense pour réduire à une sortie (cnn_pressure).
+    dropout:
+      value: 0.1
+      range: [0.0, 0.3]
+      description: |
+        Dropout léger pour stabilité.
+    learning_rate:
+      value: 0.001
+      range: [0.0001, 0.01]
+      description: |
+        Taux d’apprentissage pour CNN, aligné avec LSTM.
+    optimizer:
+      value: "adam"
+      description: |
+        Optimiseur cohérent avec les autres réseaux.
+  mlp_volatility:
+    units:
+      value: 128
+      range: [64, 256]
+      description: |
+        Unités initiales pour prédire la volatilité, adapté aux inputs IQFeed.
+    hidden_layers:
+      value: [64, 1]
+      description: |
+        Réduction vers une sortie unique (predicted_volatility).
+    activation:
+      value: "relu"
+      description: |
+        Activation standard, linéaire en sortie pour volatilité continue.
+    learning_rate:
+      value: 0.001
+      range: [0.0001, 0.01]
+      description: |
+        Taux d’apprentissage pour volatilité, cohérent avec les autres.
+    optimizer:
+      value: "adam"
+      description: |
+        Optimiseur robuste pour prédiction continue.
+  mlp_regime:
+    units:
+      value: 128
+      range: [64, 256]
+      description: |
+        Unités pour classification des régimes (trend, range, defensive).
+    hidden_layers:
+      value: [64, 3]
+      description: |
+        Sortie à 3 classes (trend=0, range=1, defensive=2) via softmax.
+    activation:
+      value: "relu"
+      description: |
+        Softmax en sortie pour probabilités.
+    learning_rate:
+      value: 0.001
+      range: [0.0001, 0.01]
+      description: |
+        Taux d’apprentissage pour classification, standard pour MLP.
+    optimizer:
+      value: "adam"
+      description: |
+        Optimiseur adapté à la classification multi-classe.
+  normalization:
+    value: true
+    description: |
+      Active la normalisation des features pour tous les réseaux.
+  batch_size:
+    value: 32
+    range: [16, 128]
+    description: |
+      Taille des batches pour prédictions, optimisée pour performance.
+  pretrain_epochs:
+    value: 5
+    range: [1, 20]
+    description: |
+      Nombre d’époques pour pré-entraîner les réseaux sur données IQFeed.
+  validation_split:
+    value: 0.2
+    range: [0.1, 0.3]
+    description: |
+      Fraction des données pour validation pendant le pré-entraînement.
+
+# Paramètres pour contextual_state_encoder.py (t-SNE)
+contextual_state_encoder:
+  tsne_perplexity:
+    value: 30
+    range: [5, 50]
+    description: |
+      Perplexité pour t-SNE dans encode_vol_regime (contextual_state_encoder.py), adapté à la taille des données IQFeed.
+  tsne_learning_rate:
+    value: 200
+    range: [10, 1000]
+    description: |
+      Taux d’apprentissage pour t-SNE, standard pour une bonne convergence.
+  tsne_n_components:
+    value: 2
+    range: [1, 3]
+    description: |
+      Nombre de dimensions pour la réduction t-SNE (ex. : latent_vol_regime_vec_1, latent_vol_regime_vec_2).
+  tsne_n_iter:
+    value: 1000
+    range: [250, 5000]
+    description: |
+      Nombre d’itérations pour t-SNE, suffisant pour une bonne projection.
+
+# Hyperparamètres SAC par régime
+modes:
+  trend:
+    learning_rate:
+      value: 0.0001
+      range: [0.00001, 0.01]
+      description: |
+        Taux d’apprentissage pour capturer les mouvements directionnels forts.
+    buffer_size:
+      value: 100000
+      range: [10000, 1000000]
+      description: |
+        Buffer pour données IQFeed en trend (neural_regime=0).
+    batch_size:
+      value: 256
+      range: [32, 1024]
+      description: |
+        Batch pour convergence rapide en trend.
+    tau:
+      value: 0.02
+      range: [0.005, 0.1]
+      description: |
+        Mise à jour soft des réseaux cibles.
+    gamma:
+      value: 0.98
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour trend.
+    verbose:
+      value: 1
+      range: [0, 2]
+      description: |
+        Verbosité pour suivi.
+    tensorboard_log:
+      value: "data/logs/tensorboard/trend"
+      description: |
+        Chemin TensorBoard pour trend.
+    train_freq:
+      value: 1
+      range: [1, 10]
+      description: |
+        Fréquence d’entraînement.
+    gradient_steps:
+      value: 1
+      range: [1, 10]
+      description: |
+        Steps de gradient par mise à jour.
+    policy_kwargs:
+      net_arch:
+        value: [256, 256]
+        description: |
+          Architecture MLP pour Actor/Critic, adaptée aux trends rapides.
+    ent_coef:
+      value: "auto"
+      description: |
+        Exploration automatique pour volatilité.
+    target_entropy:
+      value: "auto"
+      description: |
+        Entropie cible ajustée dynamiquement.
+    description: |
+      Optimisé pour neural_regime=0, capturant les mouvements directionnels forts.
+
+  range:
+    learning_rate:
+      value: 0.0001
+      range: [0.00001, 0.01]
+      description: |
+        Taux d’apprentissage pour oscillations contenues.
+    buffer_size:
+      value: 100000
+      range: [10000, 1000000]
+      description: |
+        Buffer pour données IQFeed en range (neural_regime=1).
+    batch_size:
+      value: 256
+      range: [32, 1024]
+      description: |
+        Batch pour convergence stable.
+    tau:
+      value: 0.02
+      range: [0.005, 0.1]
+      description: |
+        Mise à jour soft des réseaux cibles.
+    gamma:
+      value: 0.98
+      range: [0.9, 0.999]
+      description: |
+        Facteur de discount pour range.
+    verbose:
+      value: 1
+      range: [0, 2]
+      description: |
+        Verbosité pour suivi.
+    tensorboard_log:
+      value: "data/logs/tensorboard/range"
+      description: |
+        Chemin TensorBoard pour range.
+    train_freq:
+      value: 1
+      range: [1, 10]
+      description: |
+        Fréquence d’entraînement.
+    gradient_steps:
+      value: 1
+      range: [1, 10]
+      description: |
+        Steps de gradient par mise à jour.
+    policy_kwargs:
+      net_arch:
+        value: [128, 128]
+        description: |
+          Architecture plus légère pour oscillations.
+    ent_coef:
+      value: "auto"
+      description: |
+        Exploration standard pour range.
+    target_entropy:
+      value: "auto"
+      description: |
+        Entropie cible automatique.
+    description: |
+      Optimisé pour neural_regime=1, marchés en consolidation.
+
+  defensive:
+    learning_rate:
+      value: 0.00005
+      range: [0.00001, 0.001]
+      description: |
+        Taux conservateur pour minimiser les pertes dans la volatilité.
+    buffer_size:
+      value: 50000
+      range: [10000, 200000]
+      description: |
+        Buffer réduit pour réactivité (neural_regime=2).
+    batch_size:
+      value: 128
+      range: [32, 512]
+      description: |
+        Batch plus petit pour mises à jour fines.
+    tau:
+      value: 0.03
+      range: [0.01, 0.1]
+      description: |
+        Mise à jour rapide pour adaptation.
+    gamma:
+      value: 0.99
+      range: [0.95, 0.999]
+      description: |
+        Focus long terme pour éviter risques courts.
+    verbose:
+      value: 1
+      range: [0, 2]
+      description: |
+        Verbosité pour suivi.
+    tensorboard_log:
+      value: "data/logs/tensorboard/defensive"
+      description: |
+        Chemin TensorBoard pour defensive.
+    train_freq:
+      value: 2
+      range: [1, 10]
+      description: |
+        Entraînement moins fréquent pour stabilité.
+    gradient_steps:
+      value: 2
+      range: [1, 10]
+      description: |
+        Plus de gradients pour précision.
+    policy_kwargs:
+      net_arch:
+        value: [64, 64]
+        description: |
+          Architecture compacte pour prudence.
+    ent_coef:
+      value: 0.01
+      range: [0.0, 0.1]
+      description: |
+        Exploration réduite pour prudence.
+    target_entropy:
+      value: -1.0
+      range: [-10.0, 0.0]
+      description: |
+        Entropie basse pour limiter les risques.
+    description: |
+      Optimisé pour neural_regime=2, protégeant le capital dans des marchés instables.
+
+# Notes pour recalibration future
+notes:
+  - base_features défini à 350 pour refléter les 350 features IQFeed pour l’entraînement, avec top 150 SHAP pour l’inférence/fallback.
+  - Vérifier window_size avec données IQFeed réelles (ex. : 50 ticks peuvent être trop courts).
+  - Intégrer Optuna pour optimiser learning_rate et net_arch.
+  - tsne_perplexity ajouté pour contextual_state_encoder.py (encode_vol_regime).
+  - news_impact_threshold et vix_threshold (méthode 5) intégrés pour ajuster les hyperparamètres SAC selon les actualités et la volatilité.
+  - Configuration validée via config_manager.py pour garantir la cohérence avec train_sac.py et neural_pipeline.py.
+  - Tests unitaires disponibles dans tests/test_model_params.py pour valider les paramètres.
+  - Conforme à la Phase 8 (auto-conscience pour les décisions cognitives),
+    Phase 10 (SAC et pipeline neuronal), et Phase 16 (ensemble et transfer learning).
+  - Les opérations critiques (ex. : entraînement SAC, inférence neurale) implémentent des retries (max 3, délai 2^attempt) via standard.py.
+  - Les performances des scripts (ex. : entraînement, inférence) sont enregistrées via psutil dans data/logs/train_sac_performance.csv ou fichiers similaires.
+  - Les échecs d’entraînement ou anomalies déclenchent des alertes via alert_manager.py (priorité 3=error).
+  - Surveiller les performances des modèles dans data/logs/train_sac_performance.csv ou fichiers similaires.

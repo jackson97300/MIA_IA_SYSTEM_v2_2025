@@ -1,0 +1,162 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/es_config.yaml
+# Configuration spécifique pour le marché E-mini S&P 500 (ES) dans MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.5"
+  updated: "2025-05-14"
+  description: |
+    Configuration spécifique au marché E-mini S&P 500 (ES), incluant les paramètres de prétraitement des données,
+    les paramètres de trading, les niveaux critiques d’options, et les fonctionnalités cognitives pour les scripts liés à ES.
+    Calibré pour les 350 features définies dans feature_sets.yaml pour l’entraînement et les top 150 SHAP features
+    pour l’inférence, utilisées dans les régimes trend, range, defensive. Utilise exclusivement IQFeed comme source
+    de données. Utilisé par run_training.py, run_preprocessing.py, spotgamma_recalculator.py, options_levels_service.py,
+    et autres scripts pour alimenter features_latest_350.csv (entraînement) et features_latest_150.csv (inférence).
+    Les fonctionnalités cognitives globales sont configurées dans mia_config.yaml, utilisé par mind_dialogue.py et mia_dashboard.py.
+    Conforme à la Phase 1 (collecte de données et prétraitement), Phase 8 (auto-conscience pour les fonctionnalités cognitives),
+    et Phase 16 (ensemble et transfer learning). Supporte une architecture multi-canaux pour les alertes (Telegram, Discord, Email)
+    avec gestion intelligente des priorités :
+      - Priorité 1–2 : Discord (journalisation uniquement)
+      - Priorité 3 : Telegram + Discord
+      - Priorité 4 : Telegram + Discord + Email
+      - Priorité 5 : Telegram + Discord + Email + stockage local (configurable)
+    Tests unitaires disponibles dans tests/test_es_config.py.
+
+market:
+  symbol:
+    value: "ES"
+    description: |
+      Symbole du marché (ES pour E-mini S&P 500 futures).
+  description: |
+    Configuration pour le trading des futurs E-mini S&P 500 sur CME.
+
+mia:
+  language: fr
+  vocal_enabled: true
+  vocal_async: true
+  log_dir: data/logs
+  enable_csv_log: false
+  log_rotation_mb: 10
+  verbosity: normal  # Options : minimal, normal, verbose
+  voice_profile: calm
+  max_logs: 1000
+
+preprocessing:
+  input_path: data/iqfeed/iqfeed_data.csv
+  output_path: data/features/features_latest_350.csv
+  output_path_inference: data/features/features_latest_150.csv
+  chunk_size: 20000
+  cache_hours: 24
+  max_retries: 3
+  retry_delay_base: 2.0
+  timeout_seconds: 1800
+  use_cache: true
+  clean_temp_files: true
+  drop_duplicates: true
+  log_each_step: true
+  optimize_memory: true
+  depth_level: 5  # Profondeur des données de l'order book (niveau 2 recommandé par IQFeed)
+  transaction_cost: 2.0  # Coût de transaction par contrat (en USD)
+
+spotgamma_recalculator:
+  min_volume_threshold: 10
+  dealer_zone_gap: 30
+  vega_normalization_factor: 1.0
+  price_proximity_range: 10
+  net_delta_positive_threshold: 0.5
+  net_delta_negative_threshold: -0.5
+  max_data_age_seconds: 600
+  oi_sweep_threshold: 0.1
+  iv_acceleration_window: "1h"
+  oi_velocity_window: "30min"
+  shap_features:
+    - iv_atm
+    - option_skew
+  description: |
+    Features prioritaires pour SHAP, alignées avec config_manager.py.
+
+volatility:
+  realized_vol_windows:
+    - 5min
+    - 15min
+    - 30min
+  volatility_breakout_threshold: 2.0
+
+contextualization:
+  news_volume_spike_threshold: 3.0
+  macro_event_severity_levels:
+    - 0.3
+    - 0.6
+    - 1.0
+  news_impact_threshold: 0.5
+  vix_threshold: 20.0
+
+order_flow:
+  order_imbalance_persistence_windows:
+    - 15min
+    - 60min
+  hidden_liquidity_detection_threshold: 0.2
+
+memory_contextual:
+  num_clusters: 10
+  pca_dimensions: 15
+  variance_explained: 0.95
+  max_cluster_age_seconds: 2592000  # 30 jours
+
+alerts:
+  telegram:
+    enabled: true
+    priority: 3
+    description: |
+      Alertes Telegram pour priorités 3–5 (error, critical, urgent).
+      Clés bot_token et chat_id gérées via secret_manager.py.
+  discord:
+    enabled: true
+    priority: 1
+    description: |
+      Alertes Discord pour toutes priorités (1–5, info à urgent).
+      Clé webhook_url gérée via secret_manager.py.
+  email:
+    enabled: true
+    priority: 4
+    description: |
+      Alertes Email pour priorités 4–5 (critical, urgent).
+      Clés SMTP (smtp_server, smtp_port, sender_email, sender_password, receiver_email) gérées via secret_manager.py.
+  local_storage:
+    enabled: false
+    path: data/alerts/local
+    priority: 5
+    description: |
+      Stockage local des alertes de priorité 5 (urgent) dans data/alerts/local/<market>/*.json.
+      Activé si enabled: true.
+  cache:
+    enabled: true
+    path: data/cache/alert_cache.pkl
+    description: |
+      Persistance du cache pour éviter les alertes dupliquées.
+      Stocké dans data/cache/alert_cache.pkl.
+
+# Notes pour recalibration future
+notes:
+  - Aligné sur 350 features pour l’entraînement et 150 SHAP features pour l’inférence définies dans feature_sets.yaml.
+  - Utilise exclusivement IQFeed comme source de données.
+  - depth_level: 5 supporte les niveaux 1-5 du DOM pour les nouvelles features comme level_4_size_bid/ask.
+  - price_proximity_range: 10 élargit la plage pour le Dealer Position Bias, aligné avec la méthode 2.
+  - shap_features configure les priorités SHAP pour spotgamma_recalculator.py (méthode 17), aligné avec config_manager.py.
+  - memory_contextual configure la clusterisation K-means et PCA pour la méthode 7 (market_memory.db).
+  - Tester chunk_size: 20000 pour optimiser les performances avec 350 features.
+  - Considérer use_cache: false pour des données IQFeed en temps réel si nécessaire.
+  - Tests unitaires disponibles dans tests/test_es_config.py pour valider la configuration.
+  - Conforme à la Phase 1 (collecte de données et prétraitement), Phase 8 (auto-conscience pour les fonctionnalités cognitives),
+    et Phase 16 (ensemble et transfer learning).
+  - Les performances des scripts (ex. : prétraitement, recalcul des niveaux d’options) sont enregistrées via psutil dans
+    data/logs/preprocessing_performance.csv ou fichiers similaires.
+  - Les échecs de prétraitement ou anomalies déclenchent des alertes via alert_manager.py avec les priorités suivantes :
+    - Priorité 1–2 : Discord (journalisation uniquement)
+    - Priorité 3 : Telegram + Discord
+    - Priorité 4 : Telegram + Discord + Email
+    - Priorité 5 : Telegram + Discord + Email + stockage local (configurable)
+  - Surveiller les performances des scripts dans data/logs/preprocessing_performance.csv ou fichiers similaires.
+  - La clé API IQFeed doit être configurée dans credentials.yaml et validée via config_manager.py.
+  - Support SMS supprimé ; peut être réintégré via un futur SMSNotifier.
+  - Clés API (bot_token, webhook_url, sender_password) gérées via secret_manager.py pour sécurité.

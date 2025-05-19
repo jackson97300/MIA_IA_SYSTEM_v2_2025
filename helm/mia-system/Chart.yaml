@@ -1,0 +1,60 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/helm/mia-system/Chart.yaml
+# Chart Helm pour le déploiement de MIA_IA_SYSTEM_v2_2025 sur Kubernetes
+#
+# Version: 2.1.5
+# Date: 2025-05-14
+#
+# Rôle: Définit les métadonnées et dépendances pour déployer l’application sur Kubernetes,
+#       incluant les nouveaux modules pour les suggestions 1, 4, 7, 8, 10.
+#
+# Utilisé par: Helm pour orchestrer le déploiement.
+#
+# Notes:
+# - Conforme à structure.txt (version 2.1.5, 2025-05-14).
+# - Supporte les suggestions :
+#   - 1 (Position sizing dynamique) : Déploiement pour risk-manager.
+#   - 2 (Loggers) : Métriques via Prometheus/Grafana.
+#   - 4 (HMM/Changepoint Detection) : Déploiement pour regime-detector.
+#   - 5 (Profit factor) : Métriques via Prometheus/Grafana.
+#   - 7 (Safe RL/CVaR-PPO) : Déploiement pour trade-probability (PPO-Lagrangian).
+#   - 8 (Distributional RL/QR-DQN) : Déploiement pour trade-probability (QR-DQN).
+#   - 10 (Ensembles de politiques) : Déploiement pour trade-probability (vote bayésien).
+# - Dépendances : Prometheus pour les métriques, Grafana pour les dashboards.
+# - Pas de références à dxFeed, obs_t, 320 features, ou 81 features.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+apiVersion: v2
+name: mia-system
+description: Chart Helm pour déployer MIA_IA_SYSTEM_v2_2025, un système de trading algorithmique.
+version: 2.1.5
+appVersion: "2.1.5"
+keywords:
+  - trading
+  - machine-learning
+  - kubernetes
+maintainers:
+  - name: xAI
+    email: support@x.ai
+dependencies:
+  - name: prometheus
+    version: 25.0.0
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+  - name: grafana
+    version: 8.5.0
+    repository: https://grafana.github.io/helm-charts
+    condition: grafana.enabled
+  - name: risk-manager
+    version: "2.1.5"
+    repository: "file://charts/risk-manager"
+  - name: regime-detector
+    version: "2.1.5"
+    repository: "file://charts/regime-detector"
+  - name: trade-probability
+    version: "2.1.5"
+    repository: "file://charts/trade-probability"
+  - name: mia-switcher
+    version: "2.1.5"
+    repository: "file://charts/mia-switcher"

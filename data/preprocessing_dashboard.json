@@ -1,0 +1,19 @@
+{
+    "//": [
+        "Template for preprocessing state in MIA_IA_SYSTEM_v2_2025",
+        "Version: 2.1.4",
+        "Date: 2025-05-13",
+        "Role: Stores the state of data preprocessing for the dashboard, managed by run_preprocessing.py",
+        "Notes:",
+        "- Generated and updated by src/scripts/run_preprocessing.py",
+        "- status: State of preprocessing, possible values: 'completed', 'failed', 'in_progress'",
+        "- rows_processed: Number of data rows processed",
+        "- timestamp: ISO timestamp of the last preprocessing update",
+        "- Policies Note: The official directory for routing policies is src/model/router/policies",
+        "  The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts",
+        "- Compliance: No references to dxFeed, obs_t, 320 features, or 81 features"
+    ],
+    "status": "",
+    "rows_processed": 0,
+    "timestamp": ""
+}

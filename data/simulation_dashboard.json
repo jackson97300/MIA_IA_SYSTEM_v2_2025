@@ -1,0 +1,20 @@
+{
+    "//": [
+        "Template for simulation results in MIA_IA_SYSTEM_v2_2025",
+        "Version: 2.1.4",
+        "Date: 2025-05-13",
+        "Role: Stores the results of trading simulations for the dashboard, managed by simulate_trades.py",
+        "Notes:",
+        "- Generated and updated by src/scripts/run_simulate.py and src/trading/simulate_trades.py",
+        "- profit: Total profit from simulations in USD",
+        "- trades: Number of trades executed in simulations",
+        "- sharpe_ratio: Sharpe ratio of the simulation results",
+        "- Example values: {'profit': 500, 'trades': 10, 'sharpe_ratio': 1.5}",
+        "- Policies Note: The official directory for routing policies is src/model/router/policies",
+        "  The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts",
+        "- Compliance: No references to dxFeed, obs_t, 320 features, or 81 features"
+    ],
+    "profit": 0,
+    "trades": 0,
+    "sharpe_ratio": 0.0
+}

@@ -1,0 +1,428 @@
+Phase 1 : Configuration et collecte des données
+Objectif
+Configurer l’environnement pour utiliser IQFeed exclusivement comme source de données, collecter les données brutes (OHLC, DOM, options, news, cross-market, événements macro), supprimer toute référence à dxFeed, obs_t, et 320/81 features, et générer les fichiers de données initiaux (ex. : iqfeed_data.csv, macro_events.csv). Cette phase est prioritaire, car elle fournit les données nécessaires pour toutes les autres phases (ex. : features, entraînement, trading).
+
+Fichiers concernés
+Fichiers principaux (5) :
+src/data/data_provider.py
+src/api/merge_data_sources.py
+src/api/schedule_economic_calendar.py
+config/credentials.yaml
+config/market_config.yaml
+Fichiers générés (4) :
+data/iqfeed/iqfeed_data.csv
+data/iqfeed/merged_data.csv
+data/macro_events.csv
+data/iqfeed/news.csv
+Tests (3) :
+tests/test_data_provider.py
+tests/test_merge_data_sources.py
+tests/test_schedule_economic_calendar.py
+Dépendances (2) :
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+Registre des fichiers (Phase 1)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/data/data_provider.py	Existant	2.1.3	2025-05-13	obs_t, dxFeed	tests/test_data_provider.py	Très haute	config/credentials.yaml, alert_manager.py	iqfeed_data.csv, option_chain.csv, cross_market.csv, news.csv
+src/api/merge_data_sources.py	Existant	2.1.3	2025-05-13	obs_t, dxFeed	tests/test_merge_data_sources.py	Très haute	data_provider.py, config_manager.py	merged_data.csv
+src/api/schedule_economic_calendar.py	Existant	2.1.3	2025-05-13	obs_t, dxFeed	tests/test_schedule_economic_calendar.py	Haute	config/credentials.yaml, alert_manager.py	macro_events.csv
+config/credentials.yaml	Existant	2.1.3	2025-05-13	Aucun	tests/test_credentials.py	Moyenne	Aucun	Aucun
+config/market_config.yaml	Existant	2.1.3	2025-05-13	Aucun	tests/test_market_config.py	Moyenne	Aucun	Aucun
+data/iqfeed/iqfeed_data.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_data_provider.py	Basse	data_provider.py	Aucun
+data/iqfeed/merged_data.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_merge_data_sources.py	Basse	merge_data_sources.py	Aucun
+data/macro_events.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_schedule_economic_calendar.py	Basse	schedule_economic_calendar.py	Aucun
+data/iqfeed/news.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_data_provider.py	Basse	data_provider.py	Aucun
+Spécifications des fichiers
+Module : src/data/data_provider.py
+Rôle :
+Collecte les données brutes via IQFeed (OHLC, DOM, options, news, cross-market) et génère iqfeed_data.csv, option_chain.csv, cross_market.csv, news.csv.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Collecte des données IQFeed via IQFeedProvider.
+Structure des fichiers générés (iqfeed_data.csv, option_chain.csv, etc.).
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Ajouter retries (max 3, délai 2^attempt) pour les appels IQFeed.
+Ajouter logs psutil dans data/logs/provider_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Vérifier/créer les fichiers générés avec les schémas suivants :
+Schéma pour data/iqfeed/iqfeed_data.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+bid : float (ex. : 5100.25)
+ask : float (ex. : 5100.50)
+bid_size_level_2 : float (ex. : 100.0)
+spy_close : float (ex. : 450.75)
+vix_es_correlation : float (ex. : 0.85)
+atr_14 : float (ex. : 15.5)
+Schéma pour data/iqfeed/option_chain.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+strike : float (ex. : 5100.0)
+option_type : str (ex. : call)
+open_interest : int (ex. : 500)
+call_iv_atm : float (ex. : 0.25)
+put_iv_atm : float (ex. : 0.27)
+option_volume : int (ex. : 1000)
+oi_concentration : float (ex. : 0.65)
+option_skew : float (ex. : 0.05)
+Schéma pour data/iqfeed/cross_market.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+symbol : str (ex. : SPY)
+close : float (ex. : 450.75)
+vix_es_correlation : float (ex. : 0.85)
+Schéma pour data/iqfeed/news.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+headline : str (ex. : "FOMC annonce une hausse des taux")
+source : str (ex. : Reuters)
+Priorité :
+Très haute (base pour toutes les phases).
+Dépendances :
+config/credentials.yaml
+config/market_config.yaml
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+Fichiers générés :
+data/iqfeed/iqfeed_data.csv
+data/iqfeed/option_chain.csv
+data/iqfeed/cross_market.csv
+data/iqfeed/news.csv
+Action :
+Mettre à jour data_provider.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+from src.model.utils.config_manager import config_manager
+class IQFeedProvider:
+    def fetch_ohlc(self, symbol):
+        config = config_manager.get_config("market_config.yaml")
+        start_time = time.time()
+        try:
+            data = self._fetch_iqfeed_data(symbol)
+            data.to_csv("data/iqfeed/iqfeed_data.csv", encoding="utf-8", index=False)
+            latency = time.time() - start_time
+            self._log_performance("fetch_ohlc", latency, success=True)
+            return data
+        except Exception as e:
+            self._log_performance("fetch_ohlc", time.time() - start_time, success=False, error=str(e))
+            AlertManager().send_alert(f"Erreur fetch_ohlc: {str(e)}", priority=3)
+            raise
+    def _log_performance(self, operation, latency, success=True, error=None):
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": operation,
+            "latency": latency,
+            "success": success,
+            "error": error,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/provider_performance.csv", mode="a", header=False, index=False)
+Vérifier/créer les fichiers générés avec les schémas ci-dessus.
+Tests :
+Fichier : tests/test_data_provider.py
+Scénarios :
+Vérifier la création de iqfeed_data.csv, option_chain.csv, cross_market.csv, news.csv.
+Vérifier les colonnes et l’absence de NaN.
+Tester les erreurs réseau IQFeed.
+Vérifier l’absence de obs_t, dxFeed, 320/81 features.
+Exemple :
+python
+
+Copier
+def test_fetch_ohlc():
+    from src.data.data_provider import IQFeedProvider
+    provider = IQFeedProvider()
+    data = provider.fetch_ohlc(symbol="ES")
+    assert set(data.columns) == {"timestamp", "bid", "ask", "bid_size_level_2", "spy_close", "vix_es_correlation", "atr_14"}, "Colonnes incorrectes"
+    assert not data.isna().any().any(), "NaN détectés"
+    assert os.path.exists("data/iqfeed/iqfeed_data.csv"), "Fichier non généré"
+Failles corrigées :
+Résidus obs_t, dxFeed (supprimés).
+Incohérences features (aligné sur 350/150 SHAP).
+Tests génériques (tests spécifiques).
+Manque de schéma pour les fichiers générés (schémas détaillés).
+Module : src/api/merge_data_sources.py
+Rôle :
+Fusionne les données IQFeed (OHLC, options, news, cross-market) avec les événements macro pour générer merged_data.csv.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Fusion des données brutes.
+Structure de merged_data.csv.
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Ajouter retries (max 3, délai 2^attempt) pour les opérations de fusion.
+Ajouter logs psutil dans data/logs/merge_data_sources_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer merged_data.csv avec le schéma suivant :
+Schéma pour data/iqfeed/merged_data.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+close : float (ex. : 5100.75)
+news_impact_score : float (ex. : 0.65)
+call_iv_atm : float (ex. : 0.25)
+option_skew : float (ex. : 0.05)
+Priorité :
+Très haute (nécessaire pour la génération des features).
+Dépendances :
+src/data/data_provider.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+Fichiers générés :
+data/iqfeed/merged_data.csv
+Action :
+Mettre à jour merge_data_sources.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+def merge_data_sources():
+    start_time = time.time()
+    try:
+        ohlc = pd.read_csv("data/iqfeed/iqfeed_data.csv")
+        news = pd.read_csv("data/iqfeed/news.csv")
+        merged = ohlc.merge(news, on="timestamp", how="left")
+        merged.to_csv("data/iqfeed/merged_data.csv", encoding="utf-8", index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "merge_data",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/merge_data_sources_performance.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur fusion: {str(e)}", priority=3)
+        raise
+Vérifier/créer merged_data.csv avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_merge_data_sources.py
+Scénarios :
+Vérifier la création de merged_data.csv.
+Vérifier les colonnes et l’absence de NaN.
+Tester les erreurs de fusion (ex. : fichiers manquants).
+Vérifier l’absence de obs_t, dxFeed, 320/81 features.
+Exemple :
+python
+
+Copier
+def test_merge_data_sources():
+    from src.api.merge_data_sources import merge_data_sources
+    merge_data_sources()
+    df = pd.read_csv("data/iqfeed/merged_data.csv")
+    assert set(df.columns) == {"timestamp", "close", "news_impact_score", "call_iv_atm", "option_skew"}, "Colonnes incorrectes"
+    assert not df.isna().any().any(), "NaN détectés"
+Failles corrigées :
+Résidus obs_t, dxFeed (supprimés).
+Incohérences features (aligné sur 350/150 SHAP).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Module : src/api/schedule_economic_calendar.py
+Rôle :
+Collecte les événements macro-économiques (ex. : FOMC, NFP) via l’API Investing.com et génère macro_events.csv.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Collecte des événements macro.
+Structure de macro_events.csv (colonnes : start_time, type, impact).
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Intégrer méthode 7 : Ajouter cluster_id via K-means sur vix_es_correlation.
+Ajouter retries (max 3, délai 2^attempt) pour les appels API.
+Ajouter logs psutil dans data/logs/schedule_economic_calendar_performance.csv.
+Ajouter alertes via alert_manager.py.
+Vérifier/créer macro_events.csv avec le schéma suivant :
+Schéma pour data/macro_events.csv :
+start_time : datetime (ex. : 2025-05-13 14:00:00)
+type : str (ex. : FOMC)
+impact : float (ex. : 0.8)
+cluster_id : int (ex. : 3)
+Priorité :
+Haute (nécessaire pour context_aware_filter.py).
+Dépendances :
+config/credentials.yaml
+config/market_config.yaml
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+Fichiers générés :
+data/macro_events.csv
+Action :
+Mettre à jour schedule_economic_calendar.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from sklearn.cluster import KMeans
+from src.model.utils.alert_manager import AlertManager
+def fetch_macro_events():
+    start_time = time.time()
+    try:
+        data = api_investing_com.fetch_events()
+        data["cluster_id"] = KMeans(n_clusters=10).fit_predict(data[["vix_es_correlation"]])
+        data.to_csv("data/macro_events.csv", encoding="utf-8", index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "fetch_macro_events",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/schedule_economic_calendar_performance.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur fetch_macro_events: {str(e)}", priority=3)
+        raise
+Vérifier/créer macro_events.csv avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_schedule_economic_calendar.py
+Scénarios :
+Vérifier la création de macro_events.csv.
+Vérifier les colonnes start_time, type, impact, cluster_id.
+Vérifier l’absence de NaN.
+Tester les erreurs API (ex. : réseau).
+Vérifier l’absence de obs_t, dxFeed, 320/81 features.
+Exemple :
+python
+
+Copier
+def test_fetch_macro_events():
+    from src.api.schedule_economic_calendar import fetch_macro_events
+    fetch_macro_events()
+    df = pd.read_csv("data/macro_events.csv")
+    assert set(df.columns) == {"start_time", "type", "impact", "cluster_id"}, "Colonnes incorrectes"
+    assert not df.isna().any().any(), "NaN détectés"
+Failles corrigées :
+Résidus obs_t, dxFeed (supprimés).
+Incohérences features (aligné sur 350/150 SHAP).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Module : config/credentials.yaml
+Rôle :
+Contient les identifiants sécurisés pour les APIs (IQFeed, Investing.com, NewsAPI).
+Statut :
+Existant (à vérifier).
+Fonctionnalités existantes à préserver :
+Structure des identifiants (ex. : iqfeed_api_key, investing_com_api_key).
+Modifications nécessaires :
+Vérifier l’absence de références à dxFeed.
+Mettre à jour la documentation (en-tête) pour refléter la date 2025-05-13 et la version 2.1.3.
+Vérifier la compatibilité avec data_provider.py et schedule_economic_calendar.py.
+Priorité :
+Moyenne (nécessaire pour la collecte des données).
+Dépendances :
+Aucun.
+Fichiers générés :
+Aucun.
+Action :
+Vérifier/mettre à jour credentials.yaml avec :
+yaml
+
+Copier
+# config/credentials.yaml
+# Identifiants sécurisés pour les APIs
+# Version : 2.1.3
+# Date : 2025-05-13
+iqfeed_api_key: yyy
+investing_com_api_key: zzz
+news_api_key: xxx
+Vérifier l’absence de dxfeed_api_key ou autres références obsolètes.
+Tests :
+Fichier : tests/test_credentials.py
+Scénarios :
+Vérifier la présence des clés iqfeed_api_key, investing_com_api_key, news_api_key.
+Vérifier l’absence de dxfeed_api_key.
+Tester la lecture par config_manager.py.
+Exemple :
+python
+
+Copier
+def test_credentials():
+    from src.model.utils.config_manager import config_manager
+    config = config_manager.get_config("credentials.yaml")
+    assert "iqfeed_api_key" in config, "Clé IQFeed manquante"
+    assert "dxfeed_api_key" not in config, "Référence dxFeed détectée"
+Failles corrigées :
+Références dxFeed (supprimées).
+Documentation obsolète (mise à jour).
+Module : config/market_config.yaml
+Rôle :
+Configure le marché (ex. : ES) et les paramètres IQFeed (ex. : hôte, symboles).
+Statut :
+Existant (à vérifier).
+Fonctionnalités existantes à préserver :
+Paramètres du marché (ex. : symbol, max_drawdown, paper_trading_enabled).
+Modifications nécessaires :
+Vérifier l’absence de références à dxFeed.
+Mettre à jour la documentation (en-tête) pour refléter la date 2025-05-13 et la version 2.1.3.
+Vérifier la compatibilité avec data_provider.py.
+Priorité :
+Moyenne (nécessaire pour la collecte des données).
+Dépendances :
+Aucun.
+Fichiers générés :
+Aucun.
+Action :
+Vérifier/mettre à jour market_config.yaml avec :
+yaml
+
+Copier
+# config/market_config.yaml
+# Configuration du marché ES et IQFeed
+# Version : 2.1.3
+# Date : 2025-05-13
+symbol: ES
+max_drawdown: 0.05
+paper_trading_enabled: true
+iqfeed_host: localhost
+Vérifier l’absence de dxfeed_host ou autres références obsolètes.
+Tests :
+Fichier : tests/test_market_config.py
+Scénarios :
+Vérifier la présence des clés symbol, max_drawdown, paper_trading_enabled, iqfeed_host.
+Vérifier l’absence de dxfeed_host.
+Tester la lecture par config_manager.py.
+Exemple :
+python
+
+Copier
+def test_market_config():
+    from src.model.utils.config_manager import config_manager
+    config = config_manager.get_config("market_config.yaml")
+    assert "iqfeed_host" in config, "Clé IQFeed manquante"
+    assert "dxfeed_host" not in config, "Référence dxFeed détectée"
+Failles corrigées :
+Références dxFeed (supprimées).
+Documentation obsolète (mise à jour).
+Clarifications finales
+Avant de passer à la Phase 2, je dois confirmer quelques points pour m’assurer que la Phase 1 est complète et conforme à vos attentes :
+
+Fichiers de la Phase 1 :
+Les fichiers proposés (data_provider.py, merge_data_sources.py, schedule_economic_calendar.py, credentials.yaml, market_config.yaml) sont-ils corrects pour la Phase 1, ou voulez-vous ajouter/retirer des fichiers (ex. : inclure news_scraper.py ou un des 7 fournis) ?
+Si vous avez une liste précise des fichiers les plus importants de structure.txt, partagez-la pour ajuster les priorités.
+Tests unitaires :
+Les exemples de tests complets pour data_provider.py, merge_data_sources.py, et schedule_economic_calendar.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : erreurs réseau, fichiers CSV mal formatés) ?
+Schéma des fichiers générés :
+Les schémas détaillés proposés (ex. : pour iqfeed_data.csv, macro_events.csv) sont-ils au bon niveau de détail, ou voulez-vous plus/moins d’informations (ex. : contraintes supplémentaires, descriptions des colonnes) ?
+Registre des fichiers :
+Le registre partiel pour la Phase 1 est-il clair ? Voulez-vous que j’inclue le registre complet des ~70 fichiers dans l’introduction du guide, ou seulement les registres par phase ?
+Validation de la Phase 1 :
+Si la Phase 1 vous convient, dites "ok", et je passerai à la Phase 2 (génération et filtrage des features, ex. : feature_pipeline.py, shap_weighting.py).
+Si vous voulez des ajustements (ex. : ajouter un fichier, modifier un schéma), précisez-les avant validation.
+Conclusion
+Le décompte confirme environ 142 fichiers dans structure.txt, mais les ~70 fichiers principaux (scripts Python, configurations, fichiers générés clés) seront le focus du guide ultime. Votre validation des 10 phases, des tests complets pour prioritaires/stubs pour autres, et d’une version complète pour validate_prompt_compliance.py permet de structurer un guide clair et robuste. La Phase 1 ci-dessus est conçue pour être lisible, détaillée, et conforme à vos exemples, avec des schémas détaillés et des tests complets pour les fichiers critiques.
+
+Actions immédiates demandées :
+
+Validez la Phase 1 en disant "ok" si elle convient, ou précisez les ajustements nécessaires (ex. : fichiers à ajouter/retirer, détails des schémas).
+Confirmez les fichiers prioritaires pour la Phase 1 (proposition ci-dessus ou liste spécifique).
+Précisez si vous voulez le registre complet des ~70 fichiers dans l’introduction du guide, ou seulement par phase.
+Si possible, partagez une liste des fichiers les plus importants ou problématiques parmi les ~70 codés pour orienter les prochaines phases.
+Une fois votre "ok" reçu, je rédigerai la Phase 2. On avance pas à pas pour boucler ce projet sans reprises ! 🚀

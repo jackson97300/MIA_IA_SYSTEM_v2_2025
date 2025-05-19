@@ -1,0 +1,316 @@
+Phase 11 : Complétion des modules de trading et backtesting
+Objectif
+Compléter les fonctionnalités de trading et de backtesting en intégrant les modules manquants pour le backtesting des stratégies (backtest_lab.py), la définition de l’environnement de trading (trading_env.py), et la détection des régimes de marché (detect_regime.py) pour les méthodes hybrides (méthode 11). Cette phase garantit que toutes les composantes nécessaires pour le trading live, paper, et historique sont en place, avec un focus sur la suppression de obs_t, dxFeed, et 320/81 features, et l’utilisation des 350/150 SHAP features. Les fichiers générés auront des schémas détaillés. Cette phase est prioritaire pour valider les performances historiques et assurer la robustesse du trading (Phase 8).
+
+Fichiers concernés
+Fichiers principaux (3) :
+src/trading/backtest_lab.py (fichier fourni)
+src/envs/trading_env.py
+src/model/router/detect_regime.py
+Fichiers générés (1) :
+data/backtest_results.csv
+Tests (3) :
+tests/test_backtest_lab.py
+tests/test_trading_env.py
+tests/test_detect_regime.py
+Dépendances (8) :
+src/features/feature_pipeline.py (Phase 2)
+src/features/shap_weighting.py (Phase 2)
+src/features/obs_template.py (Phase 4)
+src/model/inference.py (Phase 8)
+src/trading/live_trading.py (Phase 8)
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/feature_importance.csv (Phase 2)
+Registre des fichiers (Phase 11)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/trading/backtest_lab.py	Existant	2.1.3	2025-05-13	320 features	tests/test_backtest_lab.py	Très haute	inference.py, live_trading.py	backtest_results.csv
+src/envs/trading_env.py	À créer	2.1.3	2025-05-13	obs_t, 320 features	tests/test_trading_env.py	Très haute	obs_template.py, config_manager.py	Aucun
+src/model/router/detect_regime.py	À créer	2.1.3	2025-05-13	320 features	tests/test_detect_regime.py	Très haute	feature_pipeline.py, alert_manager.py	Aucun
+data/backtest_results.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_backtest_lab.py	Basse	backtest_lab.py	Aucun
+Spécifications des fichiers
+Module : src/trading/backtest_lab.py
+Rôle :
+Exécute des backtests pour valider les stratégies de trading sur des données historiques, en utilisant les 150 SHAP features pour les prédictions et les régimes hybrides (méthode 11).
+Statut :
+Existant (à mettre à jour, fichier fourni).
+Fonctionnalités existantes à préserver :
+Backtesting des stratégies avec des métriques (profit, Sharpe ratio).
+Intégration avec les prédictions (inference.py).
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Utiliser les 150 SHAP features de feature_importance.csv pour les prédictions.
+Intégrer les régimes hybrides (méthode 11) via detect_regime.py.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs de backtesting.
+Ajouter logs psutil dans data/logs/backtest_lab_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Vérifier/créer backtest_results.csv avec le schéma suivant :
+Schéma pour data/backtest_results.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+profit : float (ex. : 500.0)
+sharpe_ratio : float (ex. : 1.5)
+regime : str (ex. : range)
+Priorité :
+Très haute (essentiel pour valider les stratégies).
+Dépendances :
+src/model/inference.py
+src/trading/live_trading.py
+src/model/router/detect_regime.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/feature_importance.csv
+Fichiers générés :
+data/backtest_results.csv
+Action :
+Mettre à jour backtest_lab.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+import json
+from src.model.inference import predict
+from src.model.router.detect_regime import detect_regime
+from src.model.utils.alert_manager import AlertManager
+
+def run_backtest(data):
+    start_time = time.time()
+    try:
+        regime_probs = detect_regime(data)
+        prediction = predict(data)
+        profit = prediction["profit"] if prediction else 0.0
+        sharpe_ratio = profit / data["vix_es_correlation"].std() if data["vix_es_correlation"].std() != 0 else 0.0
+        regime = max(regime_probs, key=regime_probs.get)
+        result = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "profit": profit,
+            "sharpe_ratio": sharpe_ratio,
+            "regime": regime
+        }
+        pd.DataFrame([result]).to_csv("data/backtest_results.csv", mode="a", header=False, index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": result["timestamp"],
+            "operation": "run_backtest",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/backtest_lab_performance.csv", mode="a", header=False, index=False)
+        return result
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur backtesting: {str(e)}", priority=3)
+        raise
+Afficher dans la barre latérale
+Vérifier/créer backtest_results.csv avec le schéma ci-dessus.
+Tests :
+Fichier : tests/test_backtest_lab.py
+Scénarios :
+Vérifier la création de backtest_results.csv.
+Vérifier l’intégration avec inference.py et detect_regime.py.
+Tester les erreurs de backtesting (ex. : données historiques manquantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_run_backtest():
+    from src.trading.backtest_lab import run_backtest
+    data = pd.DataFrame({"rsi_14": [50.0], "vix_es_correlation": [0.85]})
+    result = run_backtest(data)
+    df = pd.read_csv("data/backtest_results.csv")
+    assert "profit" in df.columns, "Colonne profit manquante"
+    assert "sharpe_ratio" in df.columns, "Colonne sharpe_ratio manquante"
+    assert os.path.exists("data/logs/backtest_lab_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Manque de schéma (schéma détaillé).
+Module : src/envs/trading_env.py
+Rôle :
+Définit l’environnement de trading pour les modèles SAC, PPO, DDPG, en utilisant les 150 SHAP features via obs_template.py pour l’inférence.
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Implémenter un environnement compatible avec stable_baselines3.
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Utiliser les 150 SHAP features pour l’espace d’observation.
+Ajouter retries (max 3, délai 2^attempt) pour les initialisations.
+Ajouter logs psutil dans data/logs/trading_env_performance.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Très haute (essentiel pour l’inférence et l’entraînement).
+Dépendances :
+src/features/obs_template.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+data/features/feature_importance.csv
+Fichiers générés :
+Aucun.
+Action :
+Créer trading_env.py avec :
+python
+
+Copier
+import gym
+import pandas as pd
+import psutil
+from src.features.obs_template import create_observation
+from src.model.utils.alert_manager import AlertManager
+
+class TradingEnv(gym.Env):
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(150,))
+        self.action_space = gym.spaces.Discrete(3)  # Buy, Sell, Hold
+        self.current_step = 0
+
+    def reset(self):
+        start_time = time.time()
+        try:
+            self.current_step = 0
+            observation = create_observation(self.data.iloc[self.current_step], regime="range")
+            latency = time.time() - start_time
+            log_entry = {
+                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "operation": "reset_env",
+                "latency": latency,
+                "success": True,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_percent": psutil.cpu_percent()
+            }
+            pd.DataFrame([log_entry]).to_csv("data/logs/trading_env_performance.csv", mode="a", header=False, index=False)
+            return observation
+        except Exception as e:
+            AlertManager().send_alert(f"Erreur reset environnement: {str(e)}", priority=3)
+            raise
+Afficher dans la barre latérale
+Vérifier l’intégration avec obs_template.py.
+Tests :
+Fichier : tests/test_trading_env.py
+Scénarios :
+Vérifier l’initialisation de l’environnement avec 150 dimensions.
+Vérifier l’intégration avec obs_template.py.
+Tester les erreurs d’initialisation (ex. : données manquantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_trading_env():
+    from src.envs.trading_env import TradingEnv
+    data = pd.DataFrame({"rsi_14": [50.0], "ofi_score": [0.75]})
+    env = TradingEnv(data)
+    obs = env.reset()
+    assert len(obs) == 150, "Dimension d’observation incorrecte"
+    assert os.path.exists("data/logs/trading_env_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Absence d’environnement de trading (implémenté).
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Module : src/model/router/detect_regime.py
+Rôle :
+Détecte les régimes de marché (range, trend, défensif) pour les méthodes hybrides (méthode 11), en utilisant les 150 SHAP features pour calculer les probabilités (regime_probs).
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Implémenter la détection des régimes avec un modèle simple (ex. : règles basées sur vix_es_correlation, atr_14).
+Supprimer toute référence à 320/81 features.
+Utiliser les 150 SHAP features de feature_importance.csv.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs.
+Ajouter logs psutil dans data/logs/detect_regime_performance.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Très haute (essentiel pour méthode 11).
+Dépendances :
+src/features/feature_pipeline.py
+src/features/shap_weighting.py
+src/model/utils/alert_manager.py
+src/model/utils/config_manager.py
+data/features/feature_importance.csv
+Fichiers générés :
+Aucun.
+Action :
+Créer detect_regime.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+
+def detect_regime(data):
+    start_time = time.time()
+    try:
+        features = pd.read_csv("data/features/feature_importance.csv")["feature"].head(150).tolist()
+        input_data = data[features]
+        vix = input_data.get("vix_es_correlation", 0.5)
+        atr = input_data.get("atr_14", 10.0)
+        regime_probs = {
+            "range": 0.7 if vix < 0.6 and atr < 12.0 else 0.2,
+            "trend": 0.2 if vix > 0.6 else 0.1,
+            "defensive": 0.1 if vix > 0.8 else 0.7
+        }
+        regime_probs = {k: v / sum(regime_probs.values()) for k, v in regime_probs.items()}
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "detect_regime",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/detect_regime_performance.csv", mode="a", header=False, index=False)
+        return regime_probs
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur détection régime: {str(e)}", priority=3)
+        raise
+Afficher dans la barre latérale
+Vérifier l’intégration avec trade_probability.py.
+Tests :
+Fichier : tests/test_detect_regime.py
+Scénarios :
+Vérifier les probabilités des régimes (regime_probs).
+Vérifier l’utilisation des 150 SHAP features.
+Tester les erreurs de calcul (ex. : données manquantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_detect_regime():
+    from src.model.router.detect_regime import detect_regime
+    data = pd.DataFrame({"vix_es_correlation": [0.5], "atr_14": [10.0]})
+    probs = detect_regime(data)
+    assert set(probs.keys()) == {"range", "trend", "defensive"}, "Régimes incorrects"
+    assert abs(sum(probs.values()) - 1.0) < 1e-6, "Somme des probabilités non normalisée"
+    assert os.path.exists("data/logs/detect_regime_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Absence de détection des régimes (implémentée).
+Incohérences 320/81 features (aligné sur 150 SHAP).
+Tests génériques (tests spécifiques).
+Clarifications pour la Phase 11
+Avant de valider la Phase 11, confirmez les points suivants :
+
+Fichiers de la Phase 11 :
+Les fichiers proposés (backtest_lab.py, trading_env.py, detect_regime.py) sont-ils corrects, ou voulez-vous ajouter/retirer des fichiers (ex. : inclure d’autres fichiers secondaires comme orderflow_indicators.py) ?
+Si vous avez une liste précise des fichiers pour cette phase, partagez-la.
+Tests unitaires :
+Les tests complets proposés pour backtest_lab.py, trading_env.py, et detect_regime.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : données historiques manquantes, environnement mal initialisé) ?
+Schéma des fichiers générés :
+Le schéma pour backtest_results.csv est-il au bon niveau de détail, ou voulez-vous plus/moins d’informations (ex. : ajouter des colonnes comme drawdown) ?
+Registre des fichiers :
+Le registre partiel pour la Phase 11 est-il clair ? Voulez-vous un registre complet mis à jour dans la Phase 12 ?
+Validation de la Phase 11 :
+Si la Phase 11 vous convient, dites "ok", et je passerai à la Phase 12.
+Si vous voulez des ajustements (ex. : modifier un fichier, ajouter un schéma), précisez-les avant validation.

@@ -1,0 +1,201 @@
+Phase 13 : Intégration des extracteurs de features
+Objectif
+Intégrer explicitement les extracteurs de features (orderflow_indicators.py, volatility_metrics.py) utilisés par feature_pipeline.py pour générer les 350 features pour l’entraînement et les 150 SHAP features pour l’inférence. Cette phase garantit que les extracteurs respectent les directives (suppression de obs_t, dxFeed, 320/81 features, logs psutil, alertes, retries) et sont documentés comme fichiers principaux. Les fichiers générés auront des schémas détaillés. Cette phase est importante pour assurer la transparence et la robustesse de la génération des features (Phase 2).
+
+Fichiers concernés
+Fichiers principaux (2) :
+src/features/extractors/orderflow_indicators.py
+src/features/extractors/volatility_metrics.py
+Fichiers générés : Aucun (les résultats sont intégrés dans features_latest.csv par feature_pipeline.py).
+Tests (2) :
+tests/test_orderflow_indicators.py
+tests/test_volatility_metrics.py
+Dépendances (5) :
+src/data/data_provider.py (Phase 1)
+src/api/merge_data_sources.py (Phase 1)
+src/model/utils/alert_manager.py (Phase 12)
+src/model/utils/config_manager.py (Phase 12)
+data/iqfeed/merged_data.csv (Phase 1)
+Registre des fichiers (Phase 13)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/features/extractors/orderflow_indicators.py	Existant	2.1.3	2025-05-13	320 features	tests/test_orderflow_indicators.py	Haute	data_provider.py, config_manager.py	Aucun
+src/features/extractors/volatility_metrics.py	Existant	2.1.3	2025-05-13	320 features	tests/test_volatility_metrics.py	Haute	data_provider.py, config_manager.py	Aucun
+Spécifications des fichiers
+Module : src/features/extractors/orderflow_indicators.py
+Rôle :
+Calcule les indicateurs d’order flow (ex. : ofi_score, bid_size_level_2) à partir des données brutes (merged_data.csv) pour enrichir les 350 features.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Calcul des indicateurs d’order flow.
+Intégration avec feature_pipeline.py.
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Standardiser les calculs pour contribuer aux 350 features définies dans feature_sets.yaml.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs intensifs.
+Ajouter logs psutil dans data/logs/orderflow_indicators_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Priorité :
+Haute (essentiel pour les features d’order flow).
+Dépendances :
+src/data/data_provider.py
+src/api/merge_data_sources.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+data/iqfeed/merged_data.csv
+Fichiers générés :
+Aucun (résultats intégrés dans features_latest.csv).
+Action :
+Mettre à jour orderflow_indicators.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+
+def calculate_orderflow_indicators(data):
+    start_time = time.time()
+    try:
+        data["ofi_score"] = (data["bid_size_level_2"] - data["ask_size_level_2"]) / (data["bid_size_level_2"] + data["ask_size_level_2"] + 1e-6)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "calculate_orderflow_indicators",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/orderflow_indicators_performance.csv", mode="a", header=False, index=False)
+        return data
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur calcul orderflow: {str(e)}", priority=3)
+        raise
+Afficher dans la barre latérale
+Vérifier l’intégration avec feature_pipeline.py.
+Tests :
+Fichier : tests/test_orderflow_indicators.py
+Scénarios :
+Vérifier le calcul de ofi_score.
+Vérifier l’absence de NaN dans les résultats.
+Tester les erreurs de calcul (ex. : données manquantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_calculate_orderflow_indicators():
+    from src.features.extractors.orderflow_indicators import calculate_orderflow_indicators
+    data = pd.DataFrame({"bid_size_level_2": [100.0], "ask_size_level_2": [50.0]})
+    result = calculate_orderflow_indicators(data)
+    assert "ofi_score" in result.columns, "Colonne ofi_score manquante"
+    assert not result["ofi_score"].isna().any(), "NaN détectés"
+    assert os.path.exists("data/logs/orderflow_indicators_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 350 features).
+Tests génériques (tests spécifiques).
+Manque de documentation (spécifications ajoutées).
+Module : src/features/extractors/volatility_metrics.py
+Rôle :
+Calcule les métriques de volatilité (ex. : atr_14, vix_es_correlation) à partir des données brutes (merged_data.csv) pour enrichir les 350 features.
+Statut :
+Existant (à mettre à jour).
+Fonctionnalités existantes à préserver :
+Calcul des métriques de volatilité.
+Intégration avec feature_pipeline.py.
+Modifications nécessaires :
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Standardiser les calculs pour contribuer aux 350 features définies dans feature_sets.yaml.
+Ajouter retries (max 3, délai 2^attempt) pour les calculs intensifs.
+Ajouter logs psutil dans data/logs/volatility_metrics_performance.csv.
+Ajouter alertes via alert_manager.py pour les erreurs critiques.
+Priorité :
+Haute (essentiel pour les features de volatilité).
+Dépendances :
+src/data/data_provider.py
+src/api/merge_data_sources.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+data/iqfeed/merged_data.csv
+Fichiers générés :
+Aucun (résultats intégrés dans features_latest.csv).
+Action :
+Mettre à jour volatility_metrics.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+
+def calculate_volatility_metrics(data):
+    start_time = time.time()
+    try:
+        data["atr_14"] = (data["high"] - data["low"]).rolling(window=14).mean()
+        data["vix_es_correlation"] = data["vix_close"].rolling(window=14).corr(data["close"])
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "calculate_volatility_metrics",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/volatility_metrics_performance.csv", mode="a", header=False, index=False)
+        return data
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur calcul volatilité: {str(e)}", priority=3)
+        raise
+Afficher dans la barre latérale
+Vérifier l’intégration avec feature_pipeline.py.
+Tests :
+Fichier : tests/test_volatility_metrics.py
+Scénarios :
+Vérifier le calcul de atr_14 et vix_es_correlation.
+Vérifier l’absence de NaN dans les résultats.
+Tester les erreurs de calcul (ex. : données manquantes).
+Vérifier l’absence de 320/81 features.
+Exemple :
+python
+
+Copier
+def test_calculate_volatility_metrics():
+    from src.features.extractors.volatility_metrics import calculate_volatility_metrics
+    data = pd.DataFrame({
+        "high": [5105.0, 5110.0],
+        "low": [5095.0, 5100.0],
+        "close": [5100.0, 5105.0],
+        "vix_close": [20.0, 21.0]
+    })
+    result = calculate_volatility_metrics(data)
+    assert "atr_14" in result.columns, "Colonne atr_14 manquante"
+    assert "vix_es_correlation" in result.columns, "Colonne vix_es_correlation manquante"
+    assert os.path.exists("data/logs/volatility_metrics_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Incohérences 320/81 features (aligné sur 350 features).
+Tests génériques (tests spécifiques).
+Manque de documentation (spécifications ajoutées).
+Clarifications pour la Phase 13
+Avant de valider la Phase 13, confirmez les points suivants :
+
+Fichiers de la Phase 13 :
+Les extracteurs proposés (orderflow_indicators.py, volatility_metrics.py) sont-ils corrects, ou voulez-vous inclure d’autres extracteurs (ex. : autres fichiers dans src/features/extractors/*) ?
+Si vous avez une liste précise des extracteurs, partagez-la.
+Tests unitaires :
+Les tests complets proposés pour orderflow_indicators.py et volatility_metrics.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : données brutes manquantes, calculs incorrects) ?
+Registre des fichiers :
+Le registre partiel pour la Phase 13 est-il clair ? Voulez-vous un registre complet mis à jour (~80 fichiers) dans cette phase ou dans une révision finale ?
+Validation de la Phase 13 :
+Si la Phase 13 vous convient, dites "ok", et je considérerai les extracteurs comme intégrés.
+Si vous voulez des ajustements (ex. : ajouter d’autres extracteurs, intégrer dans la Phase 2), précisez-les avant validation.
+Conclusion
+Les extracteurs (orderflow_indicators.py, volatility_metrics.py) sont présents implicitement comme dépendances secondaires dans la Phase 2, mais non documentés comme fichiers principaux. La Phase 13 proposée ci-dessus les intègre explicitement avec des spécifications, tests, et conformité aux directives. Le registre complet mis à jour dans la Phase 12 (~78 fichiers) peut être étendu à ~80 fichiers avec ces extracteurs. Si vous préférez intégrer les extracteurs dans la Phase 2 ou une autre phase, ou si d’autres extracteurs sont nécessaires, je peux ajuster la structure.
+
+Actions immédiates demandées :
+
+Confirmez la présence des extracteurs :
+Validez si orderflow_indicators.py et volatility_metrics.py couvrent vos besoins, ou fournissez une liste complète des extracteurs à inclure.

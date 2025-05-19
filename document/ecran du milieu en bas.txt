@@ -1,0 +1,61 @@
+
+
+Intégration dans le pipeline de features
+
+Fichier :
+MIA_IA_SYSTEM_v2_2025/src/features/feature_pipeline.py
+MIA_IA_SYSTEM_v2_2025/src/live_trading.py
+
+Quoi : inclure key_strikes, max_pain_strike, net_gamma, gamma_zero, dealer_zones, vol_trigger, ref_px, data_release et s’assurer qu’ils figurent parmi les top 150 SHAP.
+
+Recalculation adaptative
+
+Fichier :
+MIA_IA_SYSTEM_v2_2025/scripts/options_levels_service.py
+
+Quoi :
+
+passer de 15 min à 5 min quand vix_es_correlation > 25.0
+
+propager les nouveaux champs dans save_snapshot() et save_dashboard_status()
+
+Visualisations dans le dashboard
+
+Fichier :
+MIA_IA_SYSTEM_v2_2025/src/model/utils/mia_dashboard.py
+
+Quoi :
+
+bar-plot de net_gamma par strike
+
+annotation de gamma_zero, vol_trigger, ref_px, data_release
+
+surbrillance des dealer_zones
+
+Tests unitaires
+
+Fichier :
+MIA_IA_SYSTEM_v2_2025/tests/test_spotgamma_recalculator.py
+
+Quoi :
+
+valider key_strikes et max_pain_strike
+
+valider net_gamma, gamma_zero (changement de signe), dealer_zones (clusters OI), vol_trigger, etc.
+
+Documentation
+
+Fichiers :
+
+bash
+Copier
+MIA_IA_SYSTEM_v2_2025/src/features/spotgamma_recalculator.py  
+MIA_IA_SYSTEM_v2_2025/scripts/options_levels_service.py  
+MIA_IA_SYSTEM_v2_2025/README.md
+Quoi : mettre à jour les en-têtes et la section « Niveaux d’options » pour décrire ces 8 nouvelles métriques et leur impact sur les amplitudes journalières.
+
+
+
+
+
+

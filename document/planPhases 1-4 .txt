@@ -1,0 +1,248 @@
+# 
+ de développement pour MIA_IA_SYSTEM_v2_2025 : Phases 1 à 4
+
+## Phase 1 : Configuration et collecte des données
+Objectif : Configurer l’environnement et collecter les données (OHLC, DOM, options, cross-market, actualités) via data_provider.py, en intégrant IQFeed comme fournisseur principal, en préservant les fonctionnalités existantes, et en corrigeant les failles (API, cache, tests, market_memory.db).
+
+-----------
+
+
+
+-----------
+
+
+
+
+-----------
+
+
+-----------
+
+###
+
+-----------
+
+### Module : data/macro_events.csv
+- Rôle : Stocke les événements macro collectés.
+- Statut : À générer par schedule_economic_calendar.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes (start_time, type, impact).
+- Modifications nécessaires :
+  - Ajouter la colonne cluster_id pour la méthode 7.
+- Priorité : Basse
+- Dépendances : schedule_economic_calendar.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+###
+-----------
+
+###
+
+-----------
+
+## Phase 2 : Fusion des données et génération des features
+Objectif : Fusionner les données collectées avec les nouvelles (via data_provider.py et news_scraper.py) et générer les 320 features pour le pipeline, en intégrant les méthodes de volatilité, données d’options, pondération des features, et SHAP, tout en préservant les fonctionnalités existantes et en corrigeant les failles (erreur feature_pipeline.py, charge SHAP, API news, tests).
+
+-----------
+
+###
+-----------
+
+### 
+-----------
+
+### Module : data/news/news_data.csv
+- Rôle : Stocke les données des nouvelles collectées.
+- Statut : À générer par news_scraper.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes (timestamp, headline, source).
+- Modifications nécessaires :
+  - Ajouter la colonne news_impact_score pour la méthode 5.
+- Priorité : Basse
+- Dépendances : news_scraper.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+### Module : data/features/merged_data.csv
+- Rôle : Contient les données fusionnées.
+- Statut : À générer par merge_data_sources.py.
+- Fonctionnalités existantes à préserver : Structure des données fusionnées.
+- Modifications nécessaires :
+  - Vérifier l’inclusion des métriques : vix_es_correlation, call_iv_atm, news_impact_score.
+- Priorité : Basse
+- Dépendances : merge_data_sources.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+
+-----------
+
+### Module : data/features/features_latest.csv
+- Rôle : Contient les 320 features générées.
+- Statut : À générer par feature_pipeline.py.
+- Fonctionnalités existantes à préserver : Structure des 320 features.
+- Modifications nécessaires :
+  - Vérifier les 320 features : rsi_14, ofi_score, iv_atm, gex_slope.
+- Priorité : Basse
+- Dépendances : feature_pipeline.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+### Module : data/features/features_latest_filtered.csv
+- Rôle : Version filtrée des features (sans NaN, outliers).
+- Statut : À générer par filter_features.py.
+- Fonctionnalités existantes à préserver : Filtrage des NaN et outliers.
+- Modifications nécessaires :
+  - Vérifier le filtrage des features.
+- Priorité : Basse
+- Dépendances : filter_features.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+### 
+
+
+
+-----------
+
+
+-----------
+
+### Module : data/features/feature_importance.csv
+- Rôle : Importance des features par régime via SHAP.
+- Statut : À générer par shap_weighting.py, detect_regime.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes (feature, importance, regime).
+- Modifications nécessaires :
+  - Vérifier les colonnes : feature, importance, regime.
+- Priorité : Basse
+- Dépendances : shap_weighting.py, detect_regime.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+## Phase 3 : Implémentation des nouvelles features
+Objectif : Générer les nouvelles features (options, cross-market, contextuelles, latentes) pour enrichir le vecteur d’observation, en intégrant les méthodes de volatilité, données d’options, pondération des features, et mémoire contextuelle, tout en préservant les fonctionnalités existantes et en corrigeant les failles (complexité, surcharge market_memory.db, tests).
+
+-----------
+
+
+
+
+-----------
+
+
+-----------
+
+
+
+
+
+
+
+
+
+
+
+-----------
+
+### Module : data/latent_vectors.csv
+- Rôle : Stocke les vecteurs latents (ex. : latent_vol_regime_vec).
+- Statut : À générer par contextual_state_encoder.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : latent_vol_regime_vec_1, latent_vol_regime_vec_2, cluster_id.
+- Priorité : Basse
+- Dépendances : contextual_state_encoder.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+### Module : data/news_topics.csv
+- Rôle : Stocke les vecteurs NLP des news (ex. : topic_vector_news).
+- Statut : À générer par news_scraper.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : topic_vector_news_1, topic_vector_news_2.
+- Priorité : Basse
+- Dépendances : news_scraper.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+
+-----------
+
+## Phase 4 : Optimisation du vecteur d’observation et validation des features
+Objectif : Optimiser le vecteur d’observation (81 dimensions) et valider les 320 features pour une performance maximale, en intégrant les méthodes de pondération des features et SHAP, tout en préservant les fonctionnalités existantes et en corrigeant les failles (dimension du vecteur, charge SHAP, tests).
+
+-----------
+
+
+-----------
+
+### Module : data/logs/market/features_audit_raw.csv
+- Rôle : Résultats bruts de l’audit des features.
+- Statut : À générer par features_audit.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : feature, value, status.
+- Priorité : Basse
+- Dépendances : features_audit.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+### Module : data/logs/market/features_audit_final.csv
+- Rôle : Résultats finaux de l’audit des features.
+- Statut : À générer par features_audit.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : feature, nan_ratio, outlier_count, shap_importance.
+- Priorité : Basse
+- Dépendances : features_audit.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+
+-----------
+
+### Module : data/features/pca_orderflow.csv
+- Rôle : Résultats de l’analyse PCA des features order flow.
+- Statut : À générer par pca_orderflow.py.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : pca_orderflow_1, pca_orderflow_2.
+- Priorité : Basse
+- Dépendances : pca_orderflow.py
+- Action :
+  - Vérifier la génération après mise à jour.
+- Failles corrigées : Aucune (vérification des colonnes).
+
+-----------
+
+#

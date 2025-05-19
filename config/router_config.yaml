@@ -1,0 +1,226 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/router_config.yaml
+# Seuils et paramètres pour la détection de régime dans MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.3"
+  updated: "2025-05-13"
+  description: |
+    Configuration des seuils pour la détection des régimes de marché (trend, range, defensive) et des paramètres
+    pour les modules associés (detect_regime.py, correlation_heatmap.py, drift_checker.py, mia_dashboard.py).
+    Calibré pour les 350 features IQFeed pour l’entraînement et les top 150 SHAP pour l’inférence/fallback.
+    Utilise event_volatility_impact, macro_score, et seuils adaptatifs (méthode 5) pour améliorer la détection des régimes.
+    Validé via config_manager.py. Conforme à la Phase 8 (auto-conscience pour les décisions cognitives),
+    Phase 11 (détection des régimes), et Phase 16 (ensemble et transfer learning).
+    Tests unitaires disponibles dans tests/test_router_config.py.
+
+# Seuils pour Trend (direction claire, volatilité élevée, imbalance persistante)
+trend:
+  atr_threshold:
+    value: 1.8
+    range: [0.5, 5.0]
+    description: |
+      Seuil ATR pour détecter une volatilité suffisante dans un trend. Calibré pour ES avec IQFeed data.
+      À combiner avec predicted_volatility (neural_pipeline) pour confirmation.
+  adx_threshold:
+    value: 25
+    range: [10, 50]
+    description: |
+      Seuil ADX pour confirmer une tendance directionnelle forte. Standard pour ES, ajustable avec neural_regime.
+  ofi_score_threshold:
+    value: 0.3
+    range: [0.1, 0.8]
+    description: |
+      Seuil pour imbalance persistante dans l’order flow. Peut être réduit à 0.2 avec neural_regime=trend.
+  macro_score_threshold:
+    value: 0.8
+    range: [0.5, 1.0]
+    description: |
+      Seuil pour macro_score (context_aware_filter.py) indiquant un impact macro favorable à un trend.
+  vol_impact_threshold:
+    value: 0.5
+    range: [0.2, 1.0]
+    description: |
+      Seuil pour event_volatility_impact (context_aware_filter.py) confirmant un trend avec volatilité induite par un événement.
+  news_impact_threshold:
+    value: 0.5
+    range: [0.0, 1.0]
+    description: |
+      Seuil d’impact des nouvelles pour ajuster la détection du régime trend (méthode 5).
+      Une valeur élevée indique un impact significatif des actualités.
+  vix_threshold:
+    value: 20.0
+    range: [10.0, 50.0]
+    description: |
+      Seuil de volatilité VIX pour ajuster la détection du régime trend (méthode 5).
+      Une valeur élevée indique une volatilité extrême.
+
+# Seuils pour Range (stabilité des prix, faible volatilité, pinning actif)
+range:
+  vwap_slope_threshold:
+    value: 0.01
+    range: [0.0, 0.05]
+    description: |
+      Seuil de pente VWAP pour détecter une stabilité (horizontalité). Calibré pour ES avec IQFeed data.
+  atr_normalized_threshold:
+    value: 0.8
+    range: [0.2, 1.5]
+    description: |
+      Seuil ATR normalisé (ATR / moyenne 50 périodes) pour faible volatilité dans range.
+  volume_atr_threshold:
+    value: 50
+    range: [20, 200]
+    description: |
+      Seuil volume/ATR pour une activité calme dans range. Calibré pour ES avec IQFeed data.
+  macro_score_threshold:
+    value: 0.8
+    range: [0.5, 1.0]
+    description: |
+      Seuil pour macro_score (context_aware_filter.py) indiquant un impact macro favorable à un range.
+  vol_impact_threshold:
+    value: 0.5
+    range: [0.2, 1.0]
+    description: |
+      Seuil pour event_volatility_impact (context_aware_filter.py) confirmant un range avec faible volatilité événementielle.
+  news_impact_threshold:
+    value: 0.5
+    range: [0.0, 1.0]
+    description: |
+      Seuil d’impact des nouvelles pour ajuster la détection du régime range (méthode 5).
+      Une valeur élevée indique un impact significatif des actualités.
+  vix_threshold:
+    value: 20.0
+    range: [10.0, 50.0]
+    description: |
+      Seuil de volatilité VIX pour ajuster la détection du régime range (méthode 5).
+      Une valeur élevée indique une volatilité extrême.
+
+# Seuils pour Defensive (volatilité erratique, absence de direction claire)
+defensive:
+  volatility_spike_threshold:
+    value: 2.0
+    range: [1.0, 5.0]
+    description: |
+      Seuil pour détecter des pics de volatilité erratiques. Calibré pour ES avec IQFeed data.
+  regime_confidence_threshold:
+    value: 0.5
+    range: [0.0, 0inian9]
+    description: |
+      Seuil de confiance neural_regime pour éviter une classification claire (trend/range). Inférieur à 0.7.
+  macro_score_threshold:
+    value: 0.8
+    range: [0.5, 1.0]
+    description: |
+      Seuil pour macro_score (context_aware_filter.py) indiquant un impact macro nécessitant un mode défensif.
+  vol_impact_threshold:
+    value: 0.5
+    range: [0.2, 1.0]
+    description: |
+      Seuil pour event_volatility_impact (context_aware_filter.py) indiquant une volatilité événementielle élevée.
+  news_impact_threshold:
+    value: 0.5
+    range: [0.0, 1.0]
+    description: |
+      Seuil d’impact des nouvelles pour ajuster la détection du régime defensive (méthode 5).
+      Une valeur élevée indique un impact significatif des actualités.
+  vix_threshold:
+    value: 20.0
+    range: [10.0, 50.0]
+    description: |
+      Seuil de volatilité VIX pour ajuster la détection du régime defensive (méthode 5).
+      Une valeur élevée indique une volatilité extrême.
+
+# Paramètres Neural Pipeline
+neural:
+  neural_regime_confidence:
+    value: 0.7
+    range: [0.5, 0.95]
+    description: |
+      Seuil de confiance pour accepter neural_regime comme override. À augmenter avec calibration réelle.
+  predicted_volatility_threshold:
+    value: 1.2
+    range: [0.5, 3.0]
+    description: |
+      Seuil pour predicted_volatility confirmant un trend ou range. Calibré pour ES avec IQFeed data.
+
+# Options de détection
+detection:
+  impute_nan:
+    value: false
+    description: |
+      Si true, impute les valeurs manquantes par moyenne. Sinon, retourne 'defensive' pour données invalides.
+  use_optimized_calculations:
+    value: true
+    description: |
+      Si true, utilise precompute_indicators pour vectoriser les calculs.
+  compute_shap:
+    value: false
+    description: |
+      Si true, calcule les contributions SHAP pour monitoring (nécessite ressources supplémentaires).
+      Modèle SHAP dans data/models/shap_regime_detector.pkl.
+
+# Options de sécurité
+safety:
+  safe_mode:
+    value: false
+    description: |
+      Active le mode défensif (pause si VIX élevé ou données invalides). Recommandé pour live trading.
+  critical_times:
+    value: ["14:00", "15:30"]
+    description: |
+      Heures critiques (ex. : annonces économiques, clôture options).
+
+# Paramètres du dashboard
+dashboard:
+  interval:
+    value: 10000
+    range: [5000, 30000]
+    description: |
+      Intervalle de mise à jour en millisecondes (10s par défaut).
+  thresholds:
+    vix_es_correlation:
+      value: 25
+      range: [10, 50]
+      description: |
+        Seuil affiché pour la corrélation VIX/ES dans mia_dashboard.py.
+  compute_shap:
+    value: false
+    description: |
+      Active SHAP dans mia_dashboard.py si nécessaire.
+
+# Paramètres de corrélation et dérive
+correlation:
+  significant_threshold:
+    value: 0.8
+    range: [0.5, 0.95]
+    description: |
+      Seuil pour détecter les corrélations significatives dans correlation_heatmap.py.
+
+drift:
+  wass_threshold:
+    value: 0.1
+    range: [0.01, 0.5]
+    description: |
+      Seuil de distance Wasserstein pour drift_checker.py.
+  ks_threshold:
+    value: 0.05
+    range: [0.01, 0.1]
+    description: |
+      Seuil de p-value pour KS et t-test dans drift_checker.py.
+
+# Notes pour recalibration future
+notes:
+  - Ajuster neural_features avec variance des outputs LSTM+CNN (neural_pipeline).
+  - Vérifier critical_times avec calendrier économique réel (schedule_economic_calendar.py).
+  - Aligné sur 350 features IQFeed pour l’entraînement and top 150 SHAP pour l’inférence/fallback, conformément à feature_sets.yaml.
+  - Configuration validée via config_manager.py pour garantir la cohérence avec detect_regime.py et autres modules.
+  - news_impact_threshold et vix_threshold (méthode 5) intégrés pour ajuster la détection des régimes selon les actualités et la volatilité.
+  - macro_score_threshold et vol_impact_threshold utilisés pour intégrer event_volatility_impact et macro_score dans la détection des régimes.
+  - Tests unitaires disponibles dans tests/test_router_config.py pour valider la configuration.
+  - Conforme à la Phase 8 (auto-conscience pour les décisions cognitives),
+    Phase 11 (détection des régimes), et Phase 16 (ensemble et transfer learning).
+  - Les opérations critiques (ex. : détection de régime, calculs SHAP) implémentent des retries (max 3, délai 2^attempt) via standard.py.
+  - Les performances des scripts (ex. : détection de régime, calculs de corrélation) sont enregistrées via psutil dans
+    data/logs/regime_detection.log ou fichiers similaires.
+  - Les échecs de détection ou anomalies déclenchent des alertes via alert_manager.py (priorité 3=error).
+  - Surveiller les performances des scripts dans data/logs/regime_detection.log ou fichiers similaires.

@@ -1,0 +1,8 @@
+[MASTER]
+disable=
+    too-many-locals,
+    too-many-arguments,
+    too-many-statements,
+    too-complex
+[FORMAT]
+max-line-length=88

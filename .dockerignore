@@ -1,0 +1,29 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/.dockerignore
+# Exclusions pour le contexte de build Docker
+#
+# Version: 2.1.5
+# Date: 2025-05-14
+#
+# Rôle: Exclut les fichiers et répertoires temporaires du contexte de build Docker
+#       pour réduire la taille de l’image et accélérer la construction.
+#
+# Utilisé by: Dockerfile, scripts/build_docker.py.
+#
+# Notes:
+# - Conforme à structure.txt (version 2.1.5, 2025-05-14).
+# - Supporte les suggestions 1 (position sizing dynamique), 4 (HMM/changepoint detection),
+#   7 (Safe RL/CVaR-PPO), 8 (Distributional RL/QR-DQN), 9 (réentraînement).
+# - Exclut les fichiers de cache, logs, et autres fichiers temporaires.
+# - Pas de références à dxFeed, obs_t, 320 features, ou 81 features.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache/
+.pytest_cache/
+data/logs/
+data/cache/

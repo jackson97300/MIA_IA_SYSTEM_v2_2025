@@ -1,0 +1,572 @@
+# de développement pour MIA_IA_SYSTEM_v2_2025 : Phases 5 à 7
+
+## Phase 5 : Entraînement et apprentissage adaptatif
+Objectif : Mettre en place les modèles d’apprentissage (SAC, PPO, DDPG) et la mémoire adaptative pour les simulations, intégrant les 18 méthodes, en corrigeant les failles (complexité de `train_sac.py`, tests génériques, dépendances non partagées).
+
+-----------
+
+
+
+-----------
+
+### 
+-----------
+
+### 
+
+-----------
+
+###
+-----------
+
+
+-----------
+
+### 
+
+-----------
+
+
+
+-----------
+
+### Module : data/models/cnn_model.h5
+- Rôle : Modèle CNN pré-entraîné pour `cnn_pressure`.
+- Statut : À générer par `neural_pipeline.py`.
+- Fonctionnalités existantes à préserver : Structure du modèle.
+- Modifications nécessaires :
+  - Vérifier la génération.
+- Priorité : Basse
+- Dépendances : neural_pipeline.py
+- Action :
+  - Vérifier après mise à jour de `neural_pipeline.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/models/lstm_model.h5
+- Rôle : Modèle LSTM pré-entraîné pour séquences temporelles.
+- Statut : À générer par `neural_pipeline.py`.
+- Fonctionnalités existantes à préserver : Structure du modèle.
+- Modifications nécessaires :
+  - Vérifier la génération pour **LSTM** (méthode 12).
+- Priorité : Basse
+- Dépendances : neural_pipeline.py
+- Action :
+  - Vérifier après mise à jour de `neural_pipeline.py`.
+- Failles corrigées : LSTM non spécifié (architecture définie).
+
+-----------
+
+### Module : data/models/regime_mlp_model.h5
+- Rôle : Modèle MLP pour détection de régime.
+- Statut : À générer par `detect_regime.py`.
+- Fonctionnalités existantes à préserver : Structure du modèle.
+- Modifications nécessaires :
+  - Vérifier l’intégration de **régimes hybrides** (méthode 11).
+- Priorité : Basse
+- Dépendances : detect_regime.py
+- Action :
+  - Vérifier après mise à jour de `detect_regime.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/models/vol_mlp_model.h5
+- Rôle : Modèle MLP pour prédiction de volatilité.
+- Statut : À générer par `neural_pipeline.py`.
+- Fonctionnalités existantes à préserver : Structure du modèle.
+- Modifications nécessaires :
+  - Vérifier l’intégration de **LSTM** (méthode 12).
+- Priorité : Basse
+- Dépendances : neural_pipeline.py
+- Action :
+  - Vérifier après mise à jour de `neural_pipeline.py`.
+- Failles corrigées : LSTM non spécifié (architecture définie).
+
+-----------
+
+### Module : data/models/sac_model.pth
+- Rôle : Modèle SAC entraîné pour le trading.
+- Statut : À générer par `train_sac.py`.
+- Fonctionnalités existantes à préserver : Structure du modèle.
+- Modifications nécessaires :
+  - Vérifier l’intégration des méthodes 4-18.
+- Priorité : Basse
+- Dépendances : train_sac.py
+- Action :
+  - Vérifier après mise à jour de `train_sac.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/models/shap_regime_detector.pkl
+- Rôle : Modèle SHAP pour expliquer la détection de régime.
+- Statut : À générer par `detect_regime.py`.
+- Fonctionnalités existantes à préserver : Structure du modèle.
+- Modifications nécessaires :
+  - Vérifier l’intégration de **SHAP** (méthode 17).
+- Priorité : Basse
+- Dépendances : detect_regime.py
+- Action :
+  - Vérifier après mise à jour de `detect_regime.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/models/sac_range_latest.pth, sac_trend_latest.pth, sac_defensive_latest.pth
+- Rôle : Poids SAC par régime.
+- Statut : À générer par `train_sac.py`.
+- Fonctionnalités existantes à préserver : Structure des poids.
+- Modifications nécessaires :
+  - Vérifier l’intégration des méthodes.
+- Priorité : Basse
+- Dépendances : train_sac.py
+- Action :
+  - Vérifier après mise à jour de `train_sac.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/models/ppo_range_latest.pth, ppo_trend_latest.pth, ppo_defensive_latest.pth
+- Rôle : Poids PPO par régime.
+- Statut : À générer par `train_sac.py`.
+- Fonctionnalités existantes à préserver : Structure des poids.
+- Modifications nécessaires :
+  - Vérifier l’intégration des méthodes.
+- Priorité : Basse
+- Dépendances : train_sac.py
+- Action :
+  - Vérifier après mise à jour de `train_sac.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/models/ddpg_range_latest.pth, ddpg_trend_latest.pth, ddpg_defensive_latest.pth
+- Rôle : Poids DDPG par régime.
+- Statut : À générer par `train_sac.py`.
+- Fonctionnalités existantes à préserver : Structure des poids.
+- Modifications nécessaires :
+  - Vérifier l’intégration des méthodes.
+- Priorité : Basse
+- Dépendances : train_sac.py
+- Action :
+  - Vérifier après mise à jour de `train_sac.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+
+-----------
+
+
+-----------
+
+
+
+-----------
+
+
+
+-----------
+
+
+
+-----------
+
+
+
+-----------
+
+
+-----------
+
+###
+-----------
+
+
+
+-----------
+
+
+
+-----------
+
+
+-----------
+
+### Module : data/figures/custom_mlp/
+- Rôle : Figures des prédictions de la politique MLP.
+- Statut : À générer par `custom_mlp_policy.py`.
+- Fonctionnalités existantes à préserver : Structure des figures.
+- Modifications nécessaires :
+  - Vérifier les images : `actions_20250501.png`.
+- Priorité : Basse
+- Dépendances : custom_mlp_policy.py
+- Action :
+  - Vérifier après mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/figures/transformer/
+- Rôle : Figures des prédictions de la politique Transformer.
+- Statut : À générer par `transformer_policy.py`.
+- Fonctionnalités existantes à préserver : Structure des figures.
+- Modifications nécessaires :
+  - Vérifier les images : `attention_20250501.png`.
+- Priorité : Basse
+- Dépendances : transformer_policy.py
+- Action :
+  - Vérifier après mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/custom_mlp_snapshots/
+- Rôle : Snapshots JSON des prédictions MLP.
+- Statut : À générer par `custom_mlp_policy.py`.
+- Fonctionnalités existantes à préserver : Structure des snapshots.
+- Modifications nécessaires :
+  - Vérifier les fichiers : `forward_20250501.json`.
+- Priorité : Basse
+- Dépendances : custom_mlp_policy.py
+- Action :
+  - Vérifier après mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/transformer_snapshots/
+- Rôle : Snapshots JSON des prédictions Transformer.
+- Statut : À générer par `transformer_policy.py`.
+- Fonctionnalités existantes à préserver : Structure des snapshots.
+- Modifications nécessaires :
+  - Vérifier les fichiers : `forward_20250501.json`.
+- Priorité : Basse
+- Dépendances : transformer_policy.py
+- Action :
+  - Vérifier après mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/train_sac_snapshots/
+- Rôle : Snapshots JSON des entraînements SAC/PPO/DDPG.
+- Statut : À générer par `train_sac.py`.
+- Fonctionnalités existantes à préserver : Structure des snapshots.
+- Modifications nécessaires :
+  - Vérifier les fichiers : `sac_range_20250501.json`.
+- Priorité : Basse
+- Dépendances : train_sac.py
+- Action :
+  - Vérifier après mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/figures/train_sac/
+- Rôle : Figures des prédictions d’entraînement SAC/PPO/DDPG.
+- Statut : À générer par `train_sac.py`.
+- Fonctionnalités existantes à préserver : Structure des figures.
+- Modifications nécessaires :
+  - Vérifier les images : `prediction_range_20250501.png`.
+- Priorité : Basse
+- Dépendances : train_sac.py
+- Action :
+  - Vérifier après mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/figures/adaptive_learning/
+- Rôle : Figures des processus d’apprentissage adaptatif.
+- Statut : À générer par `adaptive_learner.py`.
+- Fonctionnalités existantes à préserver : Structure des figures.
+- Modifications nécessaires :
+  - Vérifier les images : `cluster_20250501.png`.
+- Priorité : Basse
+- Dépendances : adaptive_learner.py
+- Action :
+  - Vérifier après mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+## Phase 6 : Gestion des risques et trading
+Objectif : Mettre en place les mécanismes de gestion des risques et les opérations de trading via Sierra Chart, intégrant les méthodes pour un trading robuste, en corrigeant les failles (complexité de `live_trading.py`, API Sierra Chart, tests génériques).
+
+-----------
+
+###
+-----------
+
+
+
+-----------
+
+
+-----------
+
+### Module : 
+-----------
+
+
+-----------
+
+
+-----------
+
+### 
+
+-----------
+
+### 
+-----------
+
+### 
+
+-----------
+
+
+
+-----------
+
+
+
+-----------
+
+### Module : data/trades/trades_simulated.csv
+- Rôle : Résultats des trades simulés.
+- Statut : À générer par `simulate_trades.py`.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : `trade_id`, `entry_price`, `profit`, `regime_probs`.
+- Priorité : Basse
+- Dépendances : simulate_trades.py
+- Action :
+  - Vérifier après création de `simulate_trades.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/trades/trades_real.csv
+- Rôle : Résultats des trades réels.
+- Statut : À générer par `live_trading.py`.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : `trade_id`, `entry_price`, `profit`, `regime_probs`.
+- Priorité : Basse
+- Dépendances : live_trading.py
+- Action :
+  - Vérifier après mise à jour de `live_trading.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/trade_snapshots/
+- Rôle : Instantanés de trades pour analyse.
+- Statut : À générer par `analyse_trades.py`, `trade_executor.py`, `live_trading.py`.
+- Fonctionnalités existantes à préserver : Structure des snapshots.
+- Modifications nécessaires :
+  - Vérifier les fichiers : `trade_20250501.json`.
+- Priorité : Basse
+- Dépendances : analyse_trades.py, trade_executor.py, live_trading.py
+- Action :
+  - Vérifier après création/mise à jour.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/backtest/backtest_results.csv
+- Rôle : Résultats des backtests.
+- Statut : À générer par `backtest_lab.py`.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : `strategy_id`, `profit`, `sharpe_ratio`, `regime_probs`.
+- Priorité : Basse
+- Dépendances : backtest_lab.py
+- Action :
+  - Vérifier après mise à jour de `backtest_lab.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+
+
+-----------
+
+### Module : data/logs/trading/alpha_scores.csv
+- Rôle : Stocke les scores alpha.
+- Statut : À générer par `signal_selector.py`.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : `timestamp`, `alpha_score`, `regime_probs`.
+- Priorité : Basse
+- Dépendances : signal_selector.py
+- Action :
+  - Vérifier après mise à jour de `signal_selector.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/logs/trading/penalty_log.csv
+- Rôle : Stocke l’état des pénalités.
+- Statut : À générer par `risk_controller.py`.
+- Fonctionnalités existantes à préserver : Structure des colonnes.
+- Modifications nécessaires :
+  - Vérifier les colonnes : `timestamp`, `penalty_active`, `overtrade_risk_score`.
+- Priorité : Basse
+- Dépendances : risk_controller.py
+- Action :
+  - Vérifier après création de `risk_controller.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/risk_snapshots/
+- Rôle : Snapshots JSON des calculs de risques.
+- Statut : À générer par `risk_controller.py`.
+- Fonctionnalités existantes à préserver : Structure des snapshots.
+- Modifications nécessaires :
+  - Vérifier les fichiers : `risk_20250501.json`.
+- Priorité : Basse
+- Dépendances : risk_controller.py
+- Action :
+  - Vérifier après création de `risk_controller.py`.
+- Failles corrigées : Aucune (vérification).
+
+-----------
+
+### Module : data/figures/trading/
+- Rôle : Figures des analyses de trading.
+- Statut : À générer par `analyse_results.py`.
+- Fonctionnalités existantes à préserver : Structure des figures.
+- Modifications nécessaires :
+  - Vérifier les images : `profit_rsi_20250501.png`.
+- Priorité : Basse
+- Dépendances : analyse_results.py
+- Action :
+  - Vérifier après création de `analyse_results.py`.
+- Failles corrigées : Aucune (vérification).
+
+## Phase 7 : Monitoring et visualisation
+Objectif : Mettre en place les outils de monitoring et de visualisation pour analyser les performances, intégrant SHAP, régimes hybrides, et LSTM, en corrigeant les failles (complexité de `mia_dashboard.py`, fichiers JSON non détaillés, tests génériques).
+
+-----------
+
+
+-----------
+
+-----------
+
+
+-----------
+
+# Plan de développement pour MIA_IA_SYSTEM_v2_2025 : Phase 7 (suite)
+
+## Phase 7 : Monitoring et visualisation
+Objectif : Mettre en place les outils de monitoring et de visualisation pour analyser les performances, intégrant SHAP, régimes hybrides, et LSTM, en corrigeant les failles (complexité de `mia_dashboard.py`, fichiers JSON non détaillés, tests génériques).
+
+-----------
+
+
+-----------
+
+### Module : data/deps_dashboard.json
+- Rôle : Dépendances nécessaires pour le tableau de bord.
+- Statut : À générer.
+- Fonctionnalités existantes à préserver : Aucune (nouveau fichier).
+- Modifications nécessaires :
+  - Créer avec un schéma standardisé : `{"pandas": "1.5.0", "plotly": "5.0.0", "matplotlib": "3.5.0"}`.
+- Priorité : Basse
+- Dépendances : mia_dashboard.py
+- Action :
+  - Créer le fichier avec :
+    ```
+    {
+      "pandas": "1.5.0",
+      "plotly": "5.0.0",
+      "matplotlib": "3.5.0"
+    }
+    ```
+  - Vérifier la génération après mise à jour de `mia_dashboard.py`.
+- Failles corrigées : Fichiers JSON non détaillés (schéma standardisé).
+
+-----------
+
+### Module : data/preprocessing_dashboard.json
+- Rôle : État du prétraitement pour le tableau de bord.
+- Statut : À générer par `run_preprocessing.py`.
+- Fonctionnalités existantes à préserver : Aucune (nouveau fichier).
+- Modifications nécessaires :
+  - Créer avec un schéma standardisé : `{"status": "completed", "rows_processed": 100, "timestamp": "2025-05-01"}`.
+- Priorité : Basse
+- Dépendances : run_preprocessing.py
+- Action :
+  - Créer le fichier avec :
+    ```
+    {
+      "status": "completed",
+      "rows_processed": 100,
+      "timestamp": "2025-05-01"
+    }
+    ```
+  - Vérifier la génération après mise à jour de `run_preprocessing.py`.
+- Failles corrigées : Fichiers JSON non détaillés (schéma standardisé).
+
+-----------
+
+### Module : data/simulation_dashboard.json
+- Rôle : Résultats des simulations pour le tableau de bord.
+- Statut : À générer by `simulate_trades.py`.
+- Fonctionnalités existantes à préserver : Aucune (nouveau fichier).
+- Modifications nécessaires :
+  - Créer avec un schéma standardisé : `{"profit": 500, "trades": 10, "sharpe_ratio": 1.5}`.
+- Priorité : Basse
+- Dépendances : simulate_trades.py
+- Action :
+  - Créer le fichier avec :
+    ```
+    {
+      "profit": 500,
+      "trades": 10,
+      "sharpe_ratio": 1.5
+    }
+    ```
+  - Vérifier la génération après création de `simulate_trades.py`.
+- Failles corrigées : Fichiers JSON non détaillés (schéma standardisé).
+
+-----------
+
+### Module : data/training_dashboard.json
+- Rôle : État de l’entraînement pour le tableau de bord.
+- Statut : À générer par `train_sac.py`.
+- Fonctionnalités existantes à préserver : Aucune (nouveau fichier).
+- Modifications nécessaires :
+  - Créer avec un schéma standardisé : `{"epoch": 50, "loss": 0.03, "timestamp": "2025-05-01"}`.
+- Priorité : Basse
+- Dépendances : train_sac.py
+- Action :
+  - Créer le fichier avec :
+    ```
+    {
+      "epoch": 50,
+      "loss": 0.03,
+      "timestamp": "2025-05-01"
+    }
+    ```
+  - Vérifier la génération après mise à jour de `train_sac.py`.
+- Failles corrigées : Fichiers JSON non détaillés (schéma standardisé).
+
+-----------
+
+### Module : data/figures/monitoring/
+- Rôle : Figures des analyses de monitoring (ex. : heatmaps, regime_probs).
+- Statut : À générer par `correlation_heatmap.py`, `data_drift.py`, `mia_dashboard.py`.
+- Fonctionnalités existantes à préserver : Structure des visualisations.
+- Modifications nécessaires :
+  - Vérifier les images : `heatmap_20250501.png`, `regime_probs_20250501.png`.
+- Priorité : Basse
+- Dépendances : correlation_heatmap.py, data_drift.py, mia_dashboard.py
+- Action :
+  - Vérifier la génération après mise à jour des modules.
+- Failles corrigées : Complexité `mia_dashboard.py` (cache pour visualisations).

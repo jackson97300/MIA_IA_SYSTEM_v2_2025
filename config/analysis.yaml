@@ -1,0 +1,83 @@
+trade_sources:
+  - trades_log.csv
+  - trade_history.csv
+  - trades.db
+  - market_memory.db
+  - ensemble_weights.csv
+columns:
+  required:
+    - action
+    - regime
+    - reward
+    - trade_duration
+    - prob_buy_sac
+    - prob_sell_sac
+    - prob_wait_sac
+    - vote_count_buy
+    - vote_count_sell
+    - vote_count_wait
+    - session
+    - ensemble_weight_sac
+    - ensemble_weight_ppo
+    - ensemble_weight_ddpg
+    - ensemble_weight_lstm
+  indicators:
+    - orderflow_imbalance
+    - rsi_14
+    - news_impact_score
+    - bid_ask_imbalance
+    - trade_aggressiveness
+    - iv_skew
+    - iv_term_structure
+thresholds:
+  min_sharpe: 0.5
+  max_drawdown: -1000.0
+  min_profit_factor: 1.2
+  cvar_loss: 0.1
+  qr_dqn_quantile_var: 0.5
+  vote_accuracy: 60
+  max_duration: 10
+periods:
+  rolling:
+    - 7
+    - 30
+    - 90
+models:
+  - sac
+  - ppo
+  - ddpg
+  - lstm
+metrics:
+  - name: sharpe_ratio
+    func: compute_sharpe
+  - name: cvar_loss
+    func: compute_cvar
+    params:
+      alpha: 0.05
+      threshold: 0.1
+  - name: qr_dqn_quantile_var
+    func: compute_qr_dqn
+suggestions:
+  - name: sac_bonus
+    condition: stats['consecutive_losses'] > 3
+    action: Augmenter récompense SAC de 20%
+  - name: lstm_weight
+    condition: stats['vote_accuracy_lstm'] < 60
+    action: Réduire poids LSTM de 10%
+  - name: duration
+    condition: stats['avg_duration'] > 10
+    action: Réduire taille de position en mode range
+  - name: spoofing
+    condition: df['spoofing_score'].mean() > 0.7 or df['iv_skew'].mean() > 0.02
+    action: Réduire probabilité d'entrée
+priority_channels:
+  1: [discord]
+  2: [discord]
+  3: [telegram, discord]
+  4: [telegram, discord, email]
+  5: [telegram, discord, email, local]
+analysis:
+  use_neural_pipeline: true
+logging:
+  buffer_size: 100
+  min_alert_priority: 3

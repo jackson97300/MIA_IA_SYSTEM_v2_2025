@@ -1,0 +1,289 @@
+```yaml
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/market_config.yaml
+# Configuration pour le marché E-mini S&P 500 futures dans MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.6"
+  updated: "2025-05-15"
+  description: |
+    Configuration pour le marché ES, incluant les paramètres IQFeed (source exclusive de données),
+    les chemins de données, les modes de trading, les seuils, les risques, les clés API, et les options de trading.
+    Calibré pour 351 features pour l’entraînement et top 150 SHAP pour l’inférence/fallback, aligné avec feature_sets.yaml.
+    Utilisé par data_provider.py, feature_pipeline.py, detect_regime.py, live_trading.py, report_generator.py,
+    et affiché dans mia_dashboard.py. Validé par config_manager.py avec alertes via alert_manager.py.
+    Conforme à la Phase 1 (collecte de données), Phase 8 (auto-conscience), Phase 12 (gestion des risques),
+    et Phase 16 (ensemble et transfer learning). Tests unitaires disponibles dans tests/test_market_config.py.
+
+# Clés API
+api_keys:
+  openai_api_key:
+    value: "<key>"
+    description: |
+      Clé API OpenAI pour les intégrations LLM (ex. : narratifs dans report_generator.py).
+      Obligatoire, validée par config_manager.py avec alertes via alert_manager.py.
+
+# Sources de données
+data_sources:
+  data_feed: "iqfeed"
+  providers:
+    iqfeed:
+      host: "localhost"
+      ohlc_port: 9100
+      quote_port: 9200
+      news_port: 9300
+      api_key:
+        value: "<key>"
+        description: |
+          Clé API IQFeed pour la connexion aux flux (OHLC, DOM, options, news).
+          Obligatoire, validée par config_manager.py avec alertes via alert_manager.py.
+      description: |
+        Connexion IQFeed pour OHLC, DOM, options, news.
+  symbols:
+    value: ["ES", "SPY", "TLT", "VIX", "VVIX", "DVVIX"]
+    description: |
+      Symboles pour méthodes 1 (volatilité: VIX, VVIX, DVVIX, market_structure_signals.py)
+      et 2 (options: ES, SPY, TLT, option_metrics.py).
+
+# Paramètres du marché
+market:
+  symbol: "ES"
+  description: |
+    Trading des futurs E-mini S&P 500 sur CME, géré par trading_env.py.
+
+# Chemins des données
+data:
+  raw: "data/iqfeed/iqfeed_data.csv"
+  raw_description: |
+    Données brutes collectées via data_provider.py (IQFeed).
+  processed: "data/iqfeed/merged_data.csv"
+  processed_description: |
+    Données fusionnées via merge_data_sources.py.
+  features: "data/features/features_latest.csv"
+  features_description: |
+    351 features générées via feature_pipeline.py.
+  trades_simulated: "data/trades/trades_simulated.csv"
+  trades_simulated_description: |
+    Trades simulés via simulate_trades.py.
+  trades_real: "data/trades/trades_real.csv"
+  trades_real_description: |
+    Trades réels via live_trading.py.
+  cache_duration:
+    value: 24
+    range: [1, 168]
+    description: |
+      Durée du cache (heures) dans data/cache/provider/.
+
+# Paramètres spécifiques au marché
+market_params:
+  tick_size:
+    value: 0.25
+    range: [0.01, 1.0]
+    description: |
+      Taille minimale d’un tick pour ES, validée par features_audit.py.
+  point_value:
+    value: 50
+    range: [10, 100]
+    description: |
+      Valeur monétaire d’un point pour ES ($50).
+  typical_price_range:
+    value: [4000, 6000]
+    range: [0, 10000]
+    description: |
+      Plage typique des prix ES, validée par features_audit.py avec la plage spécifiée.
+  trading_hours:
+    start: "09:30"
+    end: "16:00"
+    timezone: "US/Eastern"
+    timezone_options: ["US/Eastern", "US/Central", "UTC"]
+    description: |
+      Heures de trading régulières, utilisées par trading_env.py.
+  cross_symbols:
+    value: ["SPY", "TLT"]
+    description: |
+      Symboles cross-market pour signaux (market_structure_signals.py, méthode 1).
+
+# Modes de trading
+modes:
+  trend:
+    enabled: true
+    priority: 1
+    priority_range: [1, 5]
+    description: |
+      Mode pour tendances claires (neural_regime=0, mode_trend.py, detect_regime.py).
+  range:
+    enabled: true
+    priority: 2
+    priority_range: [1, 5]
+    description: |
+      Mode pour marchés stables (neural_regime=1, mode_range.py, detect_regime.py).
+  defensive:
+    enabled: true
+    priority: 3
+    priority_range: [1, 5]
+    description: |
+      Mode pour volatilité élevée (neural_regime=2, mode_defensive.py, risk_controller.py).
+
+# Options de trading
+trading_options:
+  paper_trading_enabled:
+    value: true
+    description: |
+      Active le paper trading via Sierra Chart (trade_executor.py, API Teton).
+
+# Seuils
+thresholds:
+  reference: "router_config.yaml"
+  max_drawdown:
+    value: -0.10
+    range: [-1.0, 0.0]
+    description: |
+      Drawdown maximum (-10%) avant pause (risk_controller.py).
+  vix_defensive_threshold:
+    value: 25.0
+    range: [10.0, 50.0]
+    description: |
+      Seuil VIX pour passer en mode défensif (méthode 1, detect_regime.py, risk_controller.py).
+  iv_high_threshold:
+    value: 0.25
+    range: [0.1, 0.5]
+    description: |
+      Seuil IV pour mode défensif (méthode 2, detect_regime.py, option_metrics.py).
+  news_impact_threshold:
+    value: 0.5
+    range: [0.0, 1.0]
+    description: |
+      Seuil d’impact des nouvelles pour ajuster les décisions de trading (méthode 5).
+      Une valeur élevée indique un impact significatif des actualités.
+  vix_method5_threshold:
+    value: 20.0
+    range: [10.0, 50.0]
+    description: |
+      Seuil de volatilité VIX pour ajuster les décisions de trading (méthode 5, signal_selector.py).
+      Une valeur élevée indique une volatilité extrême.
+  entry_freq_max:
+    value: 5
+    range: [1, 20]
+    description: |
+      Nombre maximum de trades par heure pour limiter la fréquence des entrées
+      (signal_selector.py, trade_executor.py).
+  entry_freq_min_interval:
+    value: 5
+    range: [1, 60]
+    description: |
+      Intervalle minimum entre deux entrées en minutes pour éviter le surtrading
+      (signal_selector.py, trade_executor.py).
+
+# Gestion des risques
+risk:
+  default_rrr:
+    value: 2.0
+    range: [1.0, 5.0]
+    description: |
+      Ratio risque/rendement par défaut (trade_executor.py).
+  min_rrr:
+    value: 1.5
+    range: [1.0, 3.0]
+    description: |
+      Ratio risque/rendement minimum (signal_selector.py).
+  max_loss_per_trade:
+    value: -50
+    range: [-1000, 0]
+    description: |
+      Perte maximale par trade (USD, risk_controller.py).
+  target_profit_per_trade:
+    value: 100
+    range: [0, 1000]
+    description: |
+      Profit cible par trade (USD, signal_selector.py).
+
+# Gestion des nouvelles
+news:
+  enabled: true
+  source: "data/iqfeed/news.csv"
+  source_description: |
+    Nouvelles générées par data_provider.py (IQFeed), analysées par news_analyzer.py.
+  critical_events:
+    value: ["FOMC", "CPI", "NFP"]
+    description: |
+      Événements entraînant une pause (trade_window_filter.py).
+  pause_trading_window_minutes:
+    value: 30
+    range: [5, 120]
+    description: |
+      Durée de la pause autour des événements (trade_window_filter.py).
+
+# Configuration des journaux
+logging:
+  directory: "data/logs/market"
+  directory_description: |
+    Répertoire des logs ES (algo_performance_logger.py). Performances (latence, CPU, mémoire)
+    enregistrées via psutil dans les fichiers de log (ex. : provider_performance.csv).
+  files:
+    backtest: "backtest.csv"
+    backtest_description: |
+      Résultats des backtests (backtest_lab.py).
+    live_trading: "live_trading.log"
+    live_trading_description: |
+      Logs du trading réel (live_trading.py).
+    regime_detection: "regime_detection.log"
+    regime_detection_description: |
+      Logs des régimes (detect_regime.py).
+    provider_performance: "provider_performance.csv"
+    provider_performance_description: |
+      Performances de collecte (data_provider.py).
+    feature_pipeline_performance: "feature_pipeline_performance.csv"
+    feature_pipeline_performance_description: |
+      Performances des features (feature_pipeline.py).
+    train_sac_performance: "train_sac_performance.csv"
+    train_sac_performance_description: |
+      Performances d’entraînement (train_sac.py).
+    risk_performance: "risk_performance.csv"
+    risk_performance_description: |
+      Performances des risques (risk_controller.py).
+    signal_selector_performance: "signal_selector_performance.csv"
+    signal_selector_performance_description: |
+      Performances des signaux (signal_selector.py).
+  max_size_mb:
+    value: 10
+    range: [1, 100]
+    description: |
+      Taille maximale des logs avant rotation (Mo).
+
+# Paramètres du tableau de bord
+dashboard:
+  notifications_enabled: true
+  status_file: "data/market_config_dashboard.json"
+  description: |
+    Envoie les paramètres à mia_dashboard.py, stocke l’état dans market_config_dashboard.json.
+
+# Notes
+notes:
+  actions_immediates:
+    - Tester seuils (vix_defensive_threshold, vix_method5_threshold, iv_high_threshold, news_impact_threshold,
+      entry_freq_max, entry_freq_min_interval) via tests/test_market_config.py.
+    - Vérifier les clés API (IQFeed, OpenAI) via config_manager.py avant exécution.
+    - Valider le champ range de typical_price_range dans features_audit.py.
+  recalibrations_futures:
+    - Fusionner thresholds avec router_config.yaml pour éviter redondances.
+    - Ajuster typical_price_range avec données IQFeed 2024-2025 (features_audit.py).
+    - Vérifier critical_events (ex. : ajouter PCE, PMI) via schedule_economic_calendar.py.
+  details:
+    - Données via IQFeed (data_provider.py), source exclusive.
+    - Symboles pour méthodes 1 (volatilité) et 2 (options).
+    - Hyperparamètres des algorithmes (SAC, PPO, DDPG) dans algo_config.yaml.
+    - Aligné sur 351 features pour l’entraînement et top 150 SHAP pour l’inférence/fallback
+      (feature_sets.yaml, model_params.yaml).
+    - Validation via config_manager.py avec alertes alert_manager.py.
+    - vix_defensive_threshold et vix_method5_threshold (méthode 5) renommés pour clarifier leurs rôles
+      (detect_regime.py, signal_selector.py).
+    - entry_freq_max et entry_freq_min_interval ajoutés pour limiter la fréquence des trades
+      (signal_selector.py, trade_executor.py).
+    - openai_api_key ajouté pour les intégrations LLM (ex. : report_generator.py).
+    - typical_price_range complété avec un champ range pour validation (features_audit.py).
+    - api_key IQFeed harmonisé avec la structure openai_api_key (config_manager.py).
+    - paper_trading_enabled déplacé dans trading_options pour plus de clarté (trade_executor.py).
+    - Tests unitaires disponibles dans tests/test_market_config.py pour valider la configuration.
+    - Opérations critiques (ex. : collecte IQFeed, trading) implémentent des retries via standard.py
+      (max 3, délai 2^attempt).
+    - Vérifier les performances des seuils dans data/logs/market/*_performance.csv.

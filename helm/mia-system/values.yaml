@@ -1,0 +1,241 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/helm/mia-system/values.yaml
+# Valeurs de configuration pour le chart Helm de MIA_IA_SYSTEM_v2_2025
+#
+# Version: 2.1.5
+# Date: 2025-05-14
+#
+# Rôle: Configure le déploiement Kubernetes, incluant replicas, ressources, autoscaling,
+#       et dépendances Prometheus/Grafana, ainsi que les nouveaux modules pour les suggestions 1, 4, 7, 8, 10.
+#
+# Utilisé par: Helm pour personnaliser le déploiement.
+#
+# Notes:
+# - Conforme à structure.txt (version 2.1.5, 2025-05-14).
+# - Supporte les suggestions :
+#   - 1 (Position sizing dynamique) : Configuration pour risk-manager.
+#   - 2 (Loggers) : Métriques via Prometheus/Grafana.
+#   - 4 (HMM/Changepoint Detection) : Configuration pour regime-detector.
+#   - 5 (Profit factor) : Métriques via Prometheus/Grafana.
+#   - 7 (Safe RL/CVaR-PPO) : Configuration pour trade-probability (PPO-Lagrangian).
+#   - 8 (Distributional RL/QR-DQN) : Configuration pour trade-probability (QR-DQN).
+#   - 10 (Ensembles de politiques) : Configuration pour trade-probability (vote bayésien).
+# - Intègre avec Chart.yaml, Dockerfile, prometheus_metrics.py.
+# - Pas de références à dxFeed, obs_t, 320 features, ou 81 features.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+# Configuration globale du chart
+replicaCount: 2
+
+# Configuration de l’image (à construire avec Dockerfile)
+image:
+  repository: mia-system
+  pullPolicy: IfNotPresent
+  tag: "2.1.5"
+
+# Configuration du service
+service:
+  type: ClusterIP
+  port: 8000
+
+# Limites et demandes de ressources
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+
+# Configuration de l’autoscaling (Horizontal Pod Autoscaling)
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Variables d’environnement globales pour l’application
+env:
+  - name: MARKET
+    value: "ES"
+  - name: SENTRY_DSN
+    valueFrom:
+      secretKeyRef:
+        name: mia-secrets
+        key: sentry-dsn
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: mia-secrets
+        key: aws-access-key
+
+# Configuration de Prometheus
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    interval: 15s
+    scrapeTimeout: 10s
+  prometheusSpec:
+    retention: 15d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          resources:
+            requests:
+              storage: 10Gi
+
+# Configuration de Grafana
+grafana:
+  enabled: true
+  adminPassword: "admin"
+  service:
+    type: ClusterIP
+    port: 3000
+  persistence:
+    enabled: true
+    storageClassName: standard
+    size: 5Gi
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server.monitoring.svc.cluster.local
+          access: proxy
+          isDefault: true
+
+# Configuration des secrets (à créer via Kubernetes)
+secrets:
+  mia-secrets:
+    enabled: true
+    data:
+      sentry-dsn: ""  # À remplir avec un DSN Sentry valide
+      aws-access-key: ""  # À remplir avec une clé AWS valide
+
+# Configuration du sous-chart risk-manager (suggestion 1)
+risk-manager:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: mia-system
+    pullPolicy: IfNotPresent
+    tag: "2.1.5"
+  service:
+    type: ClusterIP
+    port: 8001
+  resources:
+    limits:
+      cpu: "300m"
+      memory: "256Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+  env:
+    - name: MARKET
+      value: "ES"
+    - name: ATR_THRESHOLD
+      value: "100.0"  # Seuil pour atr_dynamic
+    - name: ORDERFLOW_IMBALANCE_LIMIT
+      value: "0.9"  # Limite pour orderflow_imbalance
+
+# Configuration du sous-chart regime-detector (suggestion 4)
+regime-detector:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: mia-system
+    pullPolicy: IfNotPresent
+    tag: "2.1.5"
+  service:
+    type: ClusterIP
+    port: 8002
+  resources:
+    limits:
+      cpu: "400m"
+      memory: "384Mi"
+    requests:
+      cpu: "150m"
+      memory: "192Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+  env:
+    - name: MARKET
+      value: "ES"
+    - name: HMM_STATES
+      value: "3"  # Nombre d’états HMM
+    - name: CACHE_TTL
+      value: "3600"  # TTL pour TTLCache
+
+# Configuration du sous-chart trade-probability (suggestions 7, 8, 10)
+trade-probability:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: mia-system
+    pullPolicy: IfNotPresent
+    tag: "2.1.5"
+  service:
+    type: ClusterIP
+    port: 8003
+  resources:
+    limits:
+      cpu: "600m"
+      memory: "768Mi"
+    requests:
+      cpu: "300m"
+      memory: "512Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 80
+  env:
+    - name: MARKET
+      value: "ES"
+    - name: MODEL_TYPE
+      value: "ppo_cvar"  # Options: ppo_cvar, qr_dqn, ensemble
+    - name: CVAR_ALPHA
+      value: "0.95"  # Paramètre pour PPO-Lagrangian
+    - name: QUANTILES
+      value: "51"  # Paramètre pour QR-DQN
+    - name: ENSEMBLE_WEIGHTS
+      value: "0.4,0.3,0.3"  # Poids SAC, PPO, DDPG pour vote bayésien
+
+# Configuration du sous-chart mia-switcher
+mia-switcher:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: mia-system
+    pullPolicy: IfNotPresent
+    tag: "2.1.5"
+  service:
+    type: ClusterIP
+    port: 8004
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+  hpa:
+    enabled: false
+  env:
+    - name: MARKET
+      value: "ES"
+    - name: MODULE_COORDINATOR
+      value: "true"  # Active la coordination des modules

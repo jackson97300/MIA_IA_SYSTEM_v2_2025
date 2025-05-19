@@ -1,0 +1,20 @@
+{
+    "//": [
+        "Template for training state in MIA_IA_SYSTEM_v2_2025",
+        "Version: 2.1.4",
+        "Date: 2025-05-13",
+        "Role: Stores the state of model training for the dashboard, managed by train_sac.py",
+        "Notes:",
+        "- Generated and updated by src/model/rl/train_sac.py",
+        "- epoch: Current training epoch (integer)",
+        "- loss: Current training loss (float)",
+        "- timestamp: ISO timestamp of the last training update",
+        "- Example values: {'epoch': 50, 'loss': 0.03, 'timestamp': '2025-05-13T10:00:00'}",
+        "- Policies Note: The official directory for routing policies is src/model/router/policies",
+        "  The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts",
+        "- Compliance: No references to dxFeed, obs_t, 320 features, or 81 features"
+    ],
+    "epoch": 0,
+    "loss": 0.0,
+    "timestamp": ""
+}

@@ -1,0 +1,93 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/requirements.txt
+# Liste des dépendances pour le trading automatisé des E-mini S&P 500 (ES)
+# avec interface vocale interactive, apprentissage adaptatif, et dashboard.
+#
+# Version : 2.1.5
+# Mis à jour : 2025-05-14
+#
+# Notes :
+# - Utilise exclusivement IQFeed comme source de données via data_provider.py.
+# - Suppression de toute référence à dxFeed, obs_t, 320 features, et 81 features pour conformité avec MIA_IA_SYSTEM_v2_2025.
+# - Compatible avec 350 features (entraînement) et 150 SHAP features (inférence).
+# - Intègre les Phases 1-18 :
+#   - Phase 1 (news_scraper.py, news_analyzer.py) : Scraping et analyse de sentiment (news_sentiment_score).
+#   - Phase 13 (orderflow_indicators.py, options_metrics.py) : Métriques comme vix_es_correlation, call_iv_atm, option_skew.
+#   - Phase 15 (microstructure_guard.py, spotgamma_recalculator.py) : Métriques de microstructure (spoofing_score, volume_anomaly) et options (net_gamma, call_wall).
+#   - Phase 18 : Métriques avancées de microstructure (trade_velocity, hft_activity_score).
+# - Tests unitaires disponibles dans tests/*.py.
+# - Ajouts pour les améliorations 1-10 (Position sizing dynamique, HMM, Safe RL, etc.) des guides d’implémentation (Parties 1-4).
+# - Aligné avec .pre-commit-config.yaml (Flake8 7.1.0) et Dockerfile pour la cohérence des versions.
+# - Policies Note: The official directory for routing policies is src/model/router/policies.
+#   The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts.
+
+# Manipulation des données et features (feature_pipeline.py, run_preprocessing.py)
+pandas>=2.0.0,<3.0.0  # Gestion des DataFrames (ex. : features_latest.csv)
+numpy>=1.26.4,<2.0.0  # Calculs numériques (ex. : feature_pipeline.py)
+psutil>=5.9.0,<6.0.0  # Monitoring des performances (ex. : adaptive_learning.py)
+
+# Modèles neuronaux (neural_pipeline.py, run_training.py)
+torch>=2.0.0,<3.0.0  # Modèles SAC, CNN, LSTM (ex. : train_sac.py)
+
+# Environnement de trading (trading_env.py, run_simulate.py)
+gymnasium>=1.0.0,<2.0.0  # Environnement gym pour trading_env.py
+
+# Modèles SAC pour apprentissage adaptatif (run_training.py, main_router.py, adaptive_learner.py)
+stable-baselines3>=2.0.0,<3.0.0  # Algorithme SAC (ex. : train_sac.py)
+
+# Interface vocale interactive (mind_dialogue.py, mind_voice.py, live_trading.py)
+speechrecognition>=3.14.2,<4.0.0  # Reconnaissance vocale
+pyaudio>=0.2.14,<0.3.0  # Entrée audio pour speechrecognition
+gtts>=2.3.0,<3.0.0  # Synthèse vocale (Google Text-to-Speech)
+pyttsx3>=2.90,<3.0.0  # Synthèse vocale hors ligne
+openai>=1.0.0,<2.0.0  # Réponses conversationnelles et analyse de sentiment (mind_dialogue.py, news_analyzer.py)
+
+# Configuration YAML (es_config.yaml, market_config.yaml, mia_config.yaml, model_params.yaml)
+pyyaml>=6.0.0,<7.0.0  # Gestion des fichiers YAML
+
+# Logging avancé (live_trading.log, mind_stream.log, mia_dashboard.log)
+loguru>=0.7.0,<1.0.0  # Gestion des logs
+
+# Connexion à IQFeed (data_provider.py)
+pyiqfeed>=1.0.0,<2.0.0  # API IQFeed pour données niveau 2
+
+# Visualisation pour dashboard et monitoring (mia_dashboard.py, correlation_heatmap.py)
+dash>=2.17.0,<3.0.0  # Tableau de bord interactif
+plotly>=5.24.1,<6.0.0  # Visualisations (ex. : heatmaps)
+seaborn>=0.13.0,<1.0.0  # Visualisations avancées (ex. : correlation_heatmap.py)
+matplotlib>=3.7.0,<4.0.0  # Figures (ex. : adaptive_learning.py)
+
+# Scraping des nouvelles et événements macro (news_scraper.py, schedule_economic_calendar.py)
+requests>=2.31.0,<3.0.0  # Appels API (ex. : calendrier économique)
+beautifulsoup4>=4.12.0,<5.0.0  # Parsing HTML (ex. : news_scraper.py)
+
+# Réduction des features et composantes latentes (feature_meta_ensemble.py, contextual_state_encoder.py)
+shap>=0.45.0,<1.0.0  # Analyse SHAP pour trier les features (feature_meta_ensemble.py)
+scikit-learn>=1.5.0,<2.0.0  # t-SNE (latent_vol_regime_vec), clustering (strategy_discovery.py)
+
+# Base de données SQLite (market_memory.db, db_setup.py)
+# sqlite3  # Inclus dans Python standard, non requis dans requirements.txt
+
+# Tests unitaires et linting (tests/*.py)
+pytest>=7.3.0,<8.0.0  # Tests unitaires (ex. : test_option_metrics.py)
+flake8>=7.1.0,<8.0.0  # Linting, aligné avec .pre-commit-config.yaml
+pylint>=2.17.0,<3.0.0  # Analyse statique
+mypy>=1.4.0,<2.0.0  # Vérification de types
+coverage>=7.2.0,<8.0.0  # Couverture des tests
+pytest-benchmark>=4.0.0,<5.0.0  # Tests de performance
+
+# Dépendances pour les améliorations 1-10 (guides d’implémentation Parties 1-4)
+boto3>=1.24.0,<2.0.0  # Stockage S3 (data_lake.py)
+sentry-sdk>=1.9.0,<2.0.0  # Capture des erreurs (error_tracker.py)
+mlflow>=2.0.0,<3.0.0  # Journalisation des runs (mlflow_tracker.py)
+optuna>=3.0.0,<4.0.0  # Optimisation des hyperparamètres (hyperparam_optimizer.py)
+river>=0.8.0,<1.0.0  # Détection de drifts (drift_detector.py)
+hmmlearn>=0.2.8,<0.3.0  # HMM pour regime_detector.py
+pydantic>=2.0.0,<3.0.0  # Validation des configs (risk_manager.py, regime_detector.py)
+cachetools>=5.3.0,<6.0.0  # Cache TTLCache (regime_detector.py)
+joblib>=1.3.0,<2.0.0  # Sauvegarde des modèles (regime_detector.py)
+ray[rllib]>=2.0.0,<3.0.0  # QR-DQN pour trade_probability.py
+great_expectations>=0.15.0,<1.0.0  # Validation des features (validate_data.py)
+apache-airflow>=2.5.0,<3.0.0  # Orchestration (train_pipeline.py)
+pre-commit>=2.20.0,<3.0.0  # Hooks pre-commit (.pre-commit-config.yaml)
+prometheus-client>=0.14.0,<1.0.0  # Métriques Prometheus (prometheus_metrics.py)

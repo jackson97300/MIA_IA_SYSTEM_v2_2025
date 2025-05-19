@@ -1,0 +1,466 @@
+Phase 12 : Finalisation des utilitaires et configuration
+Objectif
+Finaliser le système en intégrant les utilitaires transversaux (main.py, config_manager.py, alert_manager.py) et les configurations d’environnement (requirements.txt, .devcontainer/devcontainer.json) pour assurer une exécution fluide et une maintenance facile. Cette phase complète la Phase 10 en ajoutant les fichiers manquants essentiels pour le point d’entrée, la gestion des configurations, les alertes, et l’environnement de développement. Toutes les références à obs_t, dxFeed, et 320/81 features seront supprimées. Cette phase est cruciale pour boucler le projet avec un système entièrement opérationnel.
+
+Fichiers concernés
+Fichiers principaux (5) :
+src/main.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+requirements.txt
+.devcontainer/devcontainer.json
+Fichiers générés : Aucun (focus sur les utilitaires et configurations).
+Tests (5) :
+tests/test_main.py
+tests/test_config_manager.py
+tests/test_alert_manager.py
+tests/test_requirements.py
+tests/test_devcontainer.py
+Dépendances (4) :
+src/trading/live_trading.py (Phase 8)
+config/credentials.yaml (Phase 1)
+config/market_config.yaml (Phase 1)
+config/feature_sets.yaml (Phase 2)
+Registre des fichiers (Phase 12)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/main.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_main.py	Très haute	live_trading.py, config_manager.py	Aucun
+src/model/utils/config_manager.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_config_manager.py	Très haute	credentials.yaml, market_config.yaml	Aucun
+src/model/utils/alert_manager.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_alert_manager.py	Très haute	Aucun	Aucun
+requirements.txt	À créer	2.1.3	2025-05-13	Aucun	tests/test_requirements.py	Moyenne	Aucun	Aucun
+.devcontainer/devcontainer.json	À créer	2.1.3	2025-05-13	Aucun	tests/test_devcontainer.py	Moyenne	requirements.txt	Aucun
+Registre complet mis à jour (~78 fichiers principaux)
+Voici le registre complet mis à jour, incluant les fichiers des Phases 1-10 (~70 fichiers) et les nouveaux fichiers des Phases 11-12 (8 fichiers). Ce registre exclut les fichiers secondaires (logs, snapshots JSON, cache).
+
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/data/data_provider.py	Existant	2.1.3	2025-05-13	obs_t, dxFeed	tests/test_data_provider.py	Très haute	config/credentials.yaml, alert_manager.py	iqfeed_data.csv, option_chain.csv, cross_market.csv, news.csv
+src/api/merge_data_sources.py	Existant	2.1.3	2025-05-13	obs_t, dxFeed	tests/test_merge_data_sources.py	Très haute	data_provider.py, config_manager.py	merged_data.csv
+src/api/schedule_economic_calendar.py	Existant	2.1.3	2025-05-13	obs_t, dxFeed	tests/test_schedule_economic_calendar.py	Haute	config/credentials.yaml, alert_manager.py	macro_events.csv
+src/features/feature_pipeline.py	Existant	2.1.3	2025-05-13	obs_t, 320 features	tests/test_feature_pipeline.py	Très haute	data_provider.py, config_manager.py	features_latest.csv, feature_importance.csv, feature_importance_cache.csv
+src/features/shap_weighting.py	Existant	2.1.3	2.1.3	320 features	tests/test_shap_weighting.py	Très haute	feature_pipeline.py, alert_manager.py	feature_importance.csv
+src/features/filter_features.py	Existant	2.1.3	2025-05-13	320 features	tests/test_filter_features.py	Haute	feature_pipeline.py, config_manager.py	features_latest_filtered.csv
+src/features/neural_pipeline.py	Existant	2.1.3	2025-05-13	obs_t, 320 features	tests/test_neural_pipeline.py	Très haute	feature_pipeline.py, config_manager.py	Aucun
+src/features/contextual_state_encoder.py	Existant	2.1.3	2025-05-13	320 features	tests/test_contextual_state_encoder.py	Haute	feature_pipeline.py, alert_manager.py	latent_vectors.csv
+src/features/spotgamma_recalculator.py	Existant	2.1.3	2025-05-13	320 features	tests/test_spotgamma_recalculator.py	Haute	feature_pipeline.py, alert_manager.py	options_snapshots/levels_*.json
+src/features/obs_template.py	Existant	2.1.3	2025-05-13	81 dimensions, obs_t	tests/test_obs_template.py	Très haute	feature_pipeline.py, shap_weighting.py	Aucun
+src/features/features_audit.py	Existant	2.1.3	2025-05-13	320 features	tests/test_features_audit.py	Très haute	feature_pipeline.py, alert_manager.py	features_audit_raw.csv, features_audit_final.csv
+src/features/signal_selector.py	Existant	2.1.3	2025-05-13	320 features	tests/test_signal_selector.py	Haute	shap_weighting.py, config_manager.py	alpha_scores.csv
+src/model/utils/db_setup.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_db_setup.py	Haute	config_manager.py, alert_manager.py	market_memory.db
+src/model/utils/db_maintenance.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_db_maintenance.py	Moyenne	db_setup.py, alert_manager.py	Aucun
+src/features/adaptive_learner.py	Existant	2.1.3	2025-05-13	320 features	tests/test_adaptive_learner.py	Haute	contextual_state_encoder.py, config_manager.py	Aucun
+src/model/train_sac.py	Existant	2.1.3	2025-05-13	obs_t, 320 features	tests/test_train_sac.py	Très haute	feature_pipeline.py, detect_regime.py	sac_model.pth, sac_range_latest.pth, train_sac_snapshots/*.json
+src/model/train_sac_auto.py	Existant	2.1.3	2025-05-13	320 features	tests/test_train_sac_auto.py	Haute	train_sac.py, finetune_utils.py	Aucun
+src/model/utils/finetune_utils.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_finetune_utils.py	Très haute	train_sac.py, config_manager.py	Aucun
+src/model/utils/maml_utils.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_maml_utils.py	Très haute	train_sac.py, config_manager.py	Aucun
+src/model/utils/algo_performance_logger.py	Existant	2.1.3	2025-05-13	320 features	tests/test_algo_performance_logger.py	Haute	train_sac.py, config_manager.py	train_sac_performance.csv
+src/risk/risk_controller.py	Existant	2.1.3	2025-05-13	320 features	tests/test_risk_controller.py	Très haute	feature_pipeline.py, alert_manager.py	risk_snapshots/*.json, penalty_log.csv
+src/risk/trade_window_filter.py	Existant	2.1.3	2025-05-13	320 features	tests/test_trade_window_filter.py	Très haute	schedule_economic_calendar.py, config_manager.py	Aucun
+src/risk/decision_log.py	Existant	2.1.3	2025-05-13	320 features	tests/test_decision_log.py	Haute	alert_manager.py, config_manager.py	decision_log.csv
+src/trading/live_trading.py	Existant	2.1.3	2025-05-13	320 features	tests/test_live_trading.py	Très haute	inference.py, trade_executor.py	trades_simulated.csv, trades_real.csv
+src/trading/trade_executor.py	Existant	2.1.3	2025-05-13	320 features	tests/test_trade_executor.py	Très haute	risk_controller.py, config_manager.py	trade_snapshots/*.json
+src/model/utils/trading_loop.py	Existant	2.1.3	2025-05-13	320 features	tests/test_trading_loop.py	Haute	live_trading.py, alert_manager.py	Aucun
+src/model/inference.py	Existant	2.1.3	2025-05-13	obs_t, 320 features	tests/test_inference.py	Très haute	obs_template.py, train_sac.py	Aucun
+src/model/trade_probability.py	Existant	2.1.3	2025-05-13	320 features	tests/test_trade_probability.py	Très haute	feature_pipeline.py, config_manager.py	alpha_scores.csv
+src/monitoring/mia_dashboard.py	Existant	2.1.3	2025-05-13	320 features	tests/test_mia_dashboard.py	Très haute	live_trading.py, feature_pipeline.py	deps_dashboard.json, preprocessing_dashboard.json, simulation_dashboard.json
+src/monitoring/correlation_heatmap.py	Existant	2.1.3	2025-05-13	320 features	tests/test_correlation_heatmap.py	Haute	shap_weighting.py, alert_manager.py	figures/monitoring/*.png
+src/monitoring/data_drift.py	Existant	2.1.3	2025-05-13	320 features	tests/test_data_drift.py	Haute	feature_pipeline.py, config_manager.py	Aucun
+src/monitoring/run_dashboard.py	Existant	2.1.3	2025-05-13	320 features	tests/test_run_dashboard.py	Moyenne	mia_dashboard.py, alert_manager.py	Aucun
+scripts/validate_prompt_compliance.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_validate_prompt_compliance.py	Très haute	config_manager.py, alert_manager.py	Aucun
+scripts/run_all_tests.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_run_all_tests.py	Très haute	tests/*.py	Aucun
+docs/index.md	Existant	2.1.3	2025-05-13	Aucun	tests/test_docs.py	Moyenne	Aucun	Aucun
+docs/setup.md	Existant	2.1.3	2025-05-13	Aucun	tests/test_docs.py	Moyenne	Aucun	Aucun
+docs/usage.md	Existant	2.1.3	2025-05-13	Aucun	tests/test_docs.py	Moyenne	Aucun	Aucun
+docs/modules.md	Existant	2.1.3	2025-05-13	Aucun	tests/test_docs.py	Moyenne	Aucun	Aucun
+.flake8	Existant	2.1.3	2025-05-13	Aucun	tests/test_linting.py	Moyenne	Aucun	Aucun
+.pylintrc	Existant	2.1.3	2025-05-13	Aucun	tests/test_linting.py	Moyenne	Aucun	Aucun
+mypy.ini	Existant	2.1.3	2025-05-13	Aucun	tests/test_linting.py	Moyenne	Aucun	Aucun
+config/credentials.yaml	Existant	2.1.3	2025-05-13	Aucun	tests/test_credentials.py	Moyenne	Aucun	Aucun
+config/market_config.yaml	Existant	2.1.3	2025-05-13	Aucun	tests/test_market_config.py	Moyenne	Aucun	Aucun
+config/feature_sets.yaml	Existant	2.1.3	2025-05-13	Aucun	tests/test_feature_sets.py	Moyenne	Aucun	Aucun
+data/iqfeed/iqfeed_data.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_data_provider.py	Basse	data_provider.py	Aucun
+data/iqfeed/merged_data.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_merge_data_sources.py	Basse	merge_data_sources.py	Aucun
+data/macro_events.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_schedule_economic_calendar.py	Basse	schedule_economic_calendar.py	Aucun
+data/features/features_latest.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_feature_pipeline.py	Basse	feature_pipeline.py	Aucun
+data/features/feature_importance.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_shap_weighting.py	Basse	shap_weighting.py	Aucun
+data/latent_vectors.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_contextual_state_encoder.py	Basse	contextual_state_encoder.py	Aucun
+data/market_memory.db	À générer	2.1.3	2025-05-13	Aucun	tests/test_db_setup.py	Moyenne	db_setup.py	Aucun
+data/trades/trades_simulated.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_live_trading.py	Basse	live_trading.py	Aucun
+data/trades/trades_real.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_live_trading.py	Basse	live_trading.py	Aucun
+data/logs/trading/decision_log.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_decision_log.py	Basse	decision_log.py	Aucun
+data/logs/trading/alpha_scores.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_trade_probability.py	Basse	trade_probability.py	Aucun
+data/logs/train_sac_performance.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_algo_performance_logger.py	Basse	algo_performance_logger.py	Aucun
+data/figures/monitoring/*.png	À générer	2.1.3	2025-05-13	Aucun	tests/test_correlation_heatmap.py	Basse	correlation_heatmap.py	Aucun
+data/deps_dashboard.json	À générer	2.1.3	2025-05-13	Aucun	tests/test_mia_dashboard.py	Basse	mia_dashboard.py	Aucun
+data/preprocessing_dashboard.json	À générer	2.1.3	2025-05-13	Aucun	tests/test_mia_dashboard.py	Basse	mia_dashboard.py	Aucun
+data/simulation_dashboard.json	À générer	2.1.3	2025-05-13	Aucun	tests/test_mia_dashboard.py	Basse	mia_dashboard.py	Aucun
+src/trading/backtest_lab.py	Existant	2.1.3	2025-05-13	320 features	tests/test_backtest_lab.py	Très haute	inference.py, live_trading.py	backtest_results.csv
+src/envs/trading_env.py	À créer	2.1.3	2025-05-13	obs_t, 320 features	tests/test_trading_env.py	Très haute	obs_template.py, config_manager.py	Aucun
+src/model/router/detect_regime.py	À créer	2.1.3	2025-05-13	320 features	tests/test_detect_regime.py	Très haute	feature_pipeline.py, alert_manager.py	Aucun
+src/main.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_main.py	Très haute	live_trading.py, config_manager.py	Aucun
+src/model/utils/config_manager.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_config_manager.py	Très haute	credentials.yaml, market_config.yaml	Aucun
+src/model/utils/alert_manager.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_alert_manager.py	Très haute	Aucun	Aucun
+requirements.txt	À créer	2.1.3	2025-05-13	Aucun	tests/test_requirements.py	Moyenne	Aucun	Aucun
+.devcontainer/devcontainer.json	À créer	2.1.3	2025-05-13	Aucun	tests/test_devcontainer.py	Moyenne	requirements.txt	Aucun
+Note : Ce registre inclut désormais 78 fichiers principaux, intégrant les ajouts des Phases 11 et 12. Les fichiers secondaires (ex. : orderflow_indicators.py, logs, cache) peuvent être documentés séparément si nécessaire.
+
+Spécifications des fichiers
+Module : src/main.py
+Rôle :
+Point d’entrée du système, exécute le trading live/paper via live_trading.py avec des arguments CLI (--live, --config).
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Implémenter un script CLI avec argparse pour gérer les modes (--live, --paper) et configurations (--config).
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Intégrer live_trading.py et config_manager.py.
+Ajouter retries (max 3, délai 2^attempt) pour les initialisations.
+Ajouter logs psutil dans data/logs/main_performance.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Très haute (point d’entrée du système).
+Dépendances :
+src/trading/live_trading.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+config/market_config.yaml
+Fichiers générés :
+Aucun.
+Action :
+Créer main.py avec :
+python
+
+Copier
+import argparse
+import pandas as pd
+import psutil
+from src.trading.live_trading import live_trading
+from src.model.utils.config_manager import config_manager
+from src.model.utils.alert_manager import AlertManager
+
+def main():
+    parser = argparse.ArgumentParser(description="MIA_IA_SYSTEM_v2_2025")
+    parser.add_argument("--live", action="store_true", help="Run live trading")
+    parser.add_argument("--paper", action="store_true", help="Run paper trading")
+    parser.add_argument("--config", default="config/es_config.yaml", help="Config file")
+    args = parser.parse_args()
+    
+    start_time = time.time()
+    try:
+        config = config_manager.get_config(args.config)
+        data = pd.DataFrame()  # Placeholder for data loading
+        live_trading(data, paper_mode=not args.live)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "main",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/main_performance.csv", mode="a", header=False, index=False)
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur exécution principale: {str(e)}", priority=3)
+        raise
+
+if __name__ == "__main__":
+    main()
+Afficher dans la barre latérale
+Vérifier l’intégration avec live_trading.py.
+Tests :
+Fichier : tests/test_main.py
+Scénarios :
+Vérifier les arguments CLI (--live, --paper, --config).
+Vérifier l’intégration avec live_trading.py.
+Tester les erreurs de configuration (ex. : fichier YAML manquant).
+Exemple :
+python
+
+Copier
+def test_main():
+    import subprocess
+    result = subprocess.run(["python", "src/main.py", "--paper", "--config", "config/es_config.yaml"], capture_output=True)
+    assert result.returncode == 0, "Exécution principale échouée"
+    assert os.path.exists("data/logs/main_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Absence de point d’entrée (implémenté).
+Tests génériques (tests spécifiques).
+Module : src/model/utils/config_manager.py
+Rôle :
+Charge les fichiers de configuration YAML (ex. : credentials.yaml, market_config.yaml, feature_sets.yaml) pour tous les modules.
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Implémenter une classe pour lire les fichiers YAML avec pyyaml.
+Supprimer toute référence à dxFeed ou anciens modules.
+Ajouter retries (max 3, délai 2^attempt) pour la lecture des fichiers.
+Ajouter logs psutil dans data/logs/config_manager_performance.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Très haute (utilitaire transversal).
+Dépendances :
+config/credentials.yaml
+config/market_config.yaml
+config/feature_sets.yaml
+src/model/utils/alert_manager.py
+Fichiers générés :
+Aucun.
+Action :
+Créer config_manager.py avec :
+python
+
+Copier
+import yaml
+import pandas as pd
+import psutil
+from src.model.utils.alert_manager import AlertManager
+
+class ConfigManager:
+    @staticmethod
+    def get_config(file_path):
+        start_time = time.time()
+        try:
+            for attempt in range(3):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        config = yaml.safe_load(f)
+                    latency = time.time() - start_time
+                    log_entry = {
+                        "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                        "operation": "get_config",
+                        "file_path": file_path,
+                        "latency": latency,
+                        "success": True,
+                        "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                        "cpu_percent": psutil.cpu_percent()
+                    }
+                    pd.DataFrame([log_entry]).to_csv("data/logs/config_manager_performance.csv", mode="a", header=False, index=False)
+                    return config
+                except Exception as e:
+                    if attempt == 2:
+                        raise
+                    time.sleep(2 ** attempt)
+            raise Exception("Échec après retries")
+        except Exception as e:
+            AlertManager().send_alert(f"Erreur lecture config {file_path}: {str(e)}", priority=3)
+            raise
+Afficher dans la barre latérale
+Vérifier l’intégration avec credentials.yaml.
+Tests :
+Fichier : tests/test_config_manager.py
+Scénarios :
+Vérifier la lecture des fichiers YAML.
+Vérifier les retries en cas d’erreur.
+Tester les erreurs de fichier manquant.
+Exemple :
+python
+
+Copier
+def test_get_config():
+    from src.model.utils.config_manager import ConfigManager
+    with open("config/test.yaml", "w") as f:
+        yaml.dump({"key": "value"}, f)
+    config = ConfigManager.get_config("config/test.yaml")
+    assert config["key"] == "value", "Lecture YAML échouée"
+    assert os.path.exists("data/logs/config_manager_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Absence de gestionnaire de configuration (implémenté).
+Tests génériques (tests spécifiques).
+Module : src/model/utils/alert_manager.py
+Rôle :
+Gère l’envoi d’alertes pour les erreurs critiques dans tous les modules, avec priorités (1 à 3).
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Implémenter une classe pour envoyer des alertes (ex. : logs, notifications).
+Supprimer toute référence à dxFeed ou anciens modules.
+Ajouter logs psutil dans data/logs/alert_manager_performance.csv.
+Supporter des priorités (1=faible, 2=moyen, 3=critique).
+Priorité :
+Très haute (utilitaire transversal).
+Dépendances :
+Aucun.
+Fichiers générés :
+Aucun.
+Action :
+Créer alert_manager.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+
+class AlertManager:
+    @staticmethod
+    def send_alert(message, priority):
+        start_time = time.time()
+        try:
+            log_entry = {
+                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "message": message,
+                "priority": priority
+            }
+            pd.DataFrame([log_entry]).to_csv("data/logs/alerts.csv", mode="a", header=False, index=False)
+            latency = time.time() - start_time
+            log_perf = {
+                "timestamp": log_entry["timestamp"],
+                "operation": "send_alert",
+                "latency": latency,
+                "success": True,
+                "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+                "cpu_percent": psutil.cpu_percent()
+            }
+            pd.DataFrame([log_perf]).to_csv("data/logs/alert_manager_performance.csv", mode="a", header=False, index=False)
+        except Exception as e:
+            print(f"Erreur envoi alerte: {str(e)}")
+Afficher dans la barre latérale
+Vérifier la création de data/logs/alerts.csv.
+Tests :
+Fichier : tests/test_alert_manager.py
+Scénarios :
+Vérifier l’envoi d’alertes avec différentes priorités.
+Vérifier la création de data/logs/alerts.csv.
+Tester les erreurs de logging (ex. : fichier verrouillé).
+Exemple :
+python
+
+Copier
+def test_send_alert():
+    from src.model.utils.alert_manager import AlertManager
+    AlertManager.send_alert("Test alerte", priority=3)
+    df = pd.read_csv("data/logs/alerts.csv")
+    assert "message" in df.columns, "Colonne message manquante"
+    assert df["priority"].iloc[-1] == 3, "Priorité incorrecte"
+    assert os.path.exists("data/logs/alert_manager_performance.csv"), "Log non généré"
+Afficher dans la barre latérale
+Failles corrigées :
+Absence de gestionnaire d’alertes (implémenté).
+Tests génériques (tests spécifiques).
+Module : requirements.txt
+Rôle :
+Liste les dépendances Python nécessaires pour le projet.
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Inclure les dépendances clés : pandas, numpy, tensorflow, stable_baselines3, plotly, dash, pyyaml, psutil, sklearn.
+Vérifier l’absence de dépendances liées à dxFeed.
+Ajouter un test pour valider les versions.
+Priorité :
+Moyenne (nécessaire pour l’installation).
+Dépendances :
+Aucun.
+Fichiers générés :
+Aucun.
+Action :
+Créer requirements.txt avec :
+pandas>=2.0.0
+numpy>=1.24.0
+tensorflow>=2.10.0
+stable_baselines3>=1.6.0
+plotly>=5.24.1
+dash>=2.0.0
+pyyaml>=6.0
+psutil>=5.9.0
+scikit-learn>=1.0.0
+
+Afficher dans la barre latérale
+Vérifier la compatibilité avec validate_prompt_compliance.py.
+Tests :
+Fichier : tests/test_requirements.py
+Scénarios :
+Vérifier la présence des dépendances clés.
+Tester la syntaxe du fichier.
+Exemple :
+python
+
+Copier
+def test_requirements():
+    with open("requirements.txt", "r") as f:
+        content = f.read()
+    assert "pandas" in content, "Dépendance pandas manquante"
+    assert "stable_baselines3" in content, "Dépendance stable_baselines3 manquante"
+Afficher dans la barre latérale
+Failles corrigées :
+Absence de liste de dépendances (implémentée).
+Tests génériques (tests spécifiques).
+Module : .devcontainer/devcontainer.json
+Rôle :
+Configure l’environnement Codespaces pour le développement.
+Statut :
+À créer.
+Fonctionnalités existantes à préserver :
+Aucune (nouveau fichier).
+Modifications nécessaires :
+Définir un environnement Python avec requirements.txt.
+Inclure les extensions VS Code nécessaires (ex. : Python, Jupyter).
+Vérifier la syntaxe JSON.
+Priorité :
+Moyenne (facilite le développement).
+Dépendances :
+requirements.txt
+Fichiers générés :
+Aucun.
+Action :
+Créer .devcontainer/devcontainer.json avec :
+json
+
+Copier
+{
+    "name": "MIA_IA_SYSTEM_v2_2025",
+    "image": "mcr.microsoft.com/vscode/devcontainers/python:3.9",
+    "postCreateCommand": "pip install -r requirements.txt",
+    "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter"
+    ]
+}
+Afficher dans la barre latérale
+Vérifier la syntaxe JSON.
+Tests :
+Fichier : tests/test_devcontainer.py
+Scénarios :
+Vérifier la syntaxe JSON.
+Vérifier la présence de requirements.txt dans postCreateCommand.
+Exemple :
+python
+
+Copier
+def test_devcontainer():
+    import json
+    with open(".devcontainer/devcontainer.json", "r") as f:
+        config = json.load(f)
+    assert "postCreateCommand" in config, "Commande post-création manquante"
+    assert "requirements.txt" in config["postCreateCommand"], "Dépendance requirements.txt manquante"
+Afficher dans la barre latérale
+Failles corrigées :
+Absence de configuration Codespaces (implémentée).
+Tests génériques (tests spécifiques).
+Clarifications pour la Phase 12
+Avant de valider la Phase 12, confirmez les points suivants :
+
+Fichiers de la Phase 12 :
+Les fichiers proposés (main.py, config_manager.py, alert_manager.py, requirements.txt, .devcontainer/devcontainer.json) sont-ils corrects, ou voulez-vous ajouter/retirer des fichiers (ex. : inclure des extracteurs comme orderflow_indicators.py) ?
+Si vous avez une liste précise des fichiers pour cette phase, partagez-la.
+Tests unitaires :
+Les tests complets proposés pour main.py, config_manager.py, et alert_manager.py sont-ils adaptés, ou voulez-vous des scénarios limites spécifiques (ex. : fichier YAML manquant, erreur d’alerte) ?
+Registre complet :
+Le registre complet mis à jour (~78 fichiers) est-il clair et suffisant, ou voulez-vous des ajustements (ex. : inclure des fichiers secondaires comme orderflow_indicators.py) ?
+Validation de la Phase 12 :
+Si la Phase 12 vous convient, dites "ok", et je considérerai le guide ultime comme complet.
+Si vous voulez des ajustements (ex. : ajouter une phase pour les extracteurs, modifier un fichier), précisez-les avant validation.
+Conclusion
+Les Phases 11 et 12 ci-dessus intègrent les 8 fichiers manquants identifiés (backtest_lab.py, trading_env.py, detect_regime.py, main.py, config_manager.py, alert_manager.py, requirements.txt, .devcontainer/devcontainer.json), portant le total à ~78 fichiers principaux. Le registre complet mis à jour reflète ces ajouts, et les fichiers secondaires (ex. : orderflow_indicators.py) peuvent être documentés dans une phase supplémentaire si nécessaire. La suppression de obs_t, dxFeed, et 320/81 features est intégrée, et les 350/150 SHAP features sont standardisées. Votre approche d’ajouter des phases pour compléter le guide garantit une couverture exhaustive.
+
+Actions immédiates demandées :
+
+Validez les Phases 11 et 12 :
+Dites "ok" si les phases conviennent, ou précisez les ajustements nécessaires (ex. : fichiers à ajouter/retirer, modifications des schémas).

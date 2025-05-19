@@ -1,0 +1,651 @@
+Guide d'Intégration pour MIA_IA_SYSTEM_v2_2025
+Version: 2.1.4Date: 2025-05-13  
+Aperçu
+Ce guide décrit les fichiers à créer et à modifier pour intégrer les améliorations proposées pour MIA_IA_SYSTEM_v2_2025, basées sur les idées de MLOps, observabilité, robustesse, sécurité, qualité de code, scalabilité, gestion du drift, et data engineering. Il inclut des instructions pour chaque fichier, leur rôle, leur contenu attendu, et leur lien avec les suggestions existantes (1 à 9). Les modifications respectent les standards de structure.txt (version 2.1.4, 2025-05-13) et évitent toute référence à dxFeed, obs_t, 320 features, ou 81 features.
+Note sur les dossiers policies : Le répertoire officiel pour les politiques de routage est src/model/router/policies. Le dossier src/model/policies semble être un résidu et doit être vérifié pour suppression afin d’éviter toute confusion.
+Liste des nouveaux fichiers à créer
+1. src/utils/secret_manager.py
+
+Rôle : Gérer les secrets (ex. : identifiants IQFeed, AWS, Telegram) avec AWS KMS pour sécuriser les accès.
+Contenu attendu :
+Une classe SecretManager avec une méthode get_secret(secret_id: str) -> str pour récupérer les secrets chiffrés via AWS KMS.
+Intégration avec boto3 pour le déchiffrement.
+Gestion des erreurs pour les cas où KMS est indisponible.
+
+
+Idée associée : Sécurité & conformité (gestion des secrets).
+Suggestion concernée : 8 (sécurité du fallback SHAP, pour protéger les données).
+Dépendances : boto3>=1.26.0,<2.0.0.
+
+2. src/monitoring/prometheus_metrics.py
+
+Rôle : Exposer des métriques en temps réel (latence, trades traités, CPU/mémoire) pour Prometheus.
+Contenu attendu :
+Définition de compteurs (Counter), jauges (Gauge), et histogrammes (Histogram) avec prometheus-client.
+Métriques spécifiques : trades_processed, inference_latency, cpu_usage, memory_usage.
+Un endpoint HTTP pour scraper les métriques (ex. : start_http_server(8000)).
+
+
+Idée associée : Observabilité et monitoring (métriques temps réel).
+Suggestions concernées : 2 (loggers, pour exporter les métriques), 5 (monitoring du profit factor).
+Dépendances : prometheus-client>=0.17.0,<1.0.0.
+
+3. src/monitoring/drift_detector.py
+
+Rôle : Détecter le drift des distributions des 150 SHAP features avec des tests statistiques (KS test, PSIS).
+Contenu attendu :
+Une classe DriftDetector avec une méthode detect_drift(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> bool.
+Utilisation de scipy.stats.ks_2samp pour comparer les distributions.
+Stockage des résultats dans data/market_memory.db (table drift_metrics).
+
+
+Idée associée : Gestion du drift & adaptation en ligne (détection de drift).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Dépendances : scipy>=1.12.0,<2.0.0, pandas>=2.0.0,<3.0.0.
+
+4. src/data/validate_data.py
+
+Rôle : Valider les schémas et plages des features avec Great Expectations avant leur utilisation.
+Contenu attendu :
+Une fonction validate_features(data: pd.DataFrame) -> bool utilisant great_expectations.dataset.PandasDataset.
+Attentes pour les features critiques (ex. : rsi_14 entre 0 et 100, obi_score entre -1 et 1).
+Journalisation des résultats de validation dans data/logs/validation_errors.csv.
+
+
+Idée associée : Data engineering & gouvernance (data validation).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Dépendances : great-expectations>=0.18.0,<1.0.0.
+
+5. src/data/data_lake.py
+
+Rôle : Gérer le stockage des données dans un data lake S3 structuré (raw/processed/presentation).
+Contenu attendu :
+Une classe DataLake avec des méthodes store(data: pd.DataFrame, layer: str, key: str) -> None et retrieve(layer: str, key: str) -> pd.DataFrame.
+Intégration avec boto3 pour écrire/lire dans S3.
+Support du chiffrement S3 (AES256).
+
+
+Idée associée : Data engineering & gouvernance (lac de données).
+Suggestion concernée : 8 (gestion sécurisée des données).
+Dépendances : boto3>=1.26.0,<2.0.0.
+
+6. src/model/utils/mlflow_tracker.py
+
+Rôle : Intégrer MLflow pour tracer les datasets, hyperparamètres, métriques, et artefacts des réentraînements.
+Contenu attendu :
+Une classe MLflowTracker avec des méthodes log_run(parameters: dict, metrics: dict, artifacts: list) -> None.
+Journalisation des paramètres (learning_rate, gamma), métriques (Sharpe ratio), et artefacts (feature_importance.csv).
+Stockage des métadonnées dans data/market_memory.db (table mlflow_runs).
+
+
+Idée associée : MLOps et automatisation (gestion de versions & tracking).
+Suggestion concernée : 9 (réentraînement).
+Dépendances : mlflow>=2.10.0,<3.0.0.
+
+7. src/utils/error_tracker.py
+
+Rôle : Configurer Sentry pour capturer les stack traces des erreurs en production.
+Contenu attendu :
+Une fonction init_sentry(dsn: str) -> None pour initialiser sentry-sdk.
+Une méthode capture_error(exception: Exception, context: dict) -> None pour journaliser les erreurs.
+Intégration avec performance_logger.py pour capturer les erreurs existantes.
+
+
+Idée associée : Observabilité et monitoring (error tracking).
+Suggestion concernée : 2 (loggers).
+Dépendances : sentry-sdk>=1.40.0,<2.0.0.
+
+8. dags/train_pipeline.py
+
+Rôle : DAG Airflow pour orchestrer le pipeline d’entraînement continu (validation, entraînement, déploiement).
+Contenu attendu :
+Un DAG avec des tâches pour :
+Vérifier le nombre de trades dans market_memory.db (table trade_patterns).
+Valider les features avec validate_data.py.
+Exécuter retrain_trade_probability.py.
+Versionner avec MLflow via mlflow_tracker.py.
+
+
+Planification quotidienne (schedule_interval="@daily").
+
+
+Idée associée : MLOps et automatisation (pipeline d’entraînement continu).
+Suggestion concernée : 9 (réentraînement).
+Dépendances : apache-airflow>=2.8.0,<3.0.0, airflow-provider-sqlite.
+
+9. helm/mia-system/Chart.yaml
+
+Rôle : Chart Helm pour déployer l’application sur Kubernetes.
+Contenu attendu :
+Métadonnées du chart (nom, version, description).
+Dépendances pour Prometheus et Grafana.
+
+
+Idée associée : Scalabilité & déploiement (containerisation).
+Suggestion concernée : Aucune directement.
+Dépendances : Helm (helm>=3.12.0).
+
+10. helm/mia-system/values.yaml
+
+Rôle : Configurations pour HPA (Horizontal Pod Autoscaling) et déploiement multi-zone.
+Contenu attendu :
+Paramètres pour le nombre de replicas, les limites CPU/mémoire, et les régions AWS.
+Configurations pour les endpoints Prometheus et Grafana.
+
+
+Idée associée : Scalabilité & déploiement (multi-zone / haute disponibilité).
+Suggestion concernée : Aucune directement.
+Dépendances : Helm.
+
+11. tests/test_resilience.py
+
+Rôle : Tests de chaos engineering pour simuler des pannes (latence DB, déconnexion IQFeed).
+Contenu attendu :
+Tests unitaires avec unittest.mock pour simuler des échecs dans data_provider.py, feature_pipeline.py, et mia_switcher.py.
+Validation du comportement des circuit breakers et retries.
+
+
+Idée associée : Robustesse & résilience (chaos engineering).
+Suggestion concernée : 7 (tests unitaires).
+Dépendances : pytest>=7.3.0,<8.0.0.
+
+12. .pre-commit-config.yaml
+
+Rôle : Configurer les hooks pre-commit pour Black, isort, Flake8, et MyPy.
+Contenu attendu :
+Hooks pour formater le code (black), trier les imports (isort), vérifier la syntaxe (flake8), et valider les types (mypy).
+
+
+Idée associée : Qualité de code & process de développement (pre-commit hooks).
+Suggestion concernée : 7 (tests unitaires).
+Dépendances : pre-commit>=3.6.0,<4.0.0, black>=23.7.0, isort>=5.12.0, flake8>=6.0.0, mypy>=1.4.0.
+
+13. Dockerfile
+
+Rôle : Containeriser l’application pour Kubernetes.
+Contenu attendu :
+Base image python:3.10-slim.
+Installation des dépendances depuis requirements.txt.
+Copie du code source (src/) et exécution de run_system.py.
+
+
+Idée associée : Scalabilité & déploiement (containerisation).
+Suggestion concernée : Aucune directement.
+Dépendances : Docker (docker>=24.0.0).
+
+14. prometheus.yml
+
+Rôle : Configurer Prometheus pour scraper les métriques exposées par prometheus_metrics.py.
+Contenu attendu :
+Configuration des scrape targets (ex. : localhost:8000).
+Intervalle de scrape (ex. : 15s).
+
+
+Idée associée : Observabilité et monitoring (métriques temps réel).
+Suggestions concernées : 2 (loggers), 5 (profit factor).
+Dépendances : Prometheus (prometheus>=2.48.0).
+
+15. grafana.ini
+
+Rôle : Configurer Grafana pour les dashboards dynamiques et les alertes.
+Contenu attendu :
+Activation des alertes ([alerting] enabled = true).
+Connexion au datasource Prometheus.
+
+
+Idée associée : Observabilité et monitoring (dashboards dynamiques).
+Suggestions concernées : 2 (loggers), 5 (profit factor).
+Dépendances : Grafana (grafana>=10.3.0).
+
+16. .github/dependabot.yml
+
+Rôle : Activer les mises à jour automatiques des dépendances Python.
+Contenu attendu :
+Configuration pour vérifier quotidiennement les mises à jour dans requirements.txt.
+
+
+Idée associée : Sécurité & conformité (scan de vulnérabilités).
+Suggestion concernée : 7 (tests unitaires).
+Dépendances : GitHub Dependabot.
+
+17. .github/PULL_REQUEST_TEMPLATE.md
+
+Rôle : Standardiser les pull requests avec des règles de revue.
+Contenu attendu :
+Modèle avec sections pour la description, les tests effectués, et la couverture de code.
+
+
+Idée associée : Qualité de code & process de développement (revue de code).
+Suggestion concernée : 7 (tests unitaires).
+Dépendances : GitHub.
+
+Liste des fichiers à modifier
+1. src/features/feature_pipeline.py
+
+Rôle : Gérer le pipeline de features, incluant le fallback SHAP.
+Modifications :
+Ajouter un circuit breaker pour load_shap_fallback avec pybreaker pour gérer les échecs de cache.
+Intégrer validate_data.py pour valider les features avant le traitement.
+
+
+Contenu attendu :
+Une méthode décorée avec @circuit_breaker pour load_shap_fallback.
+Un appel à validate_features avant de générer les features.
+
+
+Idées associées : Robustesse & résilience (circuit breakers), Data engineering (data validation).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Dépendances : pybreaker>=1.1.0,<2.0.0, great-expectations>=0.18.0,<1.0.0.
+
+2. src/strategy/mia_switcher.py
+
+Rôle : Gérer le basculement entre modèles (SAC, PPO, DDPG).
+Modifications :
+Ajouter une méthode canary_deploy pour tester les nouveaux modèles sur un sous-ensemble de trades.
+Intégrer drift_detector.py pour surveiller le drift des 150 SHAP features.
+Exporter les métriques (calculate_profit_factor, latence) vers Prometheus via prometheus_metrics.py.
+
+
+Contenu attendu :
+Une méthode canary_deploy(new_model: Model, fraction: float) -> None.
+Un appel à DriftDetector.detect_drift dans la boucle principale.
+Des compteurs Prometheus pour profit_factor et switch_latency.
+
+
+Idées associées : MLOps (canary deployments), Gestion du drift (détection), Observabilité (métriques).
+Suggestions concernées : 1 (features dynamiques), 2 (loggers), 5 (profit factor), 7 (tests unitaires).
+Dépendances : prometheus-client>=0.17.0,<1.0.0, scipy>=1.12.0,<2.0.0.
+
+3. src/model/trade_probability.py
+
+Rôle : Prédire les probabilités de succès des trades et gérer les réentraînements.
+Modifications :
+Intégrer MLflow pour tracer les réentraînements (paramètres, métriques, artefacts).
+Ajouter une méthode adjust_hyperparams pour meta-learning des evaluation_steps.
+
+
+Contenu attendu :
+Un appel à MLflowTracker.log_run dans retrain_model.
+Une méthode adjust_hyperparams(metrics: Dict[str, float]) -> Dict[str, float] utilisant skopt.
+
+
+Idées associées : MLOps (tracking), Gestion du drift (meta-learning).
+Suggestions concernées : 3 (simulation configurable), 9 (réentraînement).
+Dépendances : mlflow>=2.10.0,<3.0.0, scikit-optimize>=0.9.0,<1.0.0.
+
+4. src/model/utils/performance_logger.py
+
+Rôle : Journaliser les métriques de performance (latence, CPU, mémoire).
+Modifications :
+Ajouter l’exportation des métriques vers Prometheus.
+Intégrer Sentry pour capturer les erreurs journalisées.
+
+
+Contenu attendu :
+Une méthode export_to_prometheus(metric_name: str, value: float) -> None.
+Un appel à ErrorTracker.capture_error pour les erreurs.
+
+
+Idées associées : Observabilité (métriques, error tracking).
+Suggestion concernée : 2 (loggers).
+Dépendances : prometheus-client>=0.17.0,<1.0.0, sentry-sdk>=1.40.0,<2.0.0.
+
+5. src/model/utils/switch_logger.py
+
+Rôle : Journaliser les événements de switch entre modèles.
+Modifications :
+Ajouter l’exportation des métriques de switch (décision, régime) vers Prometheus.
+
+
+Contenu attendu :
+Une méthode export_to_prometheus(decision: str, regime: str) -> None.
+
+
+Idée associée : Observabilité (métriques).
+Suggestion concernée : 2 (loggers).
+Dépendances : prometheus-client>=0.17.0,<1.0.0.
+
+6. src/data/data_provider.py
+
+Rôle : Récupérer les données IQFeed.
+Modifications :
+Ajouter un circuit breaker pour les appels IQFeed avec pybreaker.
+Configurer des retries avec jitter via tenacity.
+Activer TLS pour les connexions sécurisées avec ssl.
+
+
+Contenu attendu :
+Une méthode décorée avec @circuit_breaker et @retry pour fetch_iqfeed_data.
+Un contexte SSL pour les connexions.
+
+
+Idées associées : Robustesse & résilience (circuit breakers, retries), Sécurité (chiffrement).
+Suggestion concernée : 8 (fallback SHAP, pour la robustesse des données).
+Dépendances : pybreaker>=1.1.0,<2.0.0, tenacity>=8.2.0,<9.0.0.
+
+7. config/feature_sets.yaml
+
+Rôle : Définir les 350 features d’entraînement et 150 SHAP features pour l’inférence.
+Modifications :
+Ajouter des métadonnées expected_range pour chaque feature pour la détection de drift.
+
+
+Contenu attendu :
+Une nouvelle clé expected_range pour chaque feature (ex. : rsi_14: expected_range: [0, 100]).
+
+
+Idée associée : Gestion du drift (détection).
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+Dépendances : pyyaml>=6.0.0,<7.0.0.
+
+8. config/algo_config.yaml
+
+Rôle : Configurer les hyperparamètres pour SAC, PPO, et DDPG.
+Modifications :
+Ajouter un paramètre meta_learning_enabled pour activer l’ajustement en ligne des hyperparamètres.
+Ajouter un seuil alert_threshold pour max_profit_factor pour le monitoring Grafana.
+
+
+Contenu attendu :
+Nouvelles clés :meta_learning_enabled:
+  value: true
+  description: Active l’ajustement en ligne des hyperparamètres.
+max_profit_factor:
+  alert_threshold: 15.0
+
+
+
+
+Idées associées : Gestion du drift (meta-learning), Observabilité (dashboards).
+Suggestions concernées : 3 (simulation configurable), 5 (profit factor).
+Dépendances : pyyaml>=6.0.0,<7.0.0.
+
+9. config/es_config.yaml
+
+Rôle : Configurer les paramètres globaux (IQFeed, AWS, Telegram).
+Modifications :
+Ajouter des configurations pour le chiffrement S3, les secrets KMS, et l’endpoint Prometheus.
+
+
+Contenu attendu :
+Nouvelles clés :s3_encryption: "AES256"
+kms_secret_id: "mia-secrets"
+prometheus_endpoint: "http://localhost:8000"
+
+
+
+
+Idées associées : Sécurité (chiffrement, secrets), Observabilité (métriques).
+Suggestion concernée : 8 (fallback SHAP, pour la gestion sécurisée des données).
+Dépendances : pyyaml>=6.0.0,<7.0.0.
+
+10. data/market_memory.sql
+
+Rôle : Définir le schéma de la base de données SQLite.
+Modifications :
+Ajouter une table drift_metrics pour stocker les résultats de détection de drift.
+Ajouter une table mlflow_runs pour tracer les runs d’entraînement.
+
+
+Contenu attendu :
+Nouvelles tables :CREATE TABLE IF NOT EXISTS drift_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feature_name TEXT NOT NULL,
+    p_value REAL NOT NULL,
+    timestamp DATETIME NOT NULL
+);
+CREATE TABLE IF NOT EXISTS mlflow_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    parameters JSON NOT NULL,
+    metrics JSON NOT NULL,
+    timestamp DATETIME NOT NULL
+);
+
+
+
+
+Idées associées : Gestion du drift (détection), MLOps (tracking).
+Suggestions concernées : 1 (features dynamiques), 9 (réentraînement).
+Dépendances : SQLite.
+
+11. .github/workflows/python.yml
+
+Rôle : Configurer le pipeline CI/CD.
+Modifications :
+Ajouter des jobs pour Bandit, Dependabot, SonarQube, tests de résilience, et validation MLflow.
+Mettre à jour --cov-fail-under=100 pour exiger une couverture complète.
+
+
+Contenu attendu :
+Nouveaux jobs :- name: Run Bandit
+  run: bandit -r src/
+- name: Run Resilience Tests
+  run: pytest tests/test_resilience.py -v
+
+
+
+
+Idées associées : Sécurité (scans), Qualité de code (couverture), Robustesse (tests).
+Suggestion concernée : 7 (tests unitaires).
+Dépendances : bandit>=1.7.0,<2.0.0, sonar-scanner>=5.0.0.
+
+12. .flake8
+
+Rôle : Configurer les règles de linting Flake8.
+Modifications :
+Ajouter des exclusions pour les nouveaux modules générés (ex. : src/monitoring/generated/).
+
+
+Contenu attendu :
+Mise à jour de exclude :exclude =
+    src/monitoring/generated/,
+
+
+
+
+Idée associée : Qualité de code.
+Suggestion concernée : 7 (tests unitaires).
+Dépendances : flake8>=6.0.0,<7.0.0.
+
+13. docs/feature_engineering.md
+
+Rôle : Documenter le processus de feature engineering.
+Modifications :
+Ajouter des sections sur la détection de drift et la validation des données.
+
+
+Contenu attendu :
+Nouvelles sections :## Détection de Drift
+Les distributions des 150 SHAP features sont surveillées avec KS test via `drift_detector.py`. Un drift significatif (p-value < 0.05) déclenche un réentraînement.
+
+## Validation des Données
+Great Expectations valide les schémas et plages des features dans `validate_data.py` avant leur utilisation.
+
+
+
+
+Idées associées : Gestion du drift, Data engineering.
+Suggestions concernées : 1 (features dynamiques), 8 (fallback SHAP).
+
+14. docs/modules.md
+
+Rôle : Décrire les modules du projet.
+Modifications :
+Ajouter des descriptions pour les nouveaux modules : prometheus_metrics, drift_detector, secret_manager, validate_data, data_lake, mlflow_tracker, error_tracker.
+
+
+Contenu attendu :
+Nouvelles sections :### DriftDetector
+- **Rôle** : Surveille le drift des features avec KS test.
+- **Fichier** : `src/monitoring/drift_detector.py`
+- **Outputs** : `data/market_memory.db` (table `drift_metrics`).
+
+
+
+
+Idées associées : MLOps, Observabilité, Sécurité, Gestion du drift, Data engineering.
+Suggestions concernées : 1, 2, 7, 8, 9.
+
+15. docs/api_reference.md
+
+Rôle : Fournir une référence des APIs.
+Modifications :
+Ajouter les APIs des nouveaux modules (ex. : DriftDetector.detect_drift, SecretManager.get_secret).
+
+
+Contenu attendu :
+Nouvelles sections :## DriftDetector
+- **Fichier** : `src/monitoring/drift_detector.py`
+- **Méthodes** :
+  - `detect_drift(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> bool`: Détecte le drift des features.
+
+
+
+
+Idées associées : MLOps, Observabilité, Sécurité, Gestion du drift, Data engineering.
+Suggestions concernées : 1, 2, 7, 8, 9.
+
+16. docs/update_guide.md
+
+Rôle : Documenter les modifications apportées au projet.
+Modifications :
+Mettre à jour la table des modifications pour inclure les nouveaux fichiers et leurs statuts.
+
+
+Contenu attendu :
+Mise à jour de la table :| **Fichier** | **Suggestion** | **Priorité** | **Statut** | **Notes** |
+|-------------|----------------|--------------|------------|-----------|
+| `src/monitoring/drift_detector.py` | 1, 7 | Élevée | À créer | Détection de drift pour les features dynamiques. |
+
+
+
+
+Idées associées : Toutes (documentation).
+Suggestions concernées : 1, 2, 7, 8, 9.
+
+17. tests/test_feature_pipeline.py
+
+Rôle : Tester le pipeline de features.
+Modifications :
+Ajouter des tests pour les circuit breakers (load_shap_fallback) et la validation des données (validate_data.py).
+
+
+Contenu attendu :
+Nouveaux tests :def test_shap_fallback_circuit_breaker():
+    with mock.patch("pybreaker.CircuitBreaker", side_effect=Exception):
+        assert feature_pipeline.load_shap_fallback() is not None
+
+
+
+
+Idées associées : Robustesse, Data engineering.
+Suggestion concernée : 8 (fallback SHAP).
+Dépendances : pytest>=7.3.0,<8.0.0.
+
+18. tests/test_mia_switcher.py
+
+Rôle : Tester le module MiaSwitcher.
+Modifications :
+Ajouter des tests pour canary_deploy, détection de drift, et couverture 100%.
+
+
+Contenu attendu :
+Nouveaux tests :def test_canary_deploy():
+    switcher.canary_deploy(new_model=MockModel(), fraction=0.1)
+    assert performance_logger.metrics["canary_sharpe"] > 0
+
+
+
+
+Idées associées : MLOps, Gestion du drift, Qualité de code.
+Suggestion concernée : 7 (tests unitaires).
+Dépendances : pytest>=7.3.0,<8.0.0.
+
+19. tests/test_trade_probability.py
+
+Rôle : Tester le module TradeProbability.
+Modifications :
+Ajouter des tests pour MLflow (log_run) et meta-learning (adjust_hyperparams).
+
+
+Contenu attendu :
+Nouveaux tests :def test_mlflow_tracking():
+    trade_probability.retrain_model("ES")
+    assert mlflow.active_run() is not None
+
+
+
+
+Idées associées : MLOps, Gestion du drift.
+Suggestion concernée : 9 (réentraînement).
+Dépendances : pytest>=7.3.0,<8.0.0.
+
+Instructions de validation
+
+Enregistrer les fichiers :
+
+Créez les nouveaux fichiers listés dans leurs dossiers respectifs.
+Appliquez les modifications aux fichiers existants.
+Assurez l’encodage UTF-8 pour tous les fichiers.
+
+
+Vérifier le contenu :
+
+Confirmez que chaque fichier inclut la version 2.1.4 et la note policies.
+Vérifiez que les fonctionnalités (ex. : circuit breakers, métriques Prometheus) sont implémentées comme décrit.
+Assurez l’absence de références à dxFeed, obs_t, 320/81 features.
+
+
+Tester les modifications :
+
+Exécutez les tests unitaires :pytest tests/test_mia_switcher.py -v
+pytest tests/test_feature_pipeline.py -v
+pytest tests/test_trade_probability.py -v
+pytest tests/test_resilience.py -v
+
+
+Testez le système global :python src/run_system.py --market ES
+
+
+Vérifiez les logs et métriques :ls D:/MIA_IA_SYSTEM_v2_2025/data/logs/ES/
+cat D:/MIA_IA_SYSTEM_v2_2025/data/logs/trading/decision_log.csv
+curl http://localhost:8000  # Vérifier les métriques Prometheus
+
+
+Testez le pipeline CI/CD :git add .
+git commit -m "Implement MLOps, observability, and resilience improvements"
+git push origin main
+
+
+Consultez l’onglet Actions sur GitHub.
+
+
+
+
+Générer la documentation :
+
+Mettez à jour docs/index.rst si nécessaire.
+Générez la documentation Sphinx :cd D:/MIA_IA_SYSTEM_v2_2025/docs
+make html
+
+
+Vérifiez le rendu dans D:/MIA_IA_SYSTEM_v2_2025/docs/_build/html/index.html.
+
+
+Confirmation :
+
+Confirmez avec "… OK" après validation des fichiers.
+Précisez tout ajustement nécessaire (ex. : ajouter une méthode, modifier un test).
+
+
+
+Prochaines étapes
+
+Priorisation : Indiquez les fichiers à créer ou modifier en priorité (ex. : prometheus_metrics.py, train_pipeline.py).
+Contenu spécifique : Demandez la création complète d’un fichier (ex. : fournir le code pour src/utils/secret_manager.py).
+Confirmation des fichiers existants : Validez les fichiers précédemment mis à jour (market_memory.sql, decision_log.csv, etc.) avec "… OK" ou précisez les modifications.
+Validation de troubleshooting.md : Fournissez la Partie 4 si elle doit être complétée.
+Autres fichiers : Indiquez si retrain_trade_probability.py, es_config.yaml, ou autres doivent être créés.
+
+Pour commencer, consultez construction_aid.md pour des extraits de code et des instructions détaillées.

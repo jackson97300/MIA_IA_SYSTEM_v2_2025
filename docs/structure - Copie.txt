@@ -1,0 +1,541 @@
+🌟 MIA_IA_SYSTEM_v2_2025 Structure
+Pipeline de trading automatisé haute fréquenceVersion: 2.1.4Date: 2025-05-14Description: Structure complète du projet, calibrée pour 350 features (entraînement) et 150 SHAP features (inférence) avec fallback. Données via IQFeed (niveau 2 recommandé), ordres via Sierra Chart/AMP Futures.Mise à jour: Intégration de risk_manager.py, regime_detector.py, configurations associées, et documentation.Conformité: 18 méthodes SAC, tests unitaires (pytest), linting (flake8, pylint, mypy).
+
+📂 .devcontainer/
+Rôle: Configure l’environnement Codespaces pour un développement standardisé.  
+
+📄 devcontainer.jsonRôle: Configure Codespaces avec Python 3.10, extensions VS Code (Pylint, Black, MyPy, pytest).Contenu: Image python:3.10, commande pip install -r requirements.txt.
+
+
+📂 .github/
+Rôle: Configure les workflows GitHub Actions pour l’intégration continue (CI).  
+
+📂 workflows/Rôle: Automatisation des tests, linting, et couverture.  
+📄 python.ymlRôle: Exécute pytest, flake8, pylint, mypy, rapport Codecov à chaque push/PR.Contenu: Jobs (test, lint, docs) avec Python 3.10.
+
+
+📄 dependabot.ymlRôle: Met à jour les dépendances (requirements.txt).Contenu: Crée des PRs validées par python.yml.  
+📄 PULL_REQUEST_TEMPLATE.mdRôle: Standardise les PRs manuelles et Dependabot.Contenu: Exige des tests via python.yml.
+
+
+📂 .venv/
+Rôle: Environnement virtuel pour isoler les dépendances.  
+
+📂 Include/Rôle: Fichiers d’en-tête pour l’environnement virtuel.  
+📄 ***.h**Rôle: Fichiers binaires pour compilation.
+
+
+📂 Lib/site-packages/Rôle: Bibliothèques Python installées (pandas, numpy, pyiqfeed, etc.).  
+📄 pandas/, numpy/, pyiqfeed/, hmmlearn/, pydantic/, cachetools/Rôle: Modules installés.
+
+
+📂 Scripts/Rôle: Scripts exécutables de l’environnement virtuel.  
+📄 activate.bat, pip.exeRôle: Activation et gestion des packages.
+
+
+📂 share/jupyter/Rôle: Configuration pour Jupyter (si utilisé).  
+📄 kernels/Rôle: Fichiers de configuration Jupyter.
+
+
+⚙️ pyvenv.cfgRôle: Configuration de l’environnement virtuel.Contenu: include-system-site-packages=false.
+
+
+📂 config/
+Rôle: Fichiers YAML pour configurer le pipeline, les modèles, et les APIs.  
+
+⚙️ es_config.yamlRôle: Configuration du prétraitement pour ES.Contenu: Chemins (input_path: data/iqfeed/iqfeed_data.csv), paramètres (retry_attempts: 3).  
+⚙️ router_config.yamlRôle: Seuils pour détecter les régimes (trend, range, défensif).Contenu: Seuils (trend_threshold: 0.7, vix_high_threshold: 25.0), volatilité (atr_multiplier: 2.0).  
+⚙️ model_params.yamlRôle: Hyperparamètres pour SAC, PPO, DDPG, CNN, LSTM.Contenu: Paramètres (learning_rate: 0.0003, cnn_layers: 3, maml_steps: 5).  
+⚙️ mia_config.yamlRôle: Configuration cognitive de MIA (langue, vocal).Contenu: Paramètres (language: fr, vocal_enabled: true).  
+⚙️ feature_sets.yamlRôle: Catalogue des 350 features (entraînement) et 150 SHAP features (inférence).Contenu: Features (ES: {training: [rsi_14, ofi_score, vix_es_correlation], inference: [rsi_14, ofi_score]}).  
+⚙️ market_config.yamlRôle: Configuration du marché ES et placeholders pour futurs instruments.Contenu: Paramètres (instruments: {ES: {symbol: ES, sources: [iqfeed, newsapi]}}).  
+⚙️ credentials.yamlRôle: Identifiants sécurisés pour APIs (IQFeed, Investing.com, NewsAPI).Contenu: Clés (iqfeed_api_key: yyy, news_api_key: xxx).  
+⚙️ trading_env_config.yamlRôle: Configuration des environnements gym pour trading_env.py.Contenu: Paramètres (max_position_size: 5, reward_threshold: 0.01).  
+⚙️ algo_config.yamlRôle: Hyperparamètres pour SAC, PPO, DDPG par régime.Contenu: Paramètres (sac.range.ent_coef: 0.15, l2_lambda_base: 0.01).  
+⚙️ trade_probability_config.yamlRôle: Configuration pour TradeProbabilityPredictor.Contenu: Paramètres (confidence_threshold: 0.7, retrain_interval: 24h).  
+⚙️ risk_manager_config.yamlRôle: Configuration pour risk_manager.py.Contenu: Paramètres (buffer_size: 100, kelly_fraction: 0.1).  
+⚙️ regime_detector_config.yamlRôle: Configuration pour regime_detector.py.Contenu: Paramètres (buffer_size: 100, n_components: 3, window_size: 50).
+ ⚙️  trade_probability_rl.py
+
+📂 data/
+Rôle: Stocke les données brutes, features, trades, logs, modèles, et snapshots.  
+
+📂 iqfeed/Rôle: Données brutes collectées via data_provider.py (IQFeed).  
+📊 iqfeed_data.csv [GÉNÉRÉ]Rôle: Données brutes (OHLC, DOM, tick-level, cross-market).Contenu: Colonnes (timestamp, bid, ask, bid_size_level_2).  
+📊 merged_data.csv [GÉNÉRÉ]Rôle: Données fusionnées (OHLC, options, news, cross-market).Contenu: Colonnes (timestamp, close, news_impact_score).  
+📊 option_chain.csv [GÉNÉRÉ]Rôle: Données de chaîne d’options.Contenu: Colonnes (timestamp, strike, call_iv_atm).  
+📊 cross_market.csv [GÉNÉRÉ]Rôle: Données cross-market (ES, SPY, VIX).Contenu: Colonnes (timestamp, symbol, vix_es_correlation).  
+📊 news.csv [GÉNÉRÉ]Rôle: Données de nouvelles.Contenu: Colonnes (timestamp, headline, source).
+
+
+📂 features/Rôle: Features générées et analysées. 
+ 
+📊 features_latest.csv [GÉNÉRÉ]Rôle: 350 features pour entraînement.Contenu: Colonnes (rsi_14, ofi_score, regime_hmm).  
+📊 features_latest_filtered.csv [GÉNÉRÉ]Rôle: Features nettoyées (sans NaN, outliers).Contenu: Colonnes (rsi_14, ofi_score, call_iv_atm).  
+📊 feature_importance.csv [GÉNÉRÉ]Rôle: Importance des 150 SHAP features.Contenu: Colonnes (feature, shap_value).  
+📊 feature_importance_cache.csv [GÉNÉRÉ]Rôle: Cache des 150 SHAP features pour fallback.Contenu: Colonnes (feature_name, shap_value).  
+📊 pca_orderflow.csv [GÉNÉRÉ]Rôle: Résultats PCA des features order flow.Contenu: Colonnes (pca_orderflow_1, pca_orderflow_2).  
+📊 shap_full_daily.csv [GÉNÉRÉ]Rôle: Analyse SHAP quotidienne des 350 features.Contenu: Colonnes (feature, shap_value, timestamp).
+
+
+📂 trade_snapshots/Rôle: Snapshots JSON des trades.  
+📄 trade_20250513.json [GÉNÉRÉ]Rôle: Snapshot d’un trade.Contenu: {trade_id, entry_price, regime_probs}.
+
+
+📂 trades/Rôle: Résultats des trades simulés et réels.  
+📊 trades_simulated.csv [GÉNÉRÉ]Rôle: Trades simulés (paper trading).Contenu: Colonnes (trade_id, entry_price, profit).  
+📊 trades_real.csv [GÉNÉRÉ]Rôle: Trades réels via Sierra Chart.Contenu: Colonnes (trade_id, entry_price, profit).
+
+
+📂 backtest/Rôle: Résultats des backtests.  
+📊 backtest_results.csv [GÉNÉRÉ]Rôle: Résultats des backtests.Contenu: Colonnes (strategy_id, profit, sharpe_ratio).
+
+
+📂 logs/Rôle: Logs des opérations et performances.  
+📂 cognitive/Rôle: Logs cognitifs de MIA.  
+📄 mind_stream.log [GÉNÉRÉ]Rôle: Logs des flux cognitifs.Contenu: [2025-05-13 10:00] Cognition: Analyse terminée.  
+📄 mia_alerts.log [GÉNÉRÉ]Rôle: Logs des alertes.Contenu: [2025-05-13 10:00] Alerte: Volatilité élevée.
+
+
+📂 market/Rôle: Logs des opérations de marché.
+  
+📊 backtest.csv [GÉNÉRÉ]Rôle: Résultats détaillés des backtests.Contenu: Colonnes (timestamp, strategy, profit).  
+📄 live_trading.log [GÉNÉRÉ]Rôle: Logs du trading live.Contenu: [2025-05-13 10:00] Trade: Buy 1 ES @ 5100.  
+📄 regime_detection.log [GÉNÉRÉ]Rôle: Logs des détections de régime.Contenu: [2025-05-13 10:00] Régime: Trend.  
+📄 adaptive_learning.log [GÉNÉRÉ]Rôle: Logs de l’apprentissage adaptatif.Contenu: [2025-05-13 10:00] Fine-tune: Loss=0.05.  
+📄 check_deps.log [GÉNÉRÉ]Rôle: Logs des vérifications de dépendances.Contenu: [2025-05-13 10:00] Pandas: OK.  
+📄 feature_sets_check.log [GÉNÉRÉ]Rôle: Logs des vérifications des feature sets.Contenu: [2025-05-13 10:00] 350 features validées.  
+📊 features_audit_final.csv [GÉNÉRÉ]Rôle: Résultats finaux de l’audit des features.Contenu: Colonnes (feature, nan_ratio, shap_value).  
+📊 features_audit_raw.csv [GÉNÉRÉ]Rôle: Résultats bruts de l’audit des features.Contenu: Colonnes (feature, value, status).  
+📄 generate_trades_simulated.log [GÉNÉRÉ]Rôle: Logs des trades simulés.Contenu: [2025-05-13 10:00] Trade simulé: Profit=50.  
+📊 regime_history.csv [GÉNÉRÉ]Rôle: Historique des régimes détectés.Contenu: Colonnes (timestamp, regime, confidence).  
+📊 router_details.csv [GÉNÉRÉ]Rôle: Détails des décisions de routage.Contenu: Colonnes (timestamp, mode, predicted_vix).  
+📊 provider_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de collecte de données.Contenu: Colonnes (timestamp, operation, latency).  
+📊 feature_pipeline_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de génération de features.Contenu: Colonnes (timestamp, operation, latency).  
+📊 neural_pipeline_performance.csv [GÉNÉRÉ]Rôle: Logs des performances des prédictions neuronales.Contenu: Colonnes (timestamp, operation, latency).  
+📊 train_sac_performance.csv [GÉNÉRÉ]Rôle: Logs des performances d’entraînement.Contenu: Colonnes (timestamp, epoch, loss).  
+📊 risk_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de gestion des risques.Contenu: Colonnes (timestamp, operation, latency).  
+📊 signal_selector_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de sélection des signaux.Contenu: Colonnes (timestamp, operation, latency).  
+📊 trading_loop_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de la boucle de trading.Contenu: Colonnes (timestamp, operation, latency).  
+📊 simulate_trades_performance.csv [GÉNÉRÉ]Rôle: Logs des performances des simulations.Contenu: Colonnes (timestamp, operation, latency).  
+📊 trade_executor_performance.csv [GÉNÉRÉ]Rôle: Logs des performances d’exécution des trades.Contenu: Colonnes (timestamp, operation, latency).  
+📊 dashboard_performance.csv [GÉNÉRÉ]Rôle: Logs des performances du tableau de bord.Contenu: Colonnes (timestamp, operation, latency).  
+📊 heatmap_performance.csv [GÉNÉRÉ]Rôle: Logs des performances des heatmaps.Contenu: Colonnes (timestamp, operation, latency).  
+📊 drift_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de détection des dérives.Contenu: Colonnes (timestamp, operation, latency).  
+📊 run_dashboard_performance.csv [GÉNÉRÉ]Rôle: Logs des performances du lancement du dashboard.Contenu: Colonnes (timestamp, operation, latency).  
+📊 preprocessing_performance.csv [GÉNÉRÉ]Rôle: Logs des performances du prétraitement.Contenu: Colonnes (timestamp, operation, latency).  
+📊 finetune_performance.csv [GÉNÉRÉ]Rôle: Logs des performances du fine-tuning.Contenu: Colonnes (timestamp, operation, latency).  
+📊 maml_performance.csv [GÉNÉRÉ]Rôle: Logs des performances du meta-learning.Contenu: Colonnes (timestamp, operation, latency).  
+📊 news_scraper_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de collecte des news.Contenu: Colonnes (timestamp, operation, latency).  
+📊 orderflow_indicators_performance.csv [GÉNÉRÉ]Rôle: Logs des performances des indicateurs d’order flow.Contenu: Colonnes (timestamp, operation, latency).  
+📊 volatility_metrics_performance.csv [GÉNÉRÉ]Rôle: Logs des performances des métriques de volatilité.Contenu: Colonnes (timestamp, operation, latency).  
+📊 options_metrics_performance.csv [GÉNÉRÉ]Rôle: Logs des performances des métriques d’options.Contenu: Colonnes (timestamp, operation, latency).  
+📊 news_metrics_performance.csv [GÉNÉRÉ]Rôle: Logs des performances des métriques de news.Contenu: Colonnes (timestamp, operation, latency).  
+📊 hyperparam_manager_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de gestion des hyperparamètres.Contenu: Colonnes (timestamp, operation, latency).  
+📊 sierra_chart_errors_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de gestion des erreurs Teton.Contenu: Colonnes (timestamp, operation, latency).  
+📊 microstructure_guard_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de détection des anomalies microstructure.Contenu: Colonnes (timestamp, operation, latency).  
+📊 pattern_analyzer_performance.csv [GÉNÉRÉ]Rôle: Logs des performances d’analyse des patterns.Contenu: Colonnes (timestamp, operation, latency).  
+📊 options_risk_manager_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de gestion des risques options.Contenu: Colonnes (timestamp, operation, latency).  
+📊 export_visuals_performance.csv [GÉNÉRÉ]Rôle: Logs des performances d’exportation des visualisations.Contenu: Colonnes (timestamp, operation, latency).  
+📊 integration_tests.csv [GÉNÉRÉ]Rôle: Logs des performances des tests d’intégration.Contenu: Colonnes (timestamp, operation, latency).  
+📊 run_system_performance.csv [GÉNÉRÉ]Rôle: Logs des performances du pipeline global.Contenu: Colonnes (timestamp, operation, latency).  
+📊 risk_manager_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de position sizing.Contenu: Colonnes (timestamp, operation, latency, position_size).  
+📊 regime_detector_performance.csv [GÉNÉRÉ]Rôle: Logs des performances de détection des régimes.Contenu: Colonnes (timestamp, operation, latency, regime).  
+📊 hmm_transitions.csv [GÉNÉRÉ]Rôle: Matrice de transition des états HMM.Contenu: Colonnes (from_state_0, to_state_0, to_state_1).
+
+
+📂 trading/Rôle: Logs des décisions et performances de trading.
+  
+📊 decision_log.csv [GÉNÉRÉ]Rôle: Logs des décisions de trading.Contenu: Colonnes (timestamp, trade_id, decision).  
+📊 alpha_scores.csv [GÉNÉRÉ]Rôle: Scores alpha des signaux.Contenu: Colonnes (timestamp, alpha_score).  
+📊 penalty_log.csv [GÉNÉRÉ]Rôle: État des pénalités de l’IA.Contenu: Colonnes (timestamp, penalty_active).  
+📊 sierra_errors.csv [GÉNÉRÉ]Rôle: Logs des erreurs Teton.Contenu: Colonnes (timestamp, error_code, message).
+
+
+
+
+📂 models/Rôle: Modèles entraînés et pré-entraînés.
+  
+📂 pretrained/Rôle: Scalers pour les modèles.  
+📂 neural_pipeline/Rôle: Scalers pour CNN et LSTM.  
+📄 scaler_cnn.pkl [GÉNÉRÉ]Rôle: Scaler pour modèle CNN.Contenu: Pickle avec paramètres.  
+📄 scaler_full.pkl [GÉNÉRÉ]Rôle: Scaler pour toutes les features.Contenu: Pickle avec paramètres.  
+📄 scaler_lstm.pkl [GÉNÉRÉ]Rôle: Scaler pour modèle LSTM.Contenu: Pickle avec paramètres.
+
+
+
+
+📄 cnn_model.h5 [GÉNÉRÉ]Rôle: Modèle CNN pour cnn_pressure.Contenu: HDF5 avec architecture et poids.  
+📄 lstm_model.h5 [GÉNÉRÉ]Rôle: Modèle LSTM pour séquences.Contenu: HDF5 avec architecture et poids.  
+📄 regime_mlp_model.h5 [GÉNÉRÉ]Rôle: Modèle MLP pour détection de régime.Contenu: HDF5 avec architecture et poids.  
+📄 vol_mlp_model.h5 [GÉNÉRÉ]Rôle: Modèle MLP pour volatilité.Contenu: HDF5 avec architecture et poids.  
+📄 sac_model.pth [GÉNÉRÉ]Rôle: Modèle SAC pour trading.Contenu: PyTorch avec architecture et poids.  
+📄 shap_regime_detector.pkl [GÉNÉRÉ]Rôle: Modèle SHAP pour régimes.Contenu: Pickle avec poids.  
+📄 sac_range_latest.pth [GÉNÉRÉ]Rôle: Poids SAC pour régime range.Contenu: PyTorch avec poids.  
+📄 sac_trend_latest.pth [GÉNÉRÉ]Rôle: Poids SAC pour régime trend.Contenu: PyTorch avec poids.  
+📄 sac_defensive_latest.pth [GÉNÉRÉ]Rôle: Poids SAC pour régime défensif.Contenu: PyTorch avec poids.  
+📄 ppo_range_latest.pth [GÉNÉRÉ]Rôle: Poids PPO pour régime range.Contenu: PyTorch avec poids.  
+📄 ppo_trend_latest.pth [GÉNÉRÉ]Rôle: Poids PPO pour régime trend.Contenu: PyTorch avec poids.  
+📄 ppo_defensive_latest.pth [GÉNÉRÉ]Rôle: Poids PPO pour régime défensif.Contenu: PyTorch avec poids.  
+📄 ddpg_range_latest.pth [GÉNÉRÉ]Rôle: Poids DDPG pour régime range.Contenu: PyTorch avec poids.  
+📄 ddpg_trend_latest.pth [GÉNÉRÉ]Rôle: Poids DDPG pour régime trend.Contenu: PyTorch avec poids.  
+📄 ddpg_defensive_latest.pth [GÉNÉRÉ]Rôle: Poids DDPG pour régime défensif.Contenu: PyTorch avec poids.  
+📄 hmm_ES.pkl [GÉNÉRÉ]Rôle: Modèle HMM pour ES.Contenu: Pickle avec paramètres HMM.
+
+
+📂 cache/Rôle: Fichiers cache pour optimiser les performances.  
+📂 provider/Rôle: Cache des données IQFeed.  
+📊 ohlc_abc123_all.csv, options_def456_ES.csvRôle: Cache des données brutes.
+
+
+📂 dashboard/Rôle: Cache des visualisations du tableau de bord.  
+📊 regime_probs.html, shap_data.csvRôle: Cache des visualisations.
+
+
+📂 heatmap/Rôle: Cache des heatmaps de corrélation.  
+📊 heatmap_20250513.png, corr_data.csvRôle: Cache des heatmaps.
+
+
+
+
+📂 provider_snapshots/Rôle: Snapshots JSON des collectes de données.  
+📄 snapshot_fetch_ohlc_20250513.jsonRôle: Snapshot de collecte.Contenu: {symbol, rows}.
+
+
+📂 regime_snapshots/Rôle: Snapshots JSON des détections de régime.  
+📄 regime_20250513.jsonRôle: Snapshot de régime.Contenu: {regime_probs, shap_values}.
+
+
+📂 options_snapshots/Rôle: Snapshots JSON des recalculs d’options.  
+📄 levels_20250513.jsonRôle: Snapshot d’options.Contenu: {gamma_wall, iv_atm}.
+
+
+📂 risk_snapshots/Rôle: Snapshots JSON des calculs de risques.  
+📄 risk_20250513.jsonRôle: Snapshot de risques.Contenu: {overtrade_risk_score}.
+
+
+📂 train_sac_snapshots/Rôle: Snapshots JSON des entraînements SAC/PPO/DDPG.  
+📄 sac_range_20250513.jsonRôle: Snapshot d’entraînement.Contenu: {loss, cluster_id}.
+
+
+📂 custom_mlp_snapshots/Rôle: Snapshots JSON des prédictions MLP.  
+📄 forward_20250513.jsonRôle: Snapshot de prédictions.Contenu: {actions}.
+
+
+📂 transformer_snapshots/Rôle: Snapshots JSON des prédictions Transformer.  
+📄 forward_20250513.jsonRôle: Snapshot de prédictions.Contenu: {attention_weights}.
+
+
+📂 figures/Rôle: Figures générées pour l’analyse et le monitoring.  
+📂 monitoring/Rôle: Figures de monitoring.  
+📊 heatmap_20250513.png, regime_probs_20250513.pngRôle: Visualisations de monitoring.  
+📊 regime_vs_vix_20250513.png [GÉNÉRÉ]Rôle: Heatmap trimestriel régime vs VIX.Contenu: Image PNG.
+
+
+📂 regime/Rôle: Figures des détections de régime.  
+📊 vix_20250513.png, regime_probs_20250513.pngRôle: Visualisations des régimes.
+
+
+📂 trading/Rôle: Figures des analyses de trading.  
+📊 profit_rsi_20250513.pngRôle: Visualisations des trades.
+
+
+📂 custom_mlp/Rôle: Figures des prédictions MLP.  
+📊 actions_20250513.pngRôle: Visualisations MLP.
+
+
+📂 transformer/Rôle: Figures des prédictions Transformer.  
+📊 attention_20250513.pngRôle: Visualisations Transformer.
+
+
+📂 train_sac/Rôle: Figures des entraînements SAC/PPO/DDPG.  
+📊 prediction_range_20250513.pngRôle: Visualisations d’entraînement.
+
+
+📂 adaptive_learning/Rôle: Figures de l’apprentissage adaptatif.  
+📊 cluster_20250513.pngRôle: Visualisations de clusters.
+
+
+📊 exported_visuals.pdf [GÉNÉRÉ]Rôle: Visualisations exportées en PDF.Contenu: Heatmaps, graphs.
+
+
+📄 credentials_dashboard.json [GÉNÉRÉ]Rôle: Identifiants pour le tableau de bord.Contenu: {dashboard_key: xxx}.  
+📄 market_config_dashboard.json [GÉNÉRÉ]Rôle: Configuration du marché pour le tableau de bord.Contenu: {symbol: ES, mode: live}.  
+📄 feature_sets_dashboard.json [GÉNÉRÉ]Rôle: Features pour le tableau de bord.Contenu: {features: [rsi_14, ofi_score]}.  
+📄 deps_dashboard.json [GÉNÉRÉ]Rôle: Dépendances du tableau de bord.Contenu: {pandas: 2.0.0, plotly: 5.24.1}.  
+📄 preprocessing_dashboard.json [GÉNÉRÉ]Rôle: État du prétraitement pour le tableau de bord.Contenu: {status: completed, rows_processed: 100}.  
+📄 simulation_dashboard.json [GÉNÉRÉ]Rôle: Résultats des simulations pour le tableau de bord.Contenu: {profit: 500, trades: 10}.  
+📄 training_dashboard.json [GÉNÉRÉ]Rôle: État de l’entraînement pour le tableau de bord.Contenu: {epoch: 50, loss: 0.03}.  
+📄 market_memory.db [GÉNÉRÉ]Rôle: Base SQLite pour patterns et clusters.Contenu: Tables (clusters: cluster_id, event_type).  
+📊 vix_data.csv [GÉNÉRÉ]Rôle: Données VIX pour vix_term_structure_slope.Contenu: Colonnes (timestamp, vix_1m, vix_3m).  
+📊 macro_events.csv [GÉNÉRÉ]Rôle: Événements macro (FOMC, NFP).Contenu: Colonnes (start_time, type, impact).  
+📊 event_volatility_history.csv [GÉNÉRÉ]Rôle: Historique des impacts de volatilité.Contenu: Colonnes (event_type, atr_5min).  
+📊 clusters.csv [GÉNÉRÉ]Rôle: Clusters de stratégies.Contenu: Colonnes (timestamp, cluster, profit).  
+📊 latent_vectors.csv [GÉNÉRÉ]Rôle: Vecteurs latents (t-SNE, NLP).Contenu: Colonnes (latent_vol_regime_vec_1).  
+📊 news_topics.csv [GÉNÉRÉ]Rôle: Vecteurs NLP des news.Contenu: Colonnes (topic_vector_news_1).
+
+
+📂 docs/
+Rôle: Documentation du projet (Sphinx).  
+
+📄 index.mdRôle: Page d’accueil de la documentation.Contenu: Présentation (MIA_IA_SYSTEM_v2_2025 : Pipeline de trading).  
+📄 setup.mdRôle: Instructions d’installation.Contenu: Étapes (Clonez le dépôt, Créez un environnement virtuel).  
+📄 usage.mdRôle: Guide d’utilisation.Contenu: Commandes (python main.py --live, ./scripts/run_checks.sh).  
+📄 modules.mdRôle: Description des modules.Contenu: Liste (data_provider.py: Collecte IQFeed).  
+📄 troubleshooting.md [GÉNÉRÉ]Rôle: Guide de dépannage pour erreurs courantes.Contenu: Sections (Erreurs ES, Préparation multi-instruments).  
+📄 quickstart.md [GÉNÉRÉ]Rôle: Guide synthétique pour démarrer.Contenu: Étapes (bash scripts/build.sh, python src/run_system.py).  
+📄 roadmap.md [GÉNÉRÉ]Rôle: Roadmap pour trading ES (Q4 2025) et multi-instruments.Contenu: Sections (Q4 2025: ES, Mi-2026: NQ/DAX).  
+📄 regime_detector.mdRôle: Documentation pour regime_detector.py.Contenu: Guide d’utilisation, tuning des hyperparamètres HMM.  
+⚙️ conf.pyRôle: Configuration pour générer la documentation HTML (Sphinx).Contenu: Paramètres (project=MIA_IA_SYSTEM_v2_2025).  
+⚙️ requirements.txtRôle: Dépendances pour la documentation.Contenu: Liste (sphinx==5.0.0, sphinx-rtd-theme==1.0.0).
+
+
+📂 poubelle/
+Rôle: Dossier pour fichiers archivés ou temporaires.  
+
+📄 features_audit.bak, pca_orderflow.bakRôle: Sauvegardes de fichiers.
+
+
+📂 scripts/
+Rôle: Scripts pour exécuter les pipelines et tâches.  
+
+📄 run_pipeline.pyRôle: Exécute le pipeline global (préprocessing, trading).Contenu: Appelle run_preprocessing.py, live_trading.py.  
+📄 check_deps.pyRôle: Vérifie les dépendances Python.Contenu: Vérifie versions (import pandas).  
+📄 clean_encoding.pyRôle: Nettoie les encodages des CSV (UTF-8).Contenu: Convertit fichiers (pandas.read_csv).  
+📄 filter_features.pyRôle: Filtre les 350 features (NaN > 50%).Contenu: Supprime features inutiles.  
+📄 run_dashboard.pyRôle: Lance le tableau de bord (mia_dashboard.py).Contenu: Appelle mia_dashboard.py avec *_dashboard.json.  
+📄 run_preprocessing.pyRôle: Exécute le prétraitement (fusion, features).Contenu: Appelle merge_data_sources.py, feature_pipeline.py.  
+📄 run_simulate.pyRôle: Lance la simulation des trades (paper trading).Contenu: Appelle simulate_trades.py, backtest_lab.py.  
+📄 run_training.pyRôle: Lance l’entraînement (SAC, PPO, DDPG, CNN, LSTM).Contenu: Appelle train_sac.py, train_sac_auto.py.  
+📄 options_levels_service.pyRôle: Service pour recalculer les niveaux d’options (15 min).Contenu: Appelle spotgamma_recalculator.py.  
+📄 retrain_trade_probability.pyRôle: Réentraîne TradeProbabilityPredictor périodiquement.Contenu: Appelle trade_probability.py.  
+📄 run_checks.shRôle: Exécute les vérifications locales (pytest, flake8).Contenu: Script bash pour tests et linting.  
+📄 validate_prompt_compliance.py [GÉNÉRÉ]Rôle: Valide la conformité (retries, logs psutil).Contenu: Vérifie fichiers Python/YAML.  
+📄 run_all_tests.py [GÉNÉRÉ]Rôle: Exécute tous les tests unitaires et d’intégration.Contenu: Lance pytest avec pytest-xdist.  
+📄 integration_tests.py [GÉNÉRÉ]Rôle: Teste l’intégration collecte → features → trading.Contenu: Teste data_provider.py, feature_pipeline.py.  
+📄 setup_env.py [GÉNÉRÉ]Rôle: Automatise l’installation des dépendances.Contenu: Exécute pip install -r requirements.txt.  
+📄 build.sh [GÉNÉRÉ]Rôle: Automatise compilation, validation, tests.Contenu: Appelle setup_env.py, run_all_tests.py.  
+📄 run_system.py [GÉNÉRÉ]Rôle: Exécute le pipeline global (collecte → trading).Contenu: Appelle data_provider.py, live_trading.py.
+
+
+📂 src/
+Rôle: Code source du pipeline (collecte, features, modèles, trading).  
+
+📂 data/Rôle: Collecte et gestion des données.  
+📄 data_provider.pyRôle: Collecte des données IQFeed (OHLC, DOM, options).Contenu: Classes (CsvDataProvider, IQFeedProvider).  
+📄 news_scraper.py [GÉNÉRÉ]Rôle: Collecte les nouvelles via NewsAPI.Contenu: Génère data/iqfeed/news.csv.
+
+
+📂 api/Rôle: Collecte et fusion des données externes.  
+📄 merge_data_sources.pyRôle: Fusionne les données IQFeed avec news et événements.Contenu: Génère merged_data.csv.  
+📄 schedule_economic_calendar.pyRôle: Collecte les événements macro (Investing.com).Contenu: Génère macro_events.csv.  
+📄 context_aware_filter.pyRôle: Réagit aux inputs externes (news, macro).Contenu: Calcule macro_score, event_volatility_impact.
+
+
+📂 envs/Rôle: Environnements pour simulation et trading.
+  
+📄 gym_wrappers.pyRôle: Wrappers pour environnements gym.Contenu: Wrappers (TimeLimit, NormalizeObservation).  
+📄 trading_env.pyRôle: Environnement gym pour trading ES.Contenu: Classe TradingEnv(gym.Env) avec step(), reset().
+
+
+📂 features/Rôle: Génération et analyse des features.  
+
+📄 adaptive_learner.pyRôle: Apprentissage adaptatif et mémoire (méthode 7).Contenu: retrain_model(), store_pattern().  
+📂 extractors/Rôle: Extracteurs de features spécifiques.  
+📄 encode_time_context.pyRôle: Encode features temporelles (time_of_day_sin).Contenu: encode_time_context(data).  
+📄 orderflow_indicators.py [GÉNÉRÉ]Rôle: Indicateurs d’order flow (ofi_score).Contenu: calculate_orderflow_indicators(data).  
+📄 volume_profile.pyRôle: Profils de volume (poc, vah, val).Contenu: extract_volume_profile(data).  
+📄 smart_scores.pyRôle: Scores intelligents (breakout_score).Contenu: calculate_smart_scores(data).  
+📄 volatility_metrics.py [GÉNÉRÉ]Rôle: Métriques de volatilité (atr_14).Contenu: calculate_volatility_metrics(data).  
+📄 options_metrics.py [GÉNÉRÉ]Rôle: Métriques d’options (call_iv_atm).Contenu: calculate_options_metrics(data).  
+📄 news_metrics.py [GÉNÉRÉ]Rôle: Métriques de sentiment (news_impact_score).Contenu: calculate_news_metrics(data).
+
+
+📄 feature_pipeline.pyRôle: Génère 350 features (entraînement) et 150 SHAP features (méthodes 3, 17).Contenu: Appelle extracteurs, options_metrics.py.  
+📄 features_audit.pyRôle: Audite les features (NaN, outliers).Contenu: audit_features(data).  
+📄 features_audit.bakRôle: Sauvegarde de features_audit.py.  
+📄 neural_pipeline.pyRôle: Prédictions neuronales (cnn_pressure, méthode 12).Contenu: Charge cnn_model.h5, lstm_model.h5.  
+📄 options_calculator.pyRôle: Features options (gex, méthode 2).Contenu: calculate_gex(data).  
+📄 pca_orderflow.pyRôle: Analyse PCA des features order flow.Contenu: apply_pca_orderflow(data).  
+📄 pca_orderflow.bakRôle: Sauvegarde de pca_orderflow.py.  
+📄 shap_weighting.pyRôle: Analyse SHAP pour importance des features (méthode 17).Contenu: calculate_shap_weights(data).  
+📄 signal_selector.pyRôle: Filtre les signaux pour rentabilité (méthode 11).Contenu: calculate_sgc(features).  
+📄 microstructure_guard.py [GÉNÉRÉ]Rôle: Détecte anomalies microstructure (spoofing, méthode 11).Contenu: detect_microstructure_anomalies(data).  
+📄 option_metrics.pyRôle: Indicateurs d’options (iv_atm, méthode 2).Contenu: calculate_iv_atm(option_chain).  
+📄 advanced_feature_generator.pyRôle: Features avancées (latency_spread, méthode 2).Contenu: calculate_latency_spread().  
+📄 meta_features.pyRôle: Métriques d’auto-analyse (méthode 7).Contenu: calculate_confidence_drop_rate().  
+📄 market_structure_signals.pyRôle: Signaux cross-market (spy_lead_return, méthode 1).Contenu: calculate_spy_lead_return().  
+📄 contextual_state_encoder.pyRôle: Vecteurs latents (latent_vol_regime_vec, méthode 7).Contenu: encode_vol_regime(data).  
+📄 feature_meta_ensemble.pyRôle: Réduction dynamique des features (méthode 3).Contenu: calculate_shap_importance().  
+📄 spotgamma_recalculator.pyRôle: Recalcule niveaux d’options (dealer_position_bias, méthode 17).Contenu: recalculate_levels(data).  
+📄 regime_detector.pyRôle: Détecte régimes avec HMM (méthode 1).Contenu: train_hmm(orderflow_data), detect_regime(orderflow_data).
+
+
+
+
+📂 mind/Rôle: Logique cognitive de MIA.  
+📄 mind_stream.pyRôle: Flux cognitif en temps réel.Contenu: stream_analysis(data).  
+📄 mind.pyRôle: Logique cognitive centrale.Contenu: decide_action(data).  
+📄 mind_voice.pyRôle: Interactions vocales (méthode 1).Contenu: speak_alert(message).  
+📄 mind_dialogue.pyRôle: Dialogues interactifs (méthode 11).Contenu: respond_to_query(query).
+
+
+📂 monitoring/Rôle: Monitoring des performances et dérives.  
+📄 correlation_heatmap.pyRôle: Heatmaps de corrélation (méthode 17).Contenu: generate_heatmap(data).  
+📄 data_drift.pyRôle: Détection des dérives (méthode 17).Contenu: detect_drift(data).  
+📄 mia_dashboard.pyRôle: Tableau de bord interactif (méthodes 11, 12, 17).Contenu: Dash/Plotly pour performances.  
+📄 export_visuals.py [GÉNÉRÉ]Rôle: Exporte visualisations en PDF/HTML (méthode 17).Contenu: export_visuals(data).
+
+
+📂 risk/Rôle: Gestion des risques.  
+📄 risk_controller.pyRôle: Contrôle des risques (méthodes 7, 12).Contenu: stop_trading(drawdown).  
+📄 trade_window_filter.pyRôle: Filtre les moments de trading (méthode 1).Contenu: block_trade(event_active).  
+📄 decision_log.pyRôle: Enregistre les décisions (méthode 11).Contenu: log_decision(trade_id, decision).  
+📄 sierra_chart_errors.py [GÉNÉRÉ]Rôle: Gère les erreurs de l’API Teton (méthode 8).Contenu: log_error(error_code, message).  
+📄 options_risk_manager.py [GÉNÉRÉ]Rôle: Gère les risques spécifiques aux options (méthode 17).Contenu: calculate_options_risk(data).  
+📄 risk_manager.pyRôle: Gère le position sizing dynamique avec Kelly/ATR (méthode 5).Contenu: calculate_position_size(atr_dynamic, orderflow_imbalance).
+
+
+📂 trading/Rôle: Exécution et analyse des trades.  
+📄 live_trading.pyRôle: Trades live via Sierra Chart (méthodes 1-18).Contenu: Boucle de trading (trade=signal_selector.get_signal()).  
+📄 analyse_results.pyRôle: Analyse des trades (méthode 17).Contenu: analyse_results(trades).  
+📄 analyse_trades.pyRôle: Analyse détaillée des trades (méthode 7).Contenu: analyse_trade(trade_id).  
+📄 simulate_trades.pyRôle: Simulation des trades (méthode 5).Contenu: simulate_trades(data).  
+📄 trade_executor.pyRôle: Exécution des trades (méthodes 8, 10).Contenu: execute_trade(trade).
+
+
+📂 model/Rôle: Modèles, routage, et utilitaires.  
+📂 router/Rôle: Détection et routage des régimes.  
+📄 detect_regime.pyRôle: Détecte régimes (méthodes 1, 2, 11, 12, 17).Contenu: detect_regime(data).  
+📄 main_router.pyRôle: Orchestre modes (trend, range, défensif).Contenu: route_mode(data).  
+📄 mode_defensive.pyRôle: Logique du mode défensif.Contenu: defensive_strategy(data).  
+📄 mode_range.pyRôle: Logique du mode range.Contenu: range_strategy(data).  
+📄 mode_trend.pyRôle: Logique du mode trend.Contenu: trend_strategy(data).  
+📂 policies/Rôle: Politiques de routage.  
+📄 checkpoint_001.zipRôle: Checkpoint des politiques.Contenu: Zip avec poids.  
+📄 custom_mlp_policy.pyRôle: Politique MLP pour 150 SHAP features (méthodes 9, 14).Contenu: Classe CustomMLPPolicy.  
+📄 defensive_policy.pkl [GÉNÉRÉ]Rôle: Politique du mode défensif.Contenu: Pickle avec poids.  
+📄 range_policy.pkl [GÉNÉRÉ]Rôle: Politique du mode range.Contenu: Pickle avec poids.  
+📄 transformer_policy.pyRôle: Politique Transformer pour 150 SHAP features (méthodes 9, 14).Contenu: Classe TransformerPolicy.  
+📄 trend_policy.pkl [GÉNÉRÉ]Rôle: Politique du mode trend.Contenu: Pickle avec poids.
+
+
+
+
+📂 utils/Rôle: Utilitaires pour modèles et trading.  
+📄 algo_performance_logger.pyRôle: Enregistre performances (méthodes 8, 10, 18).Contenu: log_performance(algo, reward).  
+📄 alert_manager.pyRôle: Gère les alertes.Contenu: send_alert(message, priority).  
+📄 config_manager.pyRôle: Charge configurations YAML.Contenu: get_config(path).  
+📄 prediction_aggregator.pyRôle: Agrège prédictions des modèles.Contenu: aggregate_predictions(data).  
+📄 model_validator.pyRôle: Valide modèles entraînés.Contenu: validate_model(model, data).  
+📄 miya_console.pyRôle: Console interactive pour MIA (méthode 11).Contenu: start_console().  
+📄 trading_utils.pyRôle: Utilitaires pour trading (méthode 5).Contenu: calculate_profit(trade).  
+📄 trading_loop.pyRôle: Boucle de trading pour live_trading.py (méthodes 1-18).Contenu: trading_loop(data_stream).  
+📄 db_setup.pyRôle: Initialise market_memory.db (méthode 7).Contenu: setup_database().  
+📄 db_maintenance.pyRôle: Maintient market_memory.db (méthode 7).Contenu: purge_old_data().  
+📄 finetune_utils.pyRôle: Fine-tuning des modèles (méthode 8).Contenu: finetune_model(data).  
+📄 maml_utils.pyRôle: Meta-learning (méthode 18).Contenu: apply_prototypical_networks(model, data).  
+📄 hyperparam_manager.py [GÉNÉRÉ]Rôle: Gère hyperparamètres pour SAC, PPO, DDPG (méthodes 6, 8, 18).Contenu: get_hyperparams(model_type).  
+📄 standard.py [GÉNÉRÉ]Rôle: Centralise fonctions communes (retries, logging).Contenu: with_retries(), log_performance().  
+📄 pattern_analyzer.py [GÉNÉRÉ]Rôle: Analyse patterns dans market_memory.db (méthode 7).Contenu: analyze_patterns(db_path).
+
+
+📄 adaptive_learning.pyRôle: Apprentissage adaptatif (méthode 7).Contenu: retrain_model(), store_pattern().  
+📄 backtest_lab.pyRôle: Backtesting et simulation (méthode 5).Contenu: run_backtest(data).  
+📄 inference.pyRôle: Prédictions avec modèles entraînés.Contenu: predict(data).  
+📄 reward_engine.pyRôle: Calcule récompenses (méthode 5).Contenu: calculate_reward(trade).  
+📄 train_sac.pyRôle: Entraîne SAC, PPO, DDPG (méthodes 4-18).Contenu: train_sac(data, epochs).  
+📄 train_sac_auto.pyRôle: Entraînement automatisé (méthodes 8, 10, 15, 18).Contenu: auto_train_sac(data).  
+📄 trade_probability.pyRôle: Prédit probabilité de réussite d’un trade.Contenu: predict_trade_success(data).  
+📄 hyperparam_optimizer.pyRôle: Optimise hyperparamètres avec Optuna (méthodes 3, 9).Contenu: Optimisation des paramètres pour SAC, PPO.
+
+
+📂 strategy/Rôle: Découverte et arbitrage des stratégies.  
+📄 strategy_discovery.pyRôle: Découvre stratégies (méthode 7).Contenu: optimize_strategy(params).  
+📄 mia_switcher.pyRôle: Arbitre entre modèles (méthode 11).Contenu: switch_mia(data).
+
+
+📄 mia_FR.pyRôle: Logique cognitive localisée (français).Contenu: respond_fr(query).
+
+
+  
+📂 tests/
+Rôle: Tests unitaires et d’intégration pour garantir la robustesse du pipeline (pytest).  
+
+🧪 test_mind_stream.pyRôle: Teste mind_stream.py pour les flux cognitifs en temps réel.Contenu: test_stream_analysis().  
+🧪 test_mind.pyRôle: Teste mind.py pour la logique cognitive centrale.Contenu: test_decide_action().  
+🧪 test_mind_voice.pyRôle: Teste mind_voice.py pour les interactions vocales.Contenu: test_speak_alert().  
+🧪 test_mind_dialogue.pyRôle: Teste mind_dialogue.py pour les dialogues interactifs.Contenu: test_respond_to_query().  
+🧪 test_correlation_heatmap.pyRôle: Teste correlation_heatmap.py pour les heatmaps de corrélation.Contenu: test_generate_heatmap().  
+🧪 test_data_drift.pyRôle: Teste data_drift.py pour la détection des dérives.Contenu: test_detect_drift().  
+🧪 test_mia_dashboard.pyRôle: Teste mia_dashboard.py pour le tableau de bord interactif.Contenu: test_dashboard_load().  
+🧪 test_news_scraper.py [GÉNÉRÉ]Rôle: Teste news_scraper.py pour la collecte des nouvelles.Contenu: test_fetch_news().  
+🧪 test_merge_data_sources.pyRôle: Teste merge_data_sources.py pour la fusion des données.Contenu: test_merge_data().  
+🧪 test_schedule_economic_calendar.pyRôle: Teste schedule_economic_calendar.py pour les événements macro.Contenu: test_fetch_macro_events().  
+🧪 test_run_pipeline.pyRôle: Teste run_pipeline.py pour le pipeline global.Contenu: test_pipeline_execution().  
+🧪 test_check_deps.pyRôle: Teste check_deps.py pour les dépendances Python.Contenu: test_check_pandas().  
+🧪 test_run_dashboard.pyRôle: Teste run_dashboard.py pour le lancement du tableau de bord.Contenu: test_dashboard_start().  
+🧪 test_run_preprocessing.pyRôle: Teste run_preprocessing.py pour le prétraitement des données.Contenu: test_preprocessing().  
+🧪 test_run_simulate.pyRôle: Teste run_simulate.py pour les simulations de trades.Contenu: test_simulation().  
+🧪 test_run_training.pyRôle: Teste run_training.py pour l’entraînement des modèles.Contenu: test_training().  
+🧪 test_adaptive_learning.pyRôle: Teste adaptive_learning.py pour l’apprentissage adaptatif.Contenu: test_retrain_model().  
+🧪 test_router_config.pyRôle: Teste router_config.yaml pour la configuration des régimes.Contenu: test_load_config().  
+🧪 test_model_params.pyRôle: Teste model_params.yaml pour les hyperparamètres des modèles.Contenu: test_load_params().  
+🧪 test_mia_config.pyRôle: Teste mia_config.yaml pour la configuration cognitive.Contenu: test_load_config().  
+🧪 test_feature_sets.pyRôle: Teste feature_sets.yaml pour les ensembles de features.Contenu: test_load_features().  
+🧪 test_market_config.pyRôle: Teste market_config.yaml pour la configuration du marché.Contenu: test_load_config().  
+🧪 test_credentials.pyRôle: Teste credentials.yaml pour les identifiants sécurisés.Contenu: test_load_credentials().  
+🧪 test_risk_controller.pyRôle: Teste risk_controller.py pour la gestion des risques.Contenu: test_stop_trading().  
+🧪 test_signal_selector.pyRôle: Teste signal_selector.py pour la sélection des signaux.Contenu: test_calculate_sgc().  
+🧪 test_trade_window_filter.pyRôle: Teste trade_window_filter.py pour le filtrage des trades.Contenu: test_block_trade().  
+🧪 test_context_aware_filter.pyRôle: Teste context_aware_filter.py pour la réaction aux événements.Contenu: test_block_macro_event().  
+🧪 test_microstructure_guard.py [GÉNÉRÉ]Rôle: Teste microstructure_guard.py pour les anomalies microstructure.Contenu: test_detect_spoofing().  
+🧪 test_strategy_discovery.pyRôle: Teste strategy_discovery.py pour la découverte de stratégies.Contenu: test_optimize_strategy().  
+🧪 test_mia_switcher.pyRôle: Teste mia_switcher.py pour l’arbitrage des modèles.Contenu: test_switch_mia().  
+🧪 test_backtest_lab.pyRôle: Teste backtest_lab.py pour les backtests.Contenu: test_run_backtest().  
+🧪 test_decision_log.pyRôle: Teste decision_log.py pour l’enregistrement des décisions.Contenu: test_log_decision().  
+🧪 test_option_metrics.pyRôle: Teste option_metrics.py pour les métriques d’options.Contenu: test_calculate_iv_atm().  
+🧪 test_advanced_feature_generator.pyRôle: Teste advanced_feature_generator.py pour les features avancées.Contenu: test_calculate_latency_spread().  
+🧪 test_meta_features.pyRôle: Teste meta_features.py pour les métriques d’auto-analyse.Contenu: test_calculate_confidence_drop_rate().  
+🧪 test_market_structure_signals.pyRôle: Teste market_structure_signals.py pour les signaux cross-market.Contenu: test_calculate_spy_lead_return().  
+🧪 test_contextual_state_encoder.pyRôle: Teste contextual_state_encoder.py pour les vecteurs latents.Contenu: test_encode_vol_regime().  
+🧪 test_feature_meta_ensemble.pyRôle: Teste feature_meta_ensemble.py pour la réduction des features.Contenu: test_reduce_features().  
+🧪 test_train_sac.pyRôle: Teste train_sac.py pour l’entraînement SAC/PPO/DDPG.Contenu: test_train_sac_finetune().  
+🧪 test_neural_pipeline.pyRôle: Teste neural_pipeline.py pour les prédictions neuronales.Contenu: test_predict_vix().  
+🧪 test_trading_loop.pyRôle: Teste trading_loop.py pour la boucle de trading.Contenu: test_trading_loop().  
+🧪 test_analyse_results.pyRôle: Teste analyse_results.py pour l’analyse des trades.Contenu: test_analyse_results().  
+🧪 test_analyse_trades.pyRôle: Teste analyse_trades.py pour l’analyse détaillée des trades.Contenu: test_analyse_trade().  
+🧪 test_simulate_trades.pyRôle: Teste simulate_trades.py pour les simulations de trades.Contenu: test_simulate_trades().  
+🧪 test_trade_executor.pyRôle: Teste trade_executor.py pour l’exécution des trades.Contenu: test_execute_trade().  
+🧪 test_integration_test.pyRôle: Teste l’intégration complète du pipeline.Contenu: test_full_pipeline().  
+🧪 test_data_provider.pyRôle: Teste data_provider.py pour la collecte des données.Contenu: test_fetch_ohlc().  
+🧪 test_finetune_utils.pyRôle: Teste finetune_utils.py pour le fine-tuning.Contenu: test_finetune_model().  
+🧪 test_maml_utils.pyRôle: Teste maml_utils.py pour le meta-learning.Contenu: test_apply_prototypical_networks().  
+🧪 test_spotgamma_recalculator.pyRôle: Teste spotgamma_recalculator.py pour les niveaux d’options.Contenu: test_recalculate_levels().  
+🧪 test_options_levels_service.pyRôle: Teste options_levels_service.py pour le service d’options.Contenu: test_options_levels_service().  
+🧪 test_db_setup.pyRôle: Teste db_setup.py pour l’initialisation de la base SQLite.Contenu: test_setup_database().  
+🧪 test_db_maintenance.pyRôle: Teste db_maintenance.py pour la maintenance de la base.Contenu: test_purge_old_data().  
+🧪 test_custom_mlp_policy.pyRôle: Teste custom_mlp_policy.py pour la politique MLP.Contenu: test_forward().  
+🧪 test_transformer_policy.pyRôle: Teste transformer_policy.py pour la politique Transformer.Contenu: test_forward().  
+🧪 test_trade_probability.pyRôle: Teste trade_probability.py pour les probabilités de trades.Contenu: test_predict_trade_success().  
+🧪 test_orderflow_indicators.py [GÉNÉRÉ]Rôle: Teste orderflow_indicators.py pour les indicateurs d’order flow.Contenu: test_calculate_orderflow_indicators().  
+🧪 test_volatility_metrics.py [GÉNÉRÉ]Rôle: Teste volatility_metrics.py pour les métriques de volatilité.Contenu: test_calculate_volatility_metrics().  
+🧪 test_options_metrics.py [GÉNÉRÉ]Rôle: Teste options_metrics.py pour les métriques d’options.Contenu: test_calculate_options_metrics().  
+🧪 test_news_metrics.py [GÉNÉRÉ]Rôle: Teste news_metrics.py pour les métriques de sentiment.Contenu: test_calculate_news_metrics().  
+🧪 test_hyperparam_manager.py [GÉNÉRÉ]Rôle: Teste hyperparam_manager.py pour la gestion des hyperparamètres.Contenu: test_get_hyperparams().  
+🧪 test_sierra_chart_errors.py [GÉNÉRÉ]Rôle: Teste sierra_chart_errors.py pour les erreurs Teton.Contenu: test_log_error().  
+🧪 test_env.py [GÉNÉRÉ]Rôle: Teste .env pour les variables d’environnement.Contenu: test_load_env().  
+🧪 test_pattern_analyzer.py [GÉNÉRÉ]Rôle: Teste pattern_analyzer.py pour l’analyse des patterns.Contenu: test_analyze_patterns().  
+🧪 test_options_risk_manager.py [GÉNÉRÉ]Rôle: Teste options_risk_manager.py pour la gestion des risques d’options.Contenu: test_calculate_options_risk().  
+🧪 test_export_visuals.py [GÉNÉRÉ]Rôle: Teste export_visuals.py pour l’exportation des visualisations.Contenu: test_export_visuals().  
+🧪 test_integration_tests.py [GÉNÉRÉ]Rôle: Teste integration_tests.py pour l’intégration du pipeline.Contenu: test_data_to_trading_pipeline().  
+🧪 test_standard.py [GÉNÉRÉ]Rôle: Teste standard.py pour les fonctions communes.Contenu: test_with_retries(), test_log_performance().  
+🧪 test_setup_env.py [GÉNÉRÉ]Rôle: Teste setup_env.py pour l’installation des dépendances.Contenu: test_setup_environment().  
+🧪 test_run_system.py [GÉNÉRÉ]Rôle: Teste run_system.py pour le pipeline global.Contenu: test_run_system().  
+🧪 test_build.sh [GÉNÉRÉ]Rôle: Teste build.sh pour la compilation et validation.Contenu: test_build().  
+🧪 test_quickstart.py [GÉNÉRÉ]Rôle: Teste quickstart.md pour le guide de démarrage.Contenu: test_quickstart_content().  
+🧪 test_multi_instrument_config.py [GÉNÉRÉ]Rôle: Teste la structure extensible de market_config.yaml.Contenu: test_multi_instrument_config().  
+🧪 test_roadmap.py [GÉNÉRÉ]Rôle: Teste roadmap.md pour la roadmap du projet.Contenu: test_roadmap_content().  
+🧪 test_risk_manager.pyRôle: Teste risk_manager.py pour le position sizing dynamique.Contenu: test_calculate_position_size(), test_performance().  
+🧪 test_regime_detector.pyRôle: Teste regime_detector.py pour la détection des régimes avec HMM.Contenu: test_train_hmm(), test_detect_regime(), test_generate_heatmap().
+

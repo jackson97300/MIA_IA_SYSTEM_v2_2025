@@ -1,0 +1,22 @@
+
+, , , , ) : 
+options_calculator.py, option_metrics.py : Intégrer les nouvelles métriques d’options.
+
+
+
+adaptive_learner.py, features_audit.py, pca_orderflow.py, signal_selector.py, microstructure_guard.py, advanced_feature_generator.py, meta_features.py, market_structure_signals.py, contextual_state_encoder.py, feature_meta_ensemble.py : Ajouter robustesse, IQFeed, et intégration des métriques.
+Fichiers .bak : Ignorer sauf si tu veux les restaurer ou comparer.
+spotgamma_recalculator.py : Déjà mis à jour, mais peut être ajusté si nécessaire.
+Prochain fichier suggéré :
+Débuter avec feature_pipeline.py : C’est le cœur du pipeline, il appelle les extracteurs et intègre les métriques de spotgamma_recalculator.py. Cela permettra de connecter les nouvelles métriques au pipeline SHAP.
+Modifications :
+Lire data/features/spotgamma_metrics.csv pour inclure les 8 métriques.
+Mettre à jour calculate_shap_features pour les top 150 SHAP.
+Intégrer l’analyse de sentiment si news_analyzer.py est prêt.
+Robustesse : logs psutil, retries, snapshots, SIGINT, cache, visualisations.
+Tests : tests/test_feature_pipeline.py.
+Questions clés :
+Confirmation : Veux-tu coder tous les fichiers du dossier features/ dans l’ordre proposé, ou prioriser certains (ex. : feature_pipeline.py, neural_pipeline.py) ?
+Spécificités : Des fonctionnalités à ajouter (ex. : nouvelles métriques, intégration NLP) ? Des fichiers déjà implémentés à partager ?
+Contraintes : Des dépendances manquantes (ex. : neural_pipeline.py, shap_weighting.py) ? Des erreurs à anticiper ?
+Rythme : Un fichier à la fois ou un plan global pour les 19 ?

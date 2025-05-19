@@ -1,0 +1,220 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/config/iqfeed_config.yaml
+# Configuration des paramètres de connexion à l'API IQFeed pour MIA_IA_SYSTEM_v2_2025.
+
+metadata:
+  version: "2.1.3"
+  updated: "2025-05-13"
+  description: |
+    Configuration des paramètres de connexion à l'API IQFeed pour la collecte des données (OHLC, DOM, options, cross-market, nouvelles).
+    Utilisé par data_provider.py comme point d'entrée pour toutes les données du projet.
+    Calibré pour les 350 features IQFeed pour l’entraînement et top 150 SHAP pour l’inférence/fallback.
+    Inclut les symboles nécessaires, le niveau de données (niveau 2 recommandé), les paramètres de connexion,
+    les options de gestion des erreurs et du cache, et les fréquences de collecte.
+    Conforme à la Phase 1 (collecte de données), Phase 8 (auto-conscience pour les fonctionnalités cognitives),
+    et Phase 16 (ensemble et transfer learning).
+    Tests unitaires disponibles dans tests/test_iqfeed_config.py.
+
+# Paramètres de connexion à IQFeed
+iqfeed:
+  host:
+    value: "127.0.0.1"
+    description: |
+      Adresse hôte pour la connexion IQFeed (localhost par défaut).
+  port:
+    value: 9100
+    description: |
+      Port pour la connexion IQFeed (9100 pour données de marché niveau 2).
+  protocol:
+    value: "6.2"
+    description: |
+      Version du protocole IQFeed (6.2 recommandé).
+
+# Paramètres généraux de connexion
+connection:
+  level:
+    value: 2
+    options: [1, 2]
+    description: |
+      Niveau de données requis (1 = niveau 1, 2 = niveau 2).
+      Niveau 2 requis pour accéder aux données DOM (jusqu'à 5 niveaux), options, et cross-market.
+  retry_attempts:
+    value: 3
+    range: [1, 10]
+    description: |
+      Nombre maximum de tentatives de reconnexion en cas d'échec.
+  retry_delay:
+    value: 5
+    range: [1, 60]
+    description: |
+      Délai entre les tentatives de reconnexion (en secondes).
+  timeout:
+    value: 30
+    range: [10, 120]
+    description: |
+      Temps d'attente maximum pour une réponse de l'API (en secondes).
+
+# Symboles à collecter
+symbols:
+  value: ["ES", "SPY", "TLT", "VIX", "VIX1M", "VIX3M", "VIX6M", "VIX1Y", "VVIX", "DVVIX", "GC", "CL", "BTC", "US10Y", "US2Y"]
+  description: |
+    Liste des symboles à collecter via IQFeed.
+    - ES : E-mini S&P 500 futures (principal, pour OHLC, DOM, options).
+    - SPY : ETF S&P 500 (cross-market, pour cross_asset_flow_ratio).
+    - TLT : ETF obligations 20+ ans (cross-market).
+    - VIX : Indice de volatilité (base).
+    - VIX1M : VIX 1 mois (pour vix_term_1m).
+    - VIX3M : VIX 3 mois (pour vix_term_3m).
+    - VIX6M : VIX 6 mois (pour vix_term_6m).
+    - VIX1Y : VIX 1 an (pour vix_term_1y).
+    - VVIX : Volatilité du VIX.
+    - DVVIX : Dérivé de la volatilité du VIX.
+    - GC : Or (cross-market, pour gold_correl).
+    - CL : Pétrole (cross-market, pour oil_correl).
+    - BTC : Bitcoin (cross-market, pour crypto_btc_correl).
+    - US10Y : Rendement 10 ans (cross-market, pour treasury_10y_yield, yield_curve_slope).
+    - US2Y : Rendement 2 ans (cross-market, pour yield_curve_slope).
+
+# Types de données à collecter
+data_types:
+  ohlc:
+    enabled: true
+    description: |
+      Active la collecte des données OHLC (Open, High, Low, Close) pour tous les symboles.
+  dom:
+    enabled: true
+    depth: 5
+    range: [1, 10]
+    description: |
+      Active la collecte des données DOM (Depth of Market) niveau 2.
+      depth : Profondeur du carnet d'ordres (5 niveaux pour level_4_size_bid/ask, level_5_size_bid/ask).
+  options:
+    enabled: true
+    metrics:
+      - iv: ["call_iv_atm", "put_iv_atm"]
+      - oi: ["open_interest", "oi_concentration"]
+      - greeks: ["gamma", "delta", "vega", "theta", "vomma", "speed", "ultima"]
+    description: |
+      Active la collecte des données d'options.
+      Inclut IV (call_iv_atm, put_iv_atm), OI (open_interest, oi_concentration),
+      et Greeks standards (gamma, delta, vega, theta) et avancés (vomma, speed, ultima)
+      pour theta_exposure, vomma_exposure, etc.
+  cross_market:
+    enabled: true
+    metrics:
+      - gold: ["gold_correl"]
+      - oil: ["oil_correl"]
+      - btc: ["crypto_btc_correl"]
+      - bonds: ["treasury_10y_yield", "yield_curve_slope"]
+      - spy: ["cross_asset_flow_ratio"]
+    description: |
+      Active la collecte des données cross-market.
+      Inclut or (GC, gold_correl), pétrole (CL, oil_correl), Bitcoin (BTC, crypto_btc_correl),
+      rendements (US10Y, US2Y, treasury_10y_yield, yield_curve_slope), et SPY (cross_asset_flow_ratio).
+  news:
+    enabled: true
+    metrics:
+      - volume: ["news_volume_1h", "news_volume_1d", "news_volume_spike"]
+      - sentiment: ["news_sentiment_momentum", "news_sentiment_acceleration"]
+      - content: ["topic_vector_news_3", "topic_vector_news_4"]
+    description: |
+      Active la collecte des données de nouvelles.
+      Inclut volume (news_volume_1h, news_volume_1d, news_volume_spike),
+      sentiment (news_sentiment_momentum, news_sentiment_acceleration),
+      et contenu (topic_vector_news_3, topic_vector_news_4).
+
+# Fréquence des données
+frequency:
+  ohlc:
+    value: "1min"
+    options: ["1sec", "5sec", "1min", "5min", "15min", "1h"]
+    description: |
+      Fréquence de collecte des données OHLC (1 minute par défaut).
+  dom:
+    value: "1sec"
+    options: ["1sec", "5sec", "10sec"]
+    description: |
+      Fréquence de collecte des données DOM (1 seconde pour capturer level_4_size_bid/ask, level_5_size_bid/ask).
+  options:
+    value: "5min"
+    options: ["1min", "5min", "15min"]
+    description: |
+      Fréquence de collecte des données d'options (5 minutes pour theta_exposure, vomma_exposure, etc.).
+  vix:
+    value: "1min"
+    options: ["1sec", "1min", "5min"]
+    description: |
+      Fréquence de collecte des données VIX (1 minute pour vix_term_1m, vix_term_3m, etc.).
+  cross_market:
+    value: "1min"
+    options: ["1sec", "1min", "5min"]
+    description: |
+      Fréquence de collecte des données cross-market (1 minute pour gold_correl, yield_curve_slope, etc.).
+  news:
+    value: "5min"
+    options: ["1min", "5min", "15min"]
+    description: |
+      Fréquence de collecte des données de nouvelles (5 minutes pour news_volume_1h, news_sentiment_momentum).
+
+# Gestion du cache
+cache:
+  enabled:
+    value: true
+    description: |
+      Active la mise en cache des données pour éviter les appels redondants.
+  directory:
+    value: "data/cache/iqfeed"
+    description: |
+      Répertoire pour stocker les données mises en cache.
+  duration_hours:
+    value: 24
+    range: [1, 168]
+    description: |
+      Durée de validité des données en cache (en heures).
+
+# Gestion des erreurs
+error_handling:
+  log_errors:
+    value: true
+    description: |
+      Si true, les erreurs de connexion ou de collecte sont enregistrées.
+  log_file:
+    value: "data/logs/iqfeed_errors.log"
+    description: |
+      Fichier pour enregistrer les erreurs de l'API IQFeed.
+  max_log_size_mb:
+    value: 10
+    range: [1, 100]
+    description: |
+      Taille maximale du fichier de log avant rotation (en Mo).
+
+# Paramètres pour le tableau de bord
+dashboard:
+  notifications_enabled:
+    value: true
+    description: |
+      Si true, l'état de la connexion IQFeed est envoyé à mia_dashboard.py.
+  status_file:
+    value: "data/iqfeed_config_dashboard.json"
+    description: |
+      Fichier JSON pour partager l'état de la configuration avec le dashboard.
+
+# Notes pour configuration
+notes:
+  - Utilise exclusivement IQFeed comme source de données, conformément à la Phase 1 (collecte de données),
+    Phase 8 (auto-conscience pour les fonctionnalités cognitives), et Phase 16 (ensemble et transfer learning).
+  - Vérifier que l'API IQFeed est configurée avec le niveau 2 pour accéder aux données DOM (5 niveaux),
+    options (IV, OI, Greeks avancés), et cross-market.
+  - Les symboles VIX1M, VIX3M, VIX6M, VIX1Y ajoutés pour supporter vix_term_1m, vix_term_3m, vix_term_6m, vix_term_1y.
+  - Vérifier la disponibilité de DVVIX via IQFeed, sinon envisager un remplacement ou une simulation.
+  - Les symboles GC, CL, BTC, US10Y, US2Y supportent les features cross-market (gold_correl, oil_correl, crypto_btc_correl,
+    treasury_10y_yield, yield_curve_slope).
+  - Les données de nouvelles incluent volume et contenu pour news_volume_1h, news_sentiment_momentum, topic_vector_news_3/4.
+  - Ajuster iqfeed.host et iqfeed.port selon l'environnement (ex. : localhost vs serveur dédié).
+  - Tester retry_attempts et timeout pour optimiser la stabilité de la connexion.
+  - Aligné sur 350 features pour l’entraînement et top 150 SHAP pour l’inférence/fallback, conformément à feature_sets.yaml.
+  - Le répertoire cache.directory reflète IQFeed (data/cache/iqfeed).
+  - Tests unitaires disponibles dans tests/test_iqfeed_config.py pour valider la configuration.
+  - La clé API IQFeed doit être configurée dans credentials.yaml et validée via config_manager.py.
+  - Les performances des appels IQFeed (latence, CPU, mémoire) sont enregistrées via psutil dans data/logs/provider_performance.csv.
+  - Surveiller les performances des appels API dans data/logs/provider_performance.csv.

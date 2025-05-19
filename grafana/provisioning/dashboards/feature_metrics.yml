@@ -1,0 +1,108 @@
+# -*- coding: utf-8 -*-
+# MIA_IA_SYSTEM_v2_2025/grafana/provisioning/dashboards/feature_metrics.yml
+# Configuration des dashboards Grafana pour les métriques de features
+#
+# Version: 2.1.5
+# Date: 2025-05-14
+#
+# Rôle: Définit les dashboards Grafana pour afficher les métriques liées au position sizing,
+#       coûts de transaction, microstructure, HMM, performances RL, volatilité,
+#       et ensembles de politiques.
+#
+# Notes:
+# - Conforme à structure.txt (version 2.1.5, 2025-05-14).
+# - Supporte les suggestions 1 (position sizing), 2 (coûts), 3 (microstructure), 4 (HMM),
+#   6 (drift), 7 (Safe RL), 8 (Distributional RL), 9 (volatilité), 10 (ensembles de politiques).
+
+apiVersion: 1
+providers:
+- name: 'default'
+  orgId: 1
+  folder: ''
+  type: file
+  disableDeletion: false
+  updateIntervalSeconds: 10
+  options:
+    path: /etc/grafana/dashboards
+
+dashboards:
+- name: Feature Metrics
+  type: dashboard
+  uid: feature_metrics
+  panels:
+    - type: graph
+      title: ATR Dynamique
+      targets:
+        - expr: atr_dynamic{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: Orderflow Imbalance
+      targets:
+        - expr: orderflow_imbalance{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: Slippage Estimate
+      targets:
+        - expr: slippage_estimate{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: Bid-Ask Imbalance
+      targets:
+        - expr: bid_ask_imbalance{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: Trade Aggressiveness
+      targets:
+        - expr: trade_aggressiveness{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: IV Skew
+      targets:
+        - expr: iv_skew{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: IV Term Structure
+      targets:
+        - expr: iv_term_structure{market="ES"}
+          legendFormat: "{{market}}"
+- name: HMM Metrics
+  type: dashboard
+  uid: hmm_metrics
+  panels:
+    - type: graph
+      title: HMM State
+      targets:
+        - expr: regime_hmm{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: HMM State Distribution
+      targets:
+        - expr: hmm_state_distribution{market="ES"}
+          legendFormat: "{{market}} {{state}}"
+- name: RL Metrics
+  type: dashboard
+  uid: rl_metrics
+  panels:
+    - type: graph
+      title: CVaR Loss
+      targets:
+        - expr: cvar_loss{market="ES"}
+          legendFormat: "{{market}}"
+    - type: graph
+      title: QR-DQN Quantiles
+      targets:
+        - expr: qr_dqn_quantiles{market="ES"}
+          legendFormat: "{{market}}"
+- name: Policy Ensemble Metrics
+  type: dashboard
+  uid: policy_ensemble_metrics
+  panels:
+    - type: graph
+      title: Policy Ensemble Weights
+      targets:
+        - expr: ensemble_weight_sac{market="ES"}
+          legendFormat: "SAC {{market}}"
+        - expr: ensemble_weight_ppo{market="ES"}
+          legendFormat: "PPO {{market}}"
+        - expr: ensemble_weight_ddpg{market="ES"}
+          legendFormat: "DDPG {{market}}"

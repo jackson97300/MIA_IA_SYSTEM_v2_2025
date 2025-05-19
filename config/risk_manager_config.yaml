@@ -1,0 +1,13 @@
+# Version: 2.1.4   Date: 2025-05-13
+risk_manager:
+  buffer_size: 100              # Nombre d’entrées avant flush du log
+  max_position_fraction: 0.10   # Part max du capital (10%)
+  min_position_fraction: 0.01   # Plancher (1%)
+  kelly_fraction: 0.10          # Fraction conservatrice de Kelly
+  alert_threshold: 0.09         # Seuil d’alerte (en % du capital)
+  imbalance_weight: 1.0         # Poids de l’orderflow_imbalance
+  atr:
+    window_minutes: 5           # Période pour ATR dynamique
+  retries:
+    max_attempts: 3
+    base_delay: 2.0             # Délai de retry (en s), back-off exp.

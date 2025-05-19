@@ -1,0 +1,150 @@
+
+
+
+
+
+
+
+
+Module : .github/PULL_REQUEST_TEMPLATE.md
+
+Rôle : Standardise les pull requests pour garantir des modifications bien documentées et testées.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Exigences de tests via .github/workflows/python.yml.
+Structure des PRs pour les changements existants.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Exiger tests pour risk_manager.py.
+HMM / Changepoint Detection (4) : Exiger tests pour regime_detector.py.
+Ajouter exigences pour les nouveaux fichiers (feature_pipeline.py, trade_probability.py, etc.).
+
+
+Priorité : Basse
+Dépendances : risk_manager.py, regime_detector.py, feature_pipeline.py, trade_probability.py, .github/workflows/python.yml.
+Action :
+Mettre à jour .github/PULL_REQUEST_TEMPLATE.md pour inclure les nouvelles exigences :## Description
+Describe the changes introduced by this PR.
+
+## Related Improvements
+- [ ] Position sizing dynamique
+- [ ] HMM / Changepoint Detection
+- [ ] Other (specify)
+
+## Files Modified
+- [ ] src/risk_management/risk_manager.py
+- [ ] src/features/regime_detector.py
+- [ ] src/data/feature_pipeline.py
+- [ ] src/model/trade_probability.py
+- [ ] Other (specify)
+
+## Tests
+- [ ] Tests added/updated in `tests/test_risk_manager.py`
+- [ ] Tests added/updated in `tests/test_regime_detector.py`
+- [ ] Tests added/updated in `tests/test_feature_pipeline.py`
+- [ ] Tests added/updated in `tests/test_trade_probability.py`
+- [ ] Tests passed (`pytest`)
+
+## Checklist
+- [ ] Code formatted with Black
+- [ ] Linting passed (Flake8, MyPy)
+- [ ] CI/CD pipeline passed
+
+
+Tester via création d’une PR manuelle.
+
+
+Failles corrigées : Configuration CI/CD incomplète pour les nouveaux fichiers (suggestions 1, 4).
+
+
+Module : helm/mia-system/Chart.yaml
+
+Rôle : Définit le chart Helm pour déployer le système sur Kubernetes.
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Configuration du déploiement pour les modules existants.
+Intégration avec values.yaml pour les paramètres.
+
+
+Modifications nécessaires :
+Position sizing dynamique (1) : Ajouter déploiement pour risk_manager.py.
+HMM / Changepoint Detection (4) : Ajouter déploiement pour regime_detector.py.
+Safe RL / CVaR-PPO (7) : Ajouter déploiement pour PPO-Lagrangian.
+Distributional RL (QR-DQN) (8) : Ajouter déploiement pour QR-DQN.
+Ensembles de politiques (10) : Ajouter déploiement pour vote bayésien.
+
+
+Priorité : Basse
+Dépendances : risk_manager.py, regime_detector.py, trade_probability.py, mia_switcher.py, values.yaml.
+Action :
+Mettre à jour Chart.yaml pour inclure les nouveaux modules :apiVersion: v2
+name: mia-system
+description: Pipeline de trading automatisé pour MIA_IA_SYSTEM_v2_2025
+version: 2.1.4
+appVersion: "2.1.4"
+dependencies:
+  - name: risk-manager
+    version: "2.1.4"
+    repository: "file://charts/risk-manager"
+  - name: regime-detector
+    version: "2.1.4"
+    repository: "file://charts/regime-detector"
+  - name: trade-probability
+    version: "2.1.4"
+    repository: "file://charts/trade-probability"
+  - name: mia-switcher
+    version: "2.1.4"
+    repository: "file://charts/mia-switcher"
+
+
+Tester avec helm install --dry-run mia-system ./helm/mia-system.
+
+
+Failles corrigées : Absence de déploiement Kubernetes pour les nouveaux modules (suggestions 1, 4, 7, 8, 10).
+
+
+Module : helm/mia-system/values.yaml
+
+Rôle : Configure les paramètres de déploiement Kubernetes (replicas, autoscaling, ressources CPU/GPU).
+Statut : Existant (version 2.1.3), non modifié pour les améliorations.
+Fonctionnalités existantes à préserver :
+Configuration des replicas et autoscaling pour les modules existants.
+Allocation de ressources CPU/GPU.
+
+
+Modifications nécessaires :
+Safe RL / CVaR-PPO (7) : Allouer ressources GPU pour PPO-Lagrangian.
+Distributional RL (QR-DQN) (8) : Allouer ressources GPU pour QR-DQN.
+Ensembles de politiques (10) : Allouer ressources CPU/GPU pour vote bayésien.
+
+
+Priorité : Basse
+Dépendances : trade_probability.py, mia_switcher.py, Chart.yaml.
+Action :
+Mettre à jour values.yaml pour inclure les nouvelles ressources :replicaCount: 2
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+resources:
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+    nvidia.com/gpu: 1
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+    nvidia.com/gpu: 1
+service:
+  type: ClusterIP
+  port: 80
+
+
+Tester avec helm install --dry-run mia-system ./helm/mia-system.
+
+
+Failles corrigées : Absence de ressources GPU pour les nouveaux modèles RL (suggestions 7, 8, 10).
+
+

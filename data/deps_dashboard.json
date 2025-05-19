@@ -1,0 +1,18 @@
+{
+    "//": [
+        "Template for dashboard dependencies in MIA_IA_SYSTEM_v2_2025",
+        "Version: 2.1.4",
+        "Date: 2025-05-13",
+        "Role: Lists the versions of dependencies used by the dashboard, managed by mia_dashboard.py",
+        "Notes:",
+        "- Generated and updated by src/model/utils/mia_dashboard.py",
+        "- Fields represent dependency names and their versions (e.g., 'pandas': '2.0.0')",
+        "- Example dependencies: pandas, plotly, matplotlib",
+        "- Policies Note: The official directory for routing policies is src/model/router/policies",
+        "  The src/model/policies directory is a residual and should be verified for removal to avoid import conflicts",
+        "- Compliance: No references to dxFeed, obs_t, 320 features, or 81 features"
+    ],
+    "pandas": "",
+    "plotly": "",
+    "matplotlib": ""
+}

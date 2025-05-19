@@ -1,0 +1,552 @@
+Phase 16 : Consolidation et simplification
+Objectif
+Dompter le monstre en consolidant le projet MIA_IA_SYSTEM_v2_2025 pour le rendre plus gérable, clair, et prêt pour la compilation. Cette phase :
+
+Regroupe les fichiers clés dans un script global (run_system.py) pour simplifier l’exécution (collecte → features → trading).
+Simplifie les schémas complexes (ex. : regime_probs JSON → colonnes séparées).
+Ajoute un outil de compilation (build.sh) pour automatiser la construction.
+Fournit une documentation synthétique (quickstart.md) pour guider le codage.
+Met à jour validate_prompt_compliance.py pour inclure une vérification finale.
+Inclut un registre complet en CSV pour une vue d’ensemble. Cette phase garantit que le projet reste robuste tout en devenant plus accessible, répondant à ta crainte face à son ampleur. Elle finalise le guide ultime pour qu’il soit définitif et prêt à coder sans revenir en arrière.
+Fichiers concernés
+Fichiers principaux (3) :
+src/run_system.py : Script global pour exécuter le pipeline complet.
+scripts/build.sh : Script pour automatiser la compilation.
+docs/quickstart.md : Guide synthétique pour démarrer.
+Fichiers générés (1) :
+data/logs/run_system_performance.csv
+Tests (3) :
+tests/test_run_system.py
+tests/test_build.sh
+tests/test_quickstart.py
+Fichiers mis à jour (3) :
+validate_prompt_compliance.py (Phase 10, vérification finale)
+alpha_scores.csv (Phase 4, 8, simplification de regime_probs)
+requirements.txt (Phase 12, ajout de weasyprint)
+Dépendances (10) :
+src/data/data_provider.py (Phase 1)
+src/features/feature_pipeline.py (Phase 2)
+src/trading/live_trading.py (Phase 8)
+src/model/utils/config_manager.py (Phase 12)
+src/model/utils/alert_manager.py (Phase 12)
+src/utils/standard.py (Phase 15)
+data/iqfeed/merged_data.csv (Phase 1)
+data/features/features_latest.csv (Phase 2)
+data/trades/trades_real.csv (Phase 8)
+.env (Phase 14)
+Registre des fichiers (Phase 16)
+Fichier	Statut	Version	Date	Problèmes	Tests	Priorité	Dépendances	Fichiers générés
+src/run_system.py	À créer	2.1.3	2025-05-13	Aucun	tests/test_run_system.py	Très haute	data_provider.py, live_trading.py	run_system_performance.csv
+scripts/build.sh	À créer	2.1.3	2025-05-13	Aucun	tests/test_build.sh	Très haute	requirements.txt, setup_env.py	Aucun
+docs/quickstart.md	À créer	2.1.3	2025-05-13	Aucun	tests/test_quickstart.py	Haute	index.md	Aucun
+data/logs/run_system_performance.csv	À générer	2.1.3	2025-05-13	Aucun	tests/test_run_system.py	Basse	run_system.py	Aucun
+Registre complet en CSV (~93 fichiers principaux)
+Voici le registre complet mis à jour, incluant les 90 fichiers principaux des Phases 1 à 15, plus les 3 nouveaux fichiers de la Phase 16, pour un total de ~93 fichiers principaux. Le registre est fourni en format CSV pour une vue claire et importable.
+
+csv
+
+Copier
+Fichier,Statut,Version,Date,Problèmes,Tests,Priorité,Dépendances,Fichiers générés
+src/data/data_provider.py,Existant,2.1.3,2025-05-13,obs_t, dxFeed,tests/test_data_provider.py,Très haute,config/credentials.yaml, alert_manager.py,iqfeed_data.csv, option_chain.csv, cross_market.csv, news.csv
+src/api/merge_data_sources.py,Existant,2.1.3,2025-05-13,obs_t, dxFeed,tests/test_merge_data_sources.py,Très haute,data_provider.py, config_manager.py,merged_data.csv
+src/api/schedule_economic_calendar.py,Existant,2.1.3,2025-05-13,obs_t, dxFeed,tests/test_schedule_economic_calendar.py,Haute,config/credentials.yaml, alert_manager.py,macro_events.csv
+src/features/feature_pipeline.py,Existant,2.1.3,2025-05-13,obs_t, 320 features,tests/test_feature_pipeline.py,Très haute,data_provider.py, config_manager.py,features_latest.csv, feature_importance.csv
+src/features/shap_weighting.py,Existant,2.1.3,2025-05-13,320 features,tests/test_shap_weighting.py,Très haute,feature_pipeline.py, alert_manager.py,feature_importance.csv
+src/features/filter_features.py,Existant,2.1.3,2025-05-13,320 features,tests/test_filter_features.py,Haute,feature_pipeline.py, config_manager.py,features_latest_filtered.csv
+src/features/neural_pipeline.py,Existant,2.1.3,2025-05-13,obs_t, 320 features,tests/test_neural_pipeline.py,Très haute,feature_pipeline.py, config_manager.py,Aucun
+src/features/contextual_state_encoder.py,Existant,2.1.3,2025-05-13,320 features,tests/test_contextual_state_encoder.py,Haute,feature_pipeline.py, alert_manager.py,latent_vectors.csv
+src/features/spotgamma_recalculator.py,Existant,2.1.3,2025-05-13,320 features,tests/test_spotgamma_recalculator.py,Haute,feature_pipeline.py, alert_manager.py,options_snapshots/levels_*.json
+src/features/obs_template.py,Existant,2.1.3,2025-05-13,81 dimensions, obs_t,tests/test_obs_template.py,Très haute,feature_pipeline.py, shap_weighting.py,Aucun
+src/features/features_audit.py,Existant,2.1.3,2025-05-13,320 features,tests/test_features_audit.py,Très haute,feature_pipeline.py, alert_manager.py,features_audit_raw.csv, features_audit_final.csv
+src/features/signal_selector.py,Existant,2.1.3,2025-05-13,320 features,tests/test_signal_selector.py,Haute,shap_weighting.py, config_manager.py,alpha_scores.csv
+src/model/utils/db_setup.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_db_setup.py,Haute,config_manager.py, alert_manager.py,market_memory.db
+src/model/utils/db_maintenance.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_db_maintenance.py,Moyenne,db_setup.py, alert_manager.py,Aucun
+src/features/adaptive_learner.py,Existant,2.1.3,2025-05-13,320 features,tests/test_adaptive_learner.py,Haute,contextual_state_encoder.py, config_manager.py,Aucun
+src/model/train_sac.py,Existant,2.1.3,2025-05-13,obs_t, 320 features,tests/test_train_sac.py,Très haute,feature_pipeline.py, detect_regime.py,sac_model.pth, sac_range_latest.pth, train_sac_snapshots/*.json
+src/model/train_sac_auto.py,Existant,2.1.3,2025-05-13,320 features,tests/test_train_sac_auto.py,Haute,train_sac.py, finetune_utils.py,Aucun
+src/model/utils/finetune_utils.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_finetune_utils.py,Très haute,train_sac.py, config_manager.py,Aucun
+src/model/utils/maml_utils.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_maml_utils.py,Très haute,train_sac.py, config_manager.py,Aucun
+src/model/utils/algo_performance_logger.py,Existant,2.1.3,2025-05-13,320 features,tests/test_algo_performance_logger.py,Haute,train_sac.py, config_manager.py,train_sac_performance.csv
+src/risk/risk_controller.py,Existant,2.1.3,2025-05-13,320 features,tests/test_risk_controller.py,Très haute,feature_pipeline.py, alert_manager.py,risk_snapshots/*.json, penalty_log.csv
+src/risk/trade_window_filter.py,Existant,2.1.3,2025-05-13,320 features,tests/test_trade_window_filter.py,Très haute,schedule_economic_calendar.py, config_manager.py,Aucun
+src/risk/decision_log.py,Existant,2.1.3,2025-05-13,320 features,tests/test_decision_log.py,Haute,alert_manager.py, config_manager.py,decision_log.csv
+src/trading/live_trading.py,Existant,2.1.3,2025-05-13,320 features,tests/test_live_trading.py,Très haute,inference.py, trade_executor.py,trades_simulated.csv, trades_real.csv
+src/trading/trade_executor.py,Existant,2.1.3,2025-05-13,320 features,tests/test_trade_executor.py,Très haute,risk_controller.py, config_manager.py,trade_snapshots/*.json
+src/model/utils/trading_loop.py,Existant,2.1.3,2025-05-13,320 features,tests/test_trading_loop.py,Haute,live_trading.py, alert_manager.py,Aucun
+src/model/inference.py,Existant,2.1.3,2025-05-13,obs_t, 320 features,tests/test_inference.py,Très haute,obs_template.py, train_sac.py,Aucun
+src/model/trade_probability.py,Existant,2.1.3,2025-05-13,320 features,tests/test_trade_probability.py,Très haute,feature_pipeline.py, config_manager.py,alpha_scores.csv
+src/monitoring/mia_dashboard.py,Existant,2.1.3,2025-05-13,320 features,tests/test_mia_dashboard.py,Très haute,live_trading.py, feature_pipeline.py,deps_dashboard.json, preprocessing_dashboard.json, simulation_dashboard.json
+src/monitoring/correlation_heatmap.py,Existant,2.1.3,2025-05-13,320 features,tests/test_correlation_heatmap.py,Haute,shap_weighting.py, alert_manager.py,figures/monitoring/*.png
+src/monitoring/data_drift.py,Existant,2.1.3,2025-05-13,320 features,tests/test_data_drift.py,Haute,feature_pipeline.py, config_manager.py,Aucun
+src/monitoring/run_dashboard.py,Existant,2.1.3,2025-05-13,320 features,tests/test_run_dashboard.py,Moyenne,mia_dashboard.py, alert_manager.py,Aucun
+scripts/validate_prompt_compliance.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_validate_prompt_compliance.py,Très haute,config_manager.py, alert_manager.py,Aucun
+scripts/run_all_tests.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_run_all_tests.py,Très haute,tests/*.py,Aucun
+docs/index.md,Existant,2.1.3,2025-05-13,Aucun,tests/test_docs.py,Moyenne,Aucun,Aucun
+docs/setup.md,Existant,2.1.3,2025-05-13,Aucun,tests/test_docs.py,Moyenne,Aucun,Aucun
+docs/usage.md,Existant,2.1.3,2025-05-13,Aucun,tests/test_docs.py,Moyenne,Aucun,Aucun
+docs/modules.md,Existant,2.1.3,2025-05-13,Aucun,tests/test_docs.py,Moyenne,Aucun,Aucun
+docs/troubleshooting.md,À créer,2.1.3,2025-05-13,Aucun,tests/test_docs.py,Moyenne,Aucun,Aucun
+.flake8,Existant,2.1.3,2025-05-13,Aucun,tests/test_linting.py,Moyenne,Aucun,Aucun
+.pylintrc,Existant,2.1.3,2025-05-13,Aucun,tests/test_linting.py,Moyenne,Aucun,Aucun
+mypy.ini,Existant,2.1.3,2025-05-13,Aucun,tests/test_linting.py,Moyenne,Aucun,Aucun
+config/credentials.yaml,Existant,2.1.3,2025-05-13,Aucun,tests/test_credentials.py,Moyenne,Aucun,Aucun
+config/market_config.yaml,Existant,2.1.3,2025-05-13,Aucun,tests/test_market_config.py,Moyenne,Aucun,Aucun
+config/feature_sets.yaml,Existant,2.1.3,2025-05-13,Aucun,tests/test_feature_sets.py,Moyenne,Aucun,Aucun
+data/iqfeed/iqfeed_data.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_data_provider.py,Basse,data_provider.py,Aucun
+data/iqfeed/merged_data.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_merge_data_sources.py,Basse,merge_data_sources.py,Aucun
+data/macro_events.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_schedule_economic_calendar.py,Basse,schedule_economic_calendar.py,Aucun
+data/features/features_latest.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_feature_pipeline.py,Basse,feature_pipeline.py,Aucun
+data/features/feature_importance.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_shap_weighting.py,Basse,shap_weighting.py,Aucun
+data/latent_vectors.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_contextual_state_encoder.py,Basse,contextual_state_encoder.py,Aucun
+data/market_memory.db,À générer,2.1.3,2025-05-13,Aucun,tests/test_db_setup.py,Moyenne,db_setup.py,Aucun
+data/trades/trades_simulated.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_live_trading.py,Basse,live_trading.py,Aucun
+data/trades/trades_real.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_live_trading.py,Basse,live_trading.py,Aucun
+data/logs/trading/decision_log.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_decision_log.py,Basse,decision_log.py,Aucun
+data/logs/trading/alpha_scores.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_trade_probability.py,Basse,trade_probability.py,Aucun
+data/logs/train_sac_performance.csv,À générer,2.1.3,2025-05-13,Aucun,tests/test_algo_performance_logger.py,Basse,algo_performance_logger.py,Aucun
+data/figures/monitoring/*.png,À générer,2.1.3,2025-05-13,Aucun,tests/test_correlation_heatmap.py,Basse,correlation_heatmap.py,Aucun
+data/deps_dashboard.json,À générer,2.1.3,2025-05-13,Aucun,tests/test_mia_dashboard.py,Basse,mia_dashboard.py,Aucun
+data/preprocessing_dashboard.json,À générer,2.1.3,2025-05-13,Aucun,tests/test_mia_dashboard.py,Basse,mia_dashboard.py,Aucun
+data/simulation_dashboard.json,À générer,2.1.3,2025-05-13,Aucun,tests/test_mia_dashboard.py,Basse,mia_dashboard.py,Aucun
+src/trading/backtest_lab.py,Existant,2.1.3,2025-05-13,320 features,tests/test_backtest_lab.py,Très haute,inference.py, live_trading.py,backtest_results.csv
+src/envs/trading_env.py,À créer,2.1.3,2025-05-13,obs_t, 320 features,tests/test_trading_env.py,Très haute,obs_template.py, config_manager.py,Aucun
+src/model/router/detect_regime.py,À créer,2.1.3,2025-05-13,320 features,tests/test_detect_regime.py,Très haute,feature_pipeline.py, alert_manager.py,Aucun
+src/main.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_main.py,Très haute,live_trading.py, config_manager.py,Aucun
+src/model/utils/config_manager.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_config_manager.py,Très haute,credentials.yaml, market_config.yaml,Aucun
+src/model/utils/alert_manager.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_alert_manager.py,Très haute,Aucun,Aucun
+requirements.txt,À créer,2.1.3,2025-05-13,Aucun,tests/test_requirements.py,Moyenne,Aucun,Aucun
+.devcontainer/devcontainer.json,À créer,2.1.3,2025-05-13,Aucun,tests/test_devcontainer.py,Moyenne,requirements.txt,Aucun
+src/features/extractors/orderflow_indicators.py,Existant,2.1.3,2025-05-13,320 features,tests/test_orderflow_indicators.py,Haute,data_provider.py, config_manager.py,Aucun
+src/features/extractors/volatility_metrics.py,Existant,2.1.3,2025-05-13,320 features,tests/test_volatility_metrics.py,Haute,data_provider.py, config_manager.py,Aucun
+src/features/extractors/options_metrics.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_options_metrics.py,Haute,data_provider.py, config_manager.py,Aucun
+src/features/extractors/news_metrics.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_news_metrics.py,Haute,data_provider.py, config_manager.py,Aucun
+src/model/utils/hyperparam_manager.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_hyperparam_manager.py,Très haute,config_manager.py, alert_manager.py,Aucun
+src/risk/sierra_chart_errors.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_sierra_chart_errors.py,Très haute,trade_executor.py, alert_manager.py,sierra_errors.csv
+.env,À créer,2.1.3,2025-05-13,Aucun,tests/test_env.py,Moyenne,config_manager.py,Aucun
+src/data/news_scraper.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_news_scraper.py,Haute,data_provider.py, alert_manager.py,news_scraper_performance.csv
+src/features/extractors/technical_indicators.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_technical_indicators.py,Haute,feature_pipeline.py, config_manager.py,Aucun
+src/features/microstructure_guard.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_microstructure_guard.py,Haute,feature_pipeline.py, alert_manager.py,Aucun
+src/model/utils/pattern_analyzer.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_pattern_analyzer.py,Haute,db_setup.py, alert_manager.py,Aucun
+src/risk/options_risk_manager.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_options_risk_manager.py,Haute,trade_executor.py, alert_manager.py,Aucun
+src/monitoring/export_visuals.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_export_visuals.py,Moyenne,mia_dashboard.py, alert_manager.py,exported_visuals.pdf
+scripts/integration_tests.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_integration_tests.py,Très haute,live_trading.py, feature_pipeline.py,integration_tests.csv
+src/utils/standard.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_standard.py,Très haute,alert_manager.py,Aucun
+scripts/setup_env.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_setup_env.py,Très haute,requirements.txt,Aucun
+src/run_system.py,À créer,2.1.3,2025-05-13,Aucun,tests/test_run_system.py,Très haute,data_provider.py, live_trading.py,run_system_performance.csv
+scripts/build.sh,À créer,2.1.3,2025-05-13,Aucun,tests/test_build.sh,Très haute,requirements.txt, setup_env.py,Aucun
+docs/quickstart.md,À créer,2.1.3,2025-05-13,Aucun,tests/test_quickstart.py,Haute,index.md,Aucun
+Afficher dans la barre latérale
+Spécifications des fichiers
+Module : src/run_system.py
+Rôle :
+Exécute le pipeline complet (collecte → features → trading) en un seul script, simplifiant l’utilisation du système.
+Statut :
+À créer.
+Modifications nécessaires :
+Implémenter un pipeline séquentiel appelant data_provider.py, feature_pipeline.py, et live_trading.py.
+Supprimer toute référence à obs_t, dxFeed, 320/81 features.
+Ajouter retries via standard.py.
+Ajouter logs psutil dans data/logs/run_system_performance.csv.
+Ajouter alertes via alert_manager.py.
+Priorité :
+Très haute (simplifie l’exécution).
+Dépendances :
+src/data/data_provider.py
+src/features/feature_pipeline.py
+src/trading/live_trading.py
+src/model/utils/config_manager.py
+src/model/utils/alert_manager.py
+src/utils/standard.py
+.env
+Fichiers générés :
+data/logs/run_system_performance.csv
+Action :
+Créer run_system.py avec :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.data.data_provider import IQFeedProvider
+from src.features.feature_pipeline import generate_features
+from src.trading.live_trading import live_trading
+from src.model.utils.config_manager import ConfigManager
+from src.model.utils.alert_manager import AlertManager
+from src.utils.standard import with_retries
+
+def run_system(config_path="config/market_config.yaml", paper_mode=True):
+    start_time = time.time()
+    try:
+        config = ConfigManager.get_config(config_path)
+        def execute_pipeline():
+            provider = IQFeedProvider()
+            data = provider.fetch_ohlc(symbol=config["symbol"])
+            features = generate_features(data)
+            live_trading(features, paper_mode=paper_mode)
+            return True
+        with_retries(execute_pipeline)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "run_system",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/run_system_performance.csv", mode="a", header=False, index=False)
+        return True
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur exécution système: {str(e)}", priority=3)
+        raise
+
+if __name__ == "__main__":
+    run_system()
+Afficher dans la barre latérale
+Vérifier l’intégration avec main.py.
+Tests :
+Fichier : tests/test_run_system.py
+Scénarios :
+Vérifier l’exécution du pipeline complet.
+Tester les erreurs de configuration (ex. : market_config.yaml manquant).
+Exemple :
+python
+
+Copier
+def test_run_system():
+    from src.run_system import run_system
+    result = run_system(paper_mode=True)
+    assert result, "Échec du pipeline complet"
+    assert os.path.exists("data/logs/run_system_performance.csv"), "Log non généré"
+    assert os.path.exists("data/trades/trades_simulated.csv"), "Trades non générés"
+Afficher dans la barre latérale
+Module : scripts/build.sh
+Rôle :
+Automatise la compilation et la vérification du projet (installation, tests, validation).
+Statut :
+À créer.
+Modifications nécessaires :
+Implémenter un script Bash pour exécuter setup_env.py, validate_prompt_compliance.py, et run_all_tests.py.
+Ajouter des vérifications d’erreurs.
+Priorité :
+Très haute (automatise la compilation).
+Dépendances :
+scripts/setup_env.py (Phase 15)
+scripts/validate_prompt_compliance.py (Phase 10)
+scripts/run_all_tests.py (Phase 10)
+requirements.txt (Phase 12)
+Fichiers générés :
+Aucun.
+Action :
+Créer build.sh avec :
+sh
+
+Copier
+#!/bin/bash
+set -e
+echo "Installation des dépendances..."
+python scripts/setup_env.py
+echo "Validation de la conformité..."
+python scripts/validate_prompt_compliance.py
+echo "Exécution des tests..."
+python scripts/run_all_tests.py
+echo "Compilation terminée avec succès!"
+Afficher dans la barre latérale
+Vérifier l’exécution avec bash build.sh.
+Tests :
+Fichier : tests/test_build.sh
+Scénarios :
+Vérifier l’exécution sans erreurs.
+Tester les erreurs de dépendances manquantes.
+Exemple :
+python
+
+Copier
+def test_build():
+    import subprocess
+    result = subprocess.run(["bash", "scripts/build.sh"], capture_output=True, text=True)
+    assert result.returncode == 0, f"Échec de la compilation: {result.stderr}"
+Afficher dans la barre latérale
+Module : docs/quickstart.md
+Rôle :
+Fournit un guide synthétique pour démarrer le projet (installation, exécution, débogage).
+Statut :
+À créer.
+Modifications nécessaires :
+Décrire les étapes clés : installation, configuration, exécution de run_system.py.
+Référencer troubleshooting.md pour le débogage.
+Priorité :
+Haute (facilite l’utilisation).
+Dépendances :
+docs/index.md (Phase 10)
+docs/troubleshooting.md (Phase 15)
+Fichiers générés :
+Aucun.
+Action :
+Créer quickstart.md avec :
+Quickstart Guide
+Version: 2.1.3
+Date: 2025-05-13
+
+Prérequis
+Python 3.9+
+Clés API (IQFeed, NewsAPI) dans .env
+Installation
+bash
+
+Copier
+bash scripts/build.sh
+Configuration
+Configurez .env avec vos clés API.
+Vérifiez config/market_config.yaml pour le symbole (ex. : ES).
+Exécution
+bash
+
+Copier
+python src/run_system.py --paper
+Débogage
+Consultez docs/troubleshooting.md pour les erreurs courantes.
+
+Afficher dans la barre latérale
+Vérifier l’intégration avec index.md.
+Tests :
+Fichier : tests/test_quickstart.py
+Scénarios :
+Vérifier la présence des sections clés (installation, exécution).
+Tester la syntaxe Markdown.
+Exemple :
+python
+
+Copier
+def test_quickstart():
+    with open("docs/quickstart.md", "r") as f:
+        content = f.read()
+    assert "# Quickstart Guide" in content, "Titre manquant"
+    assert "bash scripts/build.sh" in content, "Commande d’installation manquante"
+Afficher dans la barre latérale
+Mise à jour : validate_prompt_compliance.py (Phase 10)
+Rôle :
+Ajouter une vérification finale pour les schémas simplifiés et les fichiers de la Phase 16.
+Action :
+Mettre à jour validate_prompt_compliance.py avec :
+python
+
+Copier
+import os
+import re
+import ast
+import pandas as pd
+import psutil
+import yaml
+from src.model.utils.alert_manager import AlertManager
+from src.utils.standard import with_retries
+
+def validate_file(file_path):
+    start_time = time.time()
+    errors = []
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        # Vérifier obs_t, dxFeed, 320/81 features
+        if "obs_t" in content:
+            errors.append(f"{file_path}: Référence à obs_t détectée")
+        if "dxfeed" in content.lower():
+            errors.append(f"{file_path}: Référence à dxFeed détectée")
+        if re.search(r"\b(320|81)\b", content):
+            errors.append(f"{file_path}: Référence à 320/81 features détectée")
+        # Vérifier date
+        if not re.search(r"Date : 2025-05-13", content):
+            errors.append(f"{file_path}: Date incorrecte dans l’en-tête")
+        # Vérifier SIGINT, retries, logs psutil, alertes
+        if "signal.SIGINT" not in content:
+            errors.append(f"{file_path}: Gestion SIGINT manquante")
+        if "with_retries" not in content:
+            errors.append(f"{file_path}: Retries manquants")
+        if "psutil" not in content:
+            errors.append(f"{file_path}: Logs psutil manquants")
+        if "alert_manager" not in content.lower():
+            errors.append(f"{file_path}: Alertes via alert_manager.py manquantes")
+        # Vérifier training_mode pour 350/150 SHAP features
+        if "training_mode" not in content:
+            errors.append(f"{file_path}: training_mode manquant")
+        # Vérifier syntaxe flake8
+        def check_flake8():
+            return os.system(f"flake8 {file_path}") == 0
+        if not with_retries(check_flake8):
+            errors.append(f"{file_path}: Erreurs de syntaxe flake8")
+        # Vérifier schémas pour les fichiers générés
+        if file_path.endswith(".py") and "to_csv" in content:
+            schema_errors = validate_schema(file_path)
+            errors.extend(schema_errors)
+        # Vérifier dépendances
+        if file_path == "requirements.txt":
+            dep_errors = validate_requirements(file_path)
+            errors.extend(dep_errors)
+        # Vérifier hyperparamètres
+        if file_path in ["src/model/train_sac.py", "src/features/contextual_state_encoder.py"]:
+            hyperparam_errors = validate_hyperparams(file_path, content)
+            errors.extend(hyperparam_errors)
+        # Vérifier schémas simplifiés
+        if "alpha_scores.csv" in file_path:
+            schema_errors = validate_simplified_schema(file_path)
+            errors.extend(schema_errors)
+        for error in errors:
+            AlertManager().send_alert(error, priority=3)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "operation": "validate_file",
+            "file_path": file_path,
+            "errors": len(errors),
+            "success": len(errors) == 0,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/validate_prompt_compliance_performance.csv", mode="a", header=False, index=False)
+        return errors
+
+def validate_schema(file_path):
+    errors = []
+    schemas = {
+        "features_latest.csv": {"columns": 350, "required": ["timestamp", "rsi_14", "ofi_score"]},
+        "trades_real.csv": {"required": ["trade_id", "timestamp", "entry_price", "profit"]},
+        "backtest_results.csv": {"required": ["timestamp", "profit", "sharpe_ratio"]},
+        "alpha_scores.csv": {"required": ["timestamp", "range_prob", "trend_prob", "defensive_prob"]}
+    }
+    for csv_file, schema in schemas.items():
+        if csv_file in file_path:
+            try:
+                df = pd.read_csv(f"data/{csv_file}")
+                if schema.get("columns") and len(df.columns) != schema["columns"]:
+                    errors.append(f"{file_path}: {csv_file} a un nombre incorrect de colonnes")
+                for col in schema.get("required", []):
+                    if col not in df.columns:
+                        errors.append(f"{file_path}: Colonne {col} manquante dans {csv_file}")
+            except FileNotFoundError:
+                errors.append(f"{file_path}: {csv_file} non trouvé")
+    return errors
+
+def validate_requirements(file_path):
+    errors = []
+    required_deps = {
+        "pandas": "2.0.0",
+        "tensorflow": "2.10.0",
+        "stable_baselines3": "1.6.0",
+        "gym": "0.21.0",
+        "sqlite3": "",
+        "pytest": "7.0.0",
+        "weasyprint": "57.0"
+    }
+    with open(file_path, "r") as f:
+        content = f.read()
+    for dep, version in required_deps.items():
+        if version and f"{dep}>={version}" not in content:
+            errors.append(f"{file_path}: Dépendance {dep}>={version} manquante")
+        elif not version and dep not in content:
+            errors.append(f"{file_path}: Dépendance {dep} manquante")
+    return errors
+
+def validate_hyperparams(file_path, content):
+    errors = []
+    expected_hyperparams = {
+        "src/model/train_sac.py": ["ent_coef=0.1", "total_timesteps=100000"],
+        "src/features/contextual_state_encoder.py": ["n_components=2"]
+    }
+    for param in expected_hyperparams.get(file_path, []):
+        if param not in content:
+            errors.append(f"{file_path}: Hyperparamètre {param} manquant")
+    return errors
+
+def validate_simplified_schema(file_path):
+    errors = []
+    try:
+        df = pd.read_csv("data/logs/trading/alpha_scores.csv")
+        required_cols = ["timestamp", "range_prob", "trend_prob", "defensive_prob"]
+        for col in required_cols:
+            if col not in df.columns:
+                errors.append(f"{file_path}: Colonne {col} manquante dans alpha_scores.csv")
+        if "regime_probs" in df.columns:
+            errors.append(f"{file_path}: Ancien champ regime_probs détecté dans alpha_scores.csv")
+    except FileNotFoundError:
+        errors.append(f"{file_path}: alpha_scores.csv non trouvé")
+    return errors
+Afficher dans la barre latérale
+Vérifier l’intégration avec run_all_tests.py.
+Mise à jour : alpha_scores.csv (Phase 4, 8)
+Rôle :
+Simplifier le schéma en remplaçant regime_probs (JSON) par des colonnes séparées (range_prob, trend_prob, defensive_prob).
+Action :
+Mettre à jour les fichiers générant alpha_scores.csv (signal_selector.py, trade_probability.py) pour produire :
+Schéma pour data/logs/trading/alpha_scores.csv :
+timestamp : datetime (ex. : 2025-05-13 14:00:00)
+range_prob : float (ex. : 0.7)
+trend_prob : float (ex. : 0.2)
+defensive_prob : float (ex. : 0.1)
+alpha_score : float (ex. : 0.85)
+Exemple dans trade_probability.py :
+python
+
+Copier
+import pandas as pd
+import psutil
+from src.model.router.detect_regime import detect_regime
+from src.model.utils.alert_manager import AlertManager
+from src.utils.standard import with_retries
+
+def calculate_trade_probability(data):
+    start_time = time.time()
+    try:
+        regime_probs = detect_regime(data)
+        alpha_score = sum(p * v for p, v in regime_probs.items())  # Simplified
+        result = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "range_prob": regime_probs["range"],
+            "trend_prob": regime_probs["trend"],
+            "defensive_prob": regime_probs["defensive"],
+            "alpha_score": alpha_score
+        }
+        pd.DataFrame([result]).to_csv("data/logs/trading/alpha_scores.csv", mode="a", header=False, index=False)
+        latency = time.time() - start_time
+        log_entry = {
+            "timestamp": result["timestamp"],
+            "operation": "calculate_trade_probability",
+            "latency": latency,
+            "success": True,
+            "memory_usage_mb": psutil.Process().memory_info().rss / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent()
+        }
+        pd.DataFrame([log_entry]).to_csv("data/logs/trade_probability_performance.csv", mode="a", header=False, index=False)
+        return result
+    except Exception as e:
+        AlertManager().send_alert(f"Erreur calcul probabilité trade: {str(e)}", priority=3)
+        raise
+Afficher dans la barre latérale
+Vérifier l’intégration avec signal_selector.py.
+Clarifications pour la Phase 16
+Avant de valider la Phase 16, confirmez les points suivants pour m’assurer que le "monstre" est bien dompté :
+
+Fichiers de la Phase 16 :
+Les fichiers proposés (run_system.py, build.sh, quickstart.md) suffisent-ils pour simplifier le projet, ou voulez-vous ajouter/retirer des fichiers (ex. : Dockerfile, script CI/CD) ?
+Si tu as des idées pour rendre le projet encore plus gérable, partage-les.
+Simplifications :
+La simplification de alpha_scores.csv est-elle adaptée, ou veux-tu simplifier d’autres schémas/fichiers (ex. : market_memory.db, risk_snapshots/*.json) ?
+Tests :
+Les tests proposés pour run_system.py, build.sh, et quickstart.md sont-ils suffisants, ou veux-tu des tests spécifiques (ex. : pipeline partiel, erreurs de compilation) ?
+Registre complet :
+Le registre en CSV (~93 fichiers) est-il clair ? Veux-tu un autre format (ex. : JSON) ou inclure les fichiers secondaires (logs, cache) ?
+Validation de la Phase 16 :
+Si la Phase 16 te convient, dis "ok", et je considérerai le guide ultime comme complet et définitif.
+Si tu veux des ajustements (ex. : ajouter une Phase 17, prioriser des outils), précise-les.
+Conclusion
+Ton projet est un monstre impressionnant, mais il est désormais apprivoisé grâce aux 16 phases, aux ~93 fichiers principaux, et aux outils proposés (tests, documentation, scripts). La Phase 15 est validée, et la Phase 16 consolide tout en simplifiant l’exécution et la compilation avec run_system.py, build.sh, et quickstart.md. Le registre complet en CSV te donne une vue d’ensemble, et les optimisations (standardisation, tests d’intégration, environnement robuste) garantissent que le codage sera fluide. Tu es prêt à passer à la compilation sans peur, avec un guide ultime complet, robuste, et gérable !
+
+Actions immédiates demandées :
+
+Validez la Phase 16 :
+Dis "ok" si la Phase 16 te convient, ou précise les ajustements (ex. : fichiers à ajouter, simplifications spécifiques).
+Exprime tes craintes :
+Si des aspects du projet te font encore peur (ex. : trop de fichiers, complexité du codage), partage-les pour que je les adresse.
+Confirme les priorités :
+Indique si tu veux prioriser certaines tâches (ex. : compilation, documentation, tests) ou ajouter des outils (ex. : Docker, CI/CD).
+Registre complet :
+Confirme si le registre CSV est satisfaisant, ou demande un autre format.

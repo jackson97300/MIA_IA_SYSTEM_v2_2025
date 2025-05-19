@@ -1,0 +1,383 @@
+Phase 17 : Roadmap détaillée pour le trading multi-instruments
+Objectif
+Documenter une roadmap claire et détaillée pour le trading de l’ES (Q4 2025), suivi de l’extension au NQ et DAX (mi-2026), métaux (or - GC, argent - SI, fin 2026), pétrole (CL, mi-2027), et cryptos (Bitcoin, Ethereum, fin 2027), tout en préservant la robustesse de l’ES. Cette phase :
+
+Crée un fichier docs/roadmap.md avec des étapes précises, des ressources, et des défis pour chaque période.
+Met à jour config/market_config.yaml et docs/quickstart.md pour une structure extensible sans coder de nouveaux modules.
+Ajoute des tests préparatoires (tests/test_multi_instrument_config.py) pour valider la compatibilité future.
+Propose des ajouts légers (ex. : placeholder dans feature_sets.yaml) pour faciliter la transition dans 1 an.
+Fichiers concernés
+Nouveau (1) :
+docs/roadmap.md : Roadmap détaillée 2025-2027.
+Mis à jour (2) :
+config/market_config.yaml : Structure multi-instruments.
+docs/quickstart.md : Instructions pour extensions futures.
+Tests (1) :
+tests/test_multi_instrument_config.py : Vérifie la configuration extensible.
+Aucun nouveau module : Pas de instrument_metrics.py ou rollover_manager.py pour éviter les tâches supplémentaires.
+Dépendances (3) :
+src/model/utils/config_manager.py (Phase 12)
+docs/troubleshooting.md (Phase 15)
+config/feature_sets.yaml (Phase 2)
+Registre (~94 fichiers)
+Ajout : docs/roadmap.md.
+Priorité : Basse (documentation et configuration légère).
+Registre CSV mis à jour disponible sur demande.
+Spécifications des fichiers
+Module : docs/roadmap.md
+Rôle :
+Détaille la roadmap Q4 2025 - Fin 2027 avec des étapes, ressources, et défis pour chaque instrument.
+Statut :
+À créer.
+Modifications nécessaires :
+Décrire les objectifs, actions, livrables, ressources (ex. : APIs, données), et défis pour chaque période.
+Référencer market_config.yaml, quickstart.md, et troubleshooting.md.
+Priorité :
+Basse (documentation).
+Dépendances :
+docs/troubleshooting.md
+docs/quickstart.md
+Fichiers générés :
+Aucun.
+Action :
+Créer roadmap.md avec :
+Roadmap pour MIA_IA_SYSTEM_v2_2025
+Version: 2.1.3
+Date: 2025-05-13
+
+Q4 2025: Trading ES en ligne
+Objectif : Lancer le trading live/paper des futures ES (S&P 500) via Sierra Chart (API Teton).
+Actions :
+Compiler le projet avec scripts/build.sh.
+Exécuter des tests d’intégration (scripts/integration_tests.py).
+Valider la conformité avec scripts/validate_prompt_compliance.py.
+Lancer le trading avec python src/run_system.py --paper.
+Ressources :
+APIs : IQFeed (OHLC, DOM, options), NewsAPI (news).
+Fichiers : config/market_config.yaml, config/credentials.yaml, .env.
+Données : data/iqfeed/merged_data.csv, data/trades/trades_real.csv.
+Défis :
+Stabilité de l’API Teton (gérer timeouts avec sierra_chart_errors.py).
+Gestion des volumes élevés (live_trading.py).
+Livrables :
+Système opérationnel pour ES.
+Rapports de performance (trades_real.csv, figures/monitoring/*.png).
+Dashboard (mia_dashboard.py).
+Mi-2026: Trading NQ et DAX
+Objectif : Étendre au Nasdaq 100 (NQ) et DAX futures.
+Actions :
+Mettre à jour market_config.yaml pour inclure NQ et DAX (ex. : symbol: NQ, symbol: DAX).
+Créer un module instrument_metrics.py pour des features spécifiques (ex. : vix_nq_correlation, dax_euro_correlation).
+Ajuster les hyperparamètres SAC dans hyperparam_manager.py (ex. : ent_coef=0.15 pour NQ volatilité).
+Étendre detect_regime.py pour des régimes NQ/DAX (ex. : tech-driven pour NQ).
+Tester avec IQFeed (OHLC, DOM) et Sierra Chart.
+Ressources :
+APIs : IQFeed (NQ, DAX disponibles), Stooq pour données DAX si nécessaire.
+Données : data/iqfeed/merged_data.csv (ajouter NQ, DAX).
+Fichiers : feature_sets.yaml (nouvelles features), market_memory.db (patterns NQ/DAX).
+Défis :
+Volatilité accrue de NQ (calibrer risk_controller.py).
+Liquidité variable du DAX (ajuster trade_executor.py).
+Données historiques limitées pour DAX via IQFeed.
+Livrables :
+Pipeline multi-instruments (ES, NQ, DAX).
+Tests d’intégration (integration_tests.py).
+Rapports de performance (trades_real.csv).
+Fin 2026: Trading des métaux (Or - GC, Argent - SI)
+Objectif : Trader les futures de l’or (GC) et de l’argent (SI).
+Actions :
+Intégrer des sources macro dans data_provider.py (ex. : Fed rates via FRED API, CPI via BLS API).
+Créer des features dans instrument_metrics.py (ex. : gold_dxy_correlation, silver_inflation_score).
+Implémenter rollover_manager.py pour gérer les contrats mensuels (ex. : GCQ25 → GCZ25).
+Étendre detect_regime.py pour un régime "refuge" (ex. : basé sur dxy_close).
+Ajuster risk_controller.py pour les risques de taux (fed_rate impact).
+Ressources :
+APIs : IQFeed (GC, SI), FRED (Fed rates), BLS (CPI).
+Données : data/iqfeed/option_chain.csv (options GC/SI), data/macro_events.csv (taux).
+Fichiers : market_config.yaml, feature_sets.yaml.
+Défis :
+Liquidité faible des options SI (ajuster spotgamma_recalculator.py).
+Sensibilité aux taux (calibrer features_audit.py).
+Gestion des rollovers complexes (tester rollover_manager.py).
+Livrables :
+Trading robuste pour métaux.
+Rapports de risques (risk_snapshots/*.json).
+Dashboard étendu (mia_dashboard.py).
+Mi-2027: Trading de l’énergie (Pétrole - CL)
+Objectif : Trader les futures de pétrole (CL).
+Actions :
+Intégrer l’API EIA dans data_provider.py pour les stocks pétroliers.
+Ajouter des features dans instrument_metrics.py (ex. : oil_inventory_score, geopolitical_risk).
+Étendre rollover_manager.py pour les rollovers CL (ex. : CLM25 → CLN25).
+Ajuster risk_controller.py pour les risques géopolitiques (ex. : alertes OPEC).
+Tester avec IQFeed et Sierra Chart.
+Ressources :
+APIs : IQFeed (CL), EIA (inventaires), NewsAPI (événements géopolitiques).
+Données : data/iqfeed/merged_data.csv, data/macro_events.csv.
+Fichiers : market_config.yaml, feature_sets.yaml.
+Défis :
+Volatilité extrême lors des annonces EIA (ajuster trade_window_filter.py).
+Données géopolitiques non structurées (calibrer news_metrics.py).
+Rollovers fréquents (tester rollover_manager.py).
+Livrables :
+Pipeline pour pétrole.
+Tests de volatilité (backtest_lab.py).
+Rapports de performance (trades_real.csv).
+Fin 2027: Trading des cryptos (Bitcoin, Ethereum)
+Objectif : Trader Bitcoin (BTC) et Ethereum (ETH) via une plateforme crypto.
+Actions :
+Intégrer une API crypto (ex. : CCXT pour Binance/Kraken) dans data_provider.py.
+Créer des features dans instrument_metrics.py (ex. : btc_dominance, eth_gas_price).
+Ajuster train_sac.py pour la volatilité crypto (ex. : ent_coef=0.2).
+Étendre trade_executor.py pour les ordres crypto (ex. : market orders via CCXT).
+Étendre detect_regime.py pour des régimes crypto (ex. : bull run, DeFi surge).
+Ressources :
+APIs : CCXT (Binance, Kraken), CoinGecko (données historiques).
+Données : data/crypto/btc_data.csv, data/crypto/eth_data.csv.
+Fichiers : market_config.yaml, feature_sets.yaml.
+Défis :
+Volatilité extrême des cryptos (calibrer risk_controller.py).
+Latence des APIs crypto (ajuster trade_executor.py).
+Données historiques limitées (tester backtest_lab.py).
+Livrables :
+Système multi-actifs (futures, cryptos).
+Dashboard crypto (mia_dashboard.py).
+Rapports de performance (trades_real.csv).
+Recommandations générales
+Configuration : Utilisez market_config.yaml pour ajouter des instruments (ex. : symbol, sources).
+Tests : Étendez integration_tests.py pour chaque nouvel instrument.
+Documentation : Mettez à jour quickstart.md et troubleshooting.md à chaque étape.
+Validation : Exécutez validate_prompt_compliance.py avant chaque extension.
+Afficher dans la barre latérale
+Vérifier l’intégration avec quickstart.md.
+Tests :
+Fichier : tests/test_roadmap.py
+Scénarios :
+Vérifier la présence des sections Q4 2025 à Fin 2027.
+Tester la syntaxe Markdown.
+Exemple :
+python
+
+Copier
+def test_roadmap():
+    with open("docs/roadmap.md", "r") as f:
+        content = f.read()
+    assert "Q4 2025: Trading ES" in content, "Section ES manquante"
+    assert "Mi-2026: Trading NQ et DAX" in content, "Section NQ/DAX manquante"
+    assert "Fin 2027: Trading des cryptos" in content, "Section crypto manquante"
+    assert "Recommandations générales" in content, "Section recommandations manquante"
+Afficher dans la barre latérale
+Mise à jour : config/market_config.yaml (Phase 1)
+Rôle :
+Préparer une structure extensible pour les futurs instruments (NQ, DAX, GC, SI, CL, BTC, ETH).
+Statut :
+Existant, à mettre à jour.
+Modifications nécessaires :
+Ajouter des placeholders pour les instruments futurs.
+Conserver la configuration ES intacte.
+Priorité :
+Basse (configuration légère).
+Dépendances :
+src/model/utils/config_manager.py
+Fichiers générés :
+Aucun.
+Action :
+Mettre à jour market_config.yaml avec :
+yaml
+
+Copier
+instruments:
+  ES:
+    symbol: ES
+    sources: [iqfeed, newsapi]
+    features: [rsi_14, ofi_score, vix_es_correlation]
+    expiration_date: null
+  # Placeholders pour futurs instruments
+  NQ: {symbol: NQ, sources: [], features: [], expiration_date: null}
+  DAX: {symbol: DAX, sources: [], features: [], expiration_date: null}
+  GC: {symbol: GC, sources: [], features: [], expiration_date: null}
+  SI: {symbol: SI, sources: [], features: [], expiration_date: null}
+  CL: {symbol: CL, sources: [], features: [], expiration_date: null}
+  BTC: {symbol: BTC, sources: [], features: [], expiration_date: null}
+  ETH: {symbol: ETH, sources: [], features: [], expiration_date: null}
+Afficher dans la barre latérale
+Vérifier l’intégration avec config_manager.py.
+Mise à jour : docs/quickstart.md (Phase 16)
+Rôle :
+Ajouter des instructions pour configurer de futurs instruments sans modifier le flux ES.
+Statut :
+Existant, à mettre à jour.
+Modifications nécessaires :
+Ajouter une section pour les extensions futures.
+Référencer roadmap.md et troubleshooting.md.
+Priorité :
+Basse (documentation).
+Dépendances :
+docs/roadmap.md
+docs/troubleshooting.md
+Fichiers générés :
+Aucun.
+Action :
+Mettre à jour quickstart.md avec :
+Quickstart Guide
+Version: 2.1.3
+Date: 2025-05-13
+
+Prérequis
+Python 3.9+
+Clés API (IQFeed, NewsAPI) dans .env
+Installation
+bash
+
+Copier
+bash scripts/build.sh
+Configuration (ES)
+Configurez .env avec vos clés API.
+Vérifiez config/market_config.yaml pour l’ES :
+yaml
+
+Copier
+instruments:
+  ES:
+    symbol: ES
+    sources: [iqfeed, newsapi]
+    features: [rsi_14, ofi_score, vix_es_correlation]
+Exécution (ES)
+bash
+
+Copier
+python src/run_system.py --paper
+Extensions futures (NQ, DAX, GC, SI, CL, BTC, ETH)
+Consultez docs/roadmap.md pour le plan 2026-2027.
+Ajoutez les instruments dans market_config.yaml (ex. : symbol: NQ, sources: [iqfeed]).
+Mettez à jour feature_sets.yaml pour les nouvelles features.
+Testez avec integration_tests.py.
+Voir troubleshooting.md pour les défis.
+Débogage
+Consultez docs/troubleshooting.md pour les erreurs courantes.
+
+Afficher dans la barre latérale
+Vérifier l’intégration avec roadmap.md.
+Module : tests/test_multi_instrument_config.py
+Rôle :
+Valider la structure extensible de market_config.yaml pour les futurs instruments.
+Statut :
+À créer.
+Modifications nécessaires :
+Vérifier la présence des placeholders (NQ, DAX, GC, SI, CL, BTC, ETH).
+Tester la syntaxe YAML.
+Priorité :
+Basse (test préparatoire).
+Dépendances :
+config/market_config.yaml
+Fichiers générés :
+Aucun.
+Action :
+Créer test_multi_instrument_config.py avec :
+python
+
+Copier
+import yaml
+
+def test_multi_instrument_config():
+    with open("config/market_config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    assert "instruments" in config, "Clé instruments manquante"
+    assert "ES" in config["instruments"], "Instrument ES manquant"
+    for inst in ["NQ", "DAX", "GC", "SI", "CL", "BTC", "ETH"]:
+        assert inst in config["instruments"], f"Placeholder {inst} manquant"
+Afficher dans la barre latérale
+Vérifier l’intégration avec run_all_tests.py.
+Propositions pour faciliter la transition future
+Pour préparer le multi-instruments dans 1 an sans alourdir le projet maintenant, voici des propositions légères qui préservent l’ES :
+
+Placeholder dans feature_sets.yaml :
+Proposition : Ajouter une section vide pour les features futures dans feature_sets.yaml pour éviter une refactorisation lourde.
+Action :
+yaml
+
+Copier
+features:
+  ES:
+    training: [rsi_14, ofi_score, vix_es_correlation]
+    inference: [rsi_14, ofi_score]
+  # Placeholders pour futurs instruments
+  NQ: {}
+  DAX: {}
+  GC: {}
+  SI: {}
+  CL: {}
+  BTC: {}
+  ETH: {}
+Afficher dans la barre latérale
+Bénéfice : Structure prête pour ajouter vix_nq_correlation, oil_inventory_score, etc., sans modifier le format.
+Impact : Minimal, juste une mise à jour de fichier.
+Test préparatoire pour les sources de données :
+Proposition : Ajouter un test dans tests/test_data_provider.py pour vérifier la compatibilité avec de futures sources (ex. : EIA, FRED, CCXT).
+Action :
+python
+
+Copier
+def test_future_data_sources():
+    from src.data.data_provider import IQFeedProvider
+    provider = IQFeedProvider()
+    assert hasattr(provider, "fetch_ohlc"), "Méthode fetch_ohlc manquante"
+    # Placeholder pour futures sources
+    assert "eia" not in dir(provider), "Source EIA non implémentée (prévue pour 2027)"
+    assert "ccxt" not in dir(provider), "Source CCXT non implémentée (prévue pour 2027)"
+Afficher dans la barre latérale
+Bénéfice : Anticipe les extensions sans coder maintenant.
+Impact : Très faible, juste un test.
+Note dans troubleshooting.md :
+Proposition : Ajouter une section dans troubleshooting.md pour les défis multi-instruments futurs (ex. : rollovers, volatilité crypto).
+Action :
+Troubleshooting
+Version: 2.1.3
+Date: 2025-05-13
+
+Erreurs courantes (ES)
+FileNotFoundError: merged_data.csv
+Cause : merge_data_sources.py n’a pas généré le fichier.
+Solution : Vérifiez iqfeed_data.csv, relancez merge_data_sources.py.
+Préparation pour futurs instruments (2026-2027)
+Rollover manquant (CL, GC) :
+Cause : Date d’expiration non configurée.
+Solution : Ajoutez expiration_date dans market_config.yaml (voir roadmap.md).
+Volatilité crypto (BTC, ETH) :
+Cause : Hyperparamètres SAC non adaptés.
+Solution : Ajustez ent_coef dans hyperparam_manager.py (prévu fin 2027).
+Afficher dans la barre latérale
+Bénéfice : Guide les futures extensions sans effort immédiat.
+Impact : Minimal, mise à jour documentaire.
+Script de validation future :
+Proposition : Ajouter un script scripts/prepare_multi_instrument.py pour vérifier la compatibilité du projet avec de futurs instruments (ex. : placeholders présents, tests prêts).
+Action :
+python
+
+Copier
+import yaml
+import os
+
+def check_multi_instrument_readiness():
+    with open("config/market_config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    instruments = ["NQ", "DAX", "GC", "SI", "CL", "BTC", "ETH"]
+    missing = [inst for inst in instruments if inst not in config["instruments"]]
+    if missing:
+        print(f"Placeholders manquants dans market_config.yaml: {missing}")
+    else:
+        print("Configuration multi-instruments prête.")
+    assert os.path.exists("docs/roadmap.md"), "Roadmap manquante"
+
+if __name__ == "__main__":
+    check_multi_instrument_readiness()
+Afficher dans la barre latérale
+Bénéfice : Permet de vérifier la préparation en 2026 sans coder maintenant.
+Impact : Très faible, script optionnel non intégré au pipeline.
+Validation
+Ok pour cette Phase 17 (juste roadmap.md, mises à jour légères de market_config.yaml, quickstart.md, troubleshooting.md, feature_sets.yaml, et tests) ?
+Alternative : Si tu préfères rien ajouter et rester à la Phase 16, dis "tel quel".
+Propositions : Valide les ajouts proposés (1-4) ou précise d’autres idées (ex. : placeholder pour APIs, note pour rollovers).
+Registre : Confirme si tu veux le registre CSV (~94 fichiers).
+Priorités : Indique si un instrument (ex. : NQ) ou une étape (ex. : 2026) est prioritaire.
+Conclusion : Le projet reste solide pour l’ES à la Phase 16. La Phase 17 détaillée pose des bases légères pour le multi-instruments (2026-2027) sans alourdir ton travail. On boucle ce "monstre" pour qu’il soit prêt à rugir en Q4 2025 et au-delà !
